@@ -1,0 +1,21 @@
+# Gereksiz dosyalar
+*.log
+*.tmp
+*.swp
+*.pyc
+__pycache__/
+
+# Token ve şifre içeren dosyalar
+ghp_*
+Password
+Username
+entication
+info
+
+# IDE ve editör dosyaları
+.vscode/
+.idea/
+
+# İşletim sistemi dosyaları
+Thumbs.db
+.DS_Store
