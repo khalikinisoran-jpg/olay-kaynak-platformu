@@ -19,3 +19,12 @@ info
 # İşletim sistemi dosyaları
 Thumbs.db
 .DS_Store
+# Environment
+.env
+
+# Virtual environment
+.venv/
+
+# Python cache
+*.pyc
+__pycache__/

@@ -1,11 +1,13 @@
 from simulation.core.state import State
 from simulation.domain.task import Task
-from simulation.domain.enums import TaskStatus
 
 
 class Reducer:
 
     def apply(self, state: State, event):
+
+        tasks = dict(state.tasks)
+        workers = dict(state.workers)
 
         if event.event_type == "TaskCreated":
 
@@ -14,10 +16,16 @@ class Reducer:
                 name=event.payload["name"]
             )
 
-            state.tasks[task.task_id] = task
+            tasks[task.task_id] = task
+
+
+        elif event.event_type == "AIResponseReceived":
+
+            print("\nReducer -> AI Event işlendi.")
+
 
         return State(
-            tasks=state.tasks,
-            workers=state.workers,
+            tasks=tasks,
+            workers=workers,
             event_counter=state.event_counter + 1
         )

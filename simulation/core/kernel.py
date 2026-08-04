@@ -5,46 +5,39 @@ from simulation.persistence.snapshot_manager import SnapshotManager
 
 class Kernel:
 
-    def __init__(
-        self,
-        event_store
-    ):
+    def __init__(self, event_store):
 
         self.reducer = Reducer()
-
-        self.state = State(
-            tasks={},
-            workers={},
-            event_counter=0
-        )
 
         self.event_store = event_store
 
         self.snapshot_manager = SnapshotManager()
+
+        self.state = State()
 
         self.events = []
 
 
     def dispatch(self, event):
 
+        # State'i güncelle
         self.state = self.reducer.apply(
             self.state,
             event
         )
 
-
+        # Event'i diske yaz
         self.event_store.append(
             event
         )
 
-
+        # Bellekte de tut
         self.events.append(
             event
         )
 
-
+        # Snapshot kontrolü
         self.snapshot_manager.event_applied()
-
 
         if self.snapshot_manager.should_snapshot():
 
@@ -53,13 +46,9 @@ class Kernel:
             )
 
 
-
     def event_count(self):
 
-        return len(
-            self.events
-        )
-
+        return len(self.events)
 
 
     def get_state(self):
