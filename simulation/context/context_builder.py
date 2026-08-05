@@ -1,12 +1,11 @@
-from simulation.core.state import State
-
-
 class ContextBuilder:
 
     def build(
         self,
-        state: State
+        kernel
     ) -> str:
+
+        state = kernel.get_state()
 
         lines = []
 
@@ -37,6 +36,4 @@ class ContextBuilder:
                     f"- {task.task_id}: {task.name}"
                 )
 
-        return "\n".join(
-            lines
-        )
+        return "\n".join(lines)

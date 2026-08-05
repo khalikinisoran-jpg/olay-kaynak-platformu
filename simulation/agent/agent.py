@@ -1,9 +1,8 @@
 from simulation.context.context_builder import ContextBuilder
 from simulation.core.event import Event
 from simulation.llm.models import (
-    LLMRequest,
-    LLMResponse,
     Message,
+    LLMRequest
 )
 from simulation.llm.provider_factory import ProviderFactory
 
@@ -21,7 +20,7 @@ class Agent:
     def chat(self, prompt):
 
         context = self.context_builder.build(
-            self.kernel.state
+            self.kernel.get_state()
         )
 
         request = LLMRequest(
@@ -42,7 +41,7 @@ class Agent:
 
         )
 
-        response: LLMResponse = self.provider.chat(
+        response = self.provider.chat(
             request
         )
 
