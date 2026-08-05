@@ -19,8 +19,26 @@ class Agent:
 
     def chat(self, prompt):
 
+        # Kullanıcının sorusunu Event Store'a kaydet
+        self.kernel.dispatch(
+
+            Event(
+
+                event_type="UserQuestionReceived",
+
+                payload={
+
+                    "prompt": prompt
+
+                }
+
+            )
+
+        )
+
+        # Güncel context'i oluştur
         context = self.context_builder.build(
-            self.kernel.get_state()
+            self.kernel
         )
 
         request = LLMRequest(
@@ -45,26 +63,27 @@ class Agent:
             request
         )
 
-        event = Event(
-
-            event_type="AIResponseReceived",
-
-            payload={
-
-                "prompt": prompt,
-
-                "response": response.content,
-
-                "model": response.model,
-
-                "tokens": response.tokens_used
-
-            }
-
-        )
-
+        # AI cevabını Event olarak kaydet
         self.kernel.dispatch(
-            event
+
+            Event(
+
+                event_type="AIResponseReceived",
+
+                payload={
+
+                    "prompt": prompt,
+
+                    "response": response.content,
+
+                    "model": response.model,
+
+                    "tokens": response.tokens_used
+
+                }
+
+            )
+
         )
 
         return response.content

@@ -1,5 +1,7 @@
 from simulation.core.reducer import Reducer
 from simulation.core.state import State
+from simulation.core.event import Event
+
 from simulation.persistence.snapshot_manager import SnapshotManager
 from simulation.replay.replay_engine import ReplayEngine
 
@@ -35,17 +37,31 @@ class Kernel:
 
     def dispatch(self, event):
 
+        sequence = len(self.events) + 1
+
+        stored_event = Event(
+
+            event_type=event.event_type,
+
+            payload=event.payload,
+
+            sequence=sequence,
+
+            event_id=event.event_id
+
+        )
+
         self.state = self.reducer.apply(
             self.state,
-            event
+            stored_event
         )
 
         self.event_store.append(
-            event
+            stored_event
         )
 
         self.events.append(
-            event
+            stored_event
         )
 
         self.snapshot_manager.event_applied()
