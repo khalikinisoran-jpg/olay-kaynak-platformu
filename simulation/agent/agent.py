@@ -5,6 +5,7 @@ from simulation.llm.models import (
     LLMRequest
 )
 from simulation.llm.provider_factory import ProviderFactory
+from simulation.loop.loop_engine import LoopEngine
 
 
 class Agent:
@@ -17,7 +18,11 @@ class Agent:
 
         self.context_builder = ContextBuilder()
 
+        self.loop = LoopEngine()
+
     def chat(self, prompt):
+
+        self.loop.start(prompt)
 
         # Kullanıcının sorusunu Event Store'a kaydet
         self.kernel.dispatch(
@@ -85,5 +90,9 @@ class Agent:
             )
 
         )
+
+        self.loop.verifying()
+
+        self.loop.complete()
 
         return response.content
