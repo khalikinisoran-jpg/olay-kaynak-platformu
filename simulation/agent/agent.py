@@ -1,10 +1,9 @@
+from simulation.core.event import Event
 from simulation.llm.provider_factory import ProviderFactory
 from simulation.llm.models import (
     Message,
-    LLMRequest
+    LLMRequest,
 )
-
-from simulation.core.event import Event
 
 
 class Agent:
@@ -12,15 +11,24 @@ class Agent:
     def __init__(self, kernel):
 
         self.kernel = kernel
+
         self.provider = ProviderFactory.create()
 
-    def ask(self, prompt):
+
+    def chat(self, message: str):
 
         request = LLMRequest(
+
             messages=[
+
+                Message(
+                    role="system",
+                    content="You are a helpful assistant."
+                ),
+
                 Message(
                     role="user",
-                    content=prompt
+                    content=message
                 )
             ]
         )
@@ -28,13 +36,17 @@ class Agent:
         response = self.provider.chat(request)
 
         event = Event(
+
             event_type="AIResponseReceived",
+
             payload={
-                "prompt": prompt,
-                "response": response.content,
-                "model": response.model,
-                "tokens": response.tokens_used
-            }
+
+                "user_message": message,
+
+                "response": response.content
+            },
+
+            sequence=self.kernel.event_count() + 1
         )
 
         self.kernel.dispatch(event)
