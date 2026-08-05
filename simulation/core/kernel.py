@@ -1,6 +1,7 @@
 from simulation.core.reducer import Reducer
 from simulation.core.state import State
 from simulation.persistence.snapshot_manager import SnapshotManager
+from simulation.replay.replay_engine import ReplayEngine
 
 
 class Kernel:
@@ -13,30 +14,40 @@ class Kernel:
 
         self.snapshot_manager = SnapshotManager()
 
-        self.state = State()
+        self.events = self.event_store.read_all()
 
-        self.events = []
+        if self.events:
 
+            replay = ReplayEngine(
+                event_store=self.event_store,
+                reducer=self.reducer
+            )
+
+            self.state = replay.replay()
+
+            print(
+                f"Recovered {len(self.events)} events."
+            )
+
+        else:
+
+            self.state = State()
 
     def dispatch(self, event):
 
-        # State'i güncelle
         self.state = self.reducer.apply(
             self.state,
             event
         )
 
-        # Event'i diske yaz
         self.event_store.append(
             event
         )
 
-        # Bellekte de tut
         self.events.append(
             event
         )
 
-        # Snapshot kontrolü
         self.snapshot_manager.event_applied()
 
         if self.snapshot_manager.should_snapshot():
@@ -45,11 +56,9 @@ class Kernel:
                 self.state
             )
 
-
     def event_count(self):
 
         return len(self.events)
-
 
     def get_state(self):
 

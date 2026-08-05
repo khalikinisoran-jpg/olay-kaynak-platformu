@@ -1,9 +1,11 @@
+from simulation.context.context_builder import ContextBuilder
 from simulation.core.event import Event
-from simulation.llm.provider_factory import ProviderFactory
 from simulation.llm.models import (
-    Message,
     LLMRequest,
+    LLMResponse,
+    Message,
 )
+from simulation.llm.provider_factory import ProviderFactory
 
 
 class Agent:
@@ -14,8 +16,13 @@ class Agent:
 
         self.provider = ProviderFactory.create()
 
+        self.context_builder = ContextBuilder()
 
-    def chat(self, message: str):
+    def chat(self, prompt):
+
+        context = self.context_builder.build(
+            self.kernel.state
+        )
 
         request = LLMRequest(
 
@@ -23,17 +30,21 @@ class Agent:
 
                 Message(
                     role="system",
-                    content="You are a helpful assistant."
+                    content=context
                 ),
 
                 Message(
                     role="user",
-                    content=message
+                    content=prompt
                 )
+
             ]
+
         )
 
-        response = self.provider.chat(request)
+        response: LLMResponse = self.provider.chat(
+            request
+        )
 
         event = Event(
 
@@ -41,14 +52,20 @@ class Agent:
 
             payload={
 
-                "user_message": message,
+                "prompt": prompt,
 
-                "response": response.content
-            },
+                "response": response.content,
 
-            sequence=self.kernel.event_count() + 1
+                "model": response.model,
+
+                "tokens": response.tokens_used
+
+            }
+
         )
 
-        self.kernel.dispatch(event)
+        self.kernel.dispatch(
+            event
+        )
 
         return response.content
