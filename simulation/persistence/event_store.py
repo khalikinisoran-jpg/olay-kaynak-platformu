@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from simulation.core.event import Event
 from simulation.security.hash_chain import HashChain
 
 
@@ -17,7 +18,6 @@ class EventStore:
             parents=True,
             exist_ok=True
         )
-
 
     def append(self, event):
 
@@ -55,7 +55,6 @@ class EventStore:
                 + "\n"
             )
 
-
     def read_all(self):
 
         if not self.path.exists():
@@ -72,22 +71,56 @@ class EventStore:
 
             for line in f:
 
+                record = json.loads(line)
+
+                event = Event(
+
+                    event_type=record["event_type"],
+
+                    payload=record["payload"],
+
+                    sequence=record.get(
+                        "sequence",
+                        0
+                    ),
+
+                    event_id=record.get(
+                        "event_id"
+                    )
+
+                )
+
                 events.append(
-                    json.loads(line)
+                    event
                 )
 
         return events
 
-
     def last_hash(self):
 
-        events = self.read_all()
-
-        if not events:
+        if not self.path.exists():
 
             return "GENESIS"
 
-        return events[-1].get(
+        last_record = None
+
+        with open(
+            self.path,
+            "r",
+            encoding="utf-8"
+        ) as f:
+
+            for line in f:
+
+                last_record = json.loads(
+                    line
+                )
+
+        if last_record is None:
+
+            return "GENESIS"
+
+        return last_record.get(
             "current_hash",
             "GENESIS"
         )
