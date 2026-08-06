@@ -1,5 +1,34 @@
 class DecisionTrace:
 
+    def __init__(self):
+
+        self.steps = []
+
+    def record(
+        self,
+        stage,
+        message,
+        metadata=None
+    ):
+
+        if metadata is None:
+
+            metadata = {}
+
+        self.steps.append({
+
+            "stage": stage,
+
+            "message": message,
+
+            "metadata": metadata
+
+        })
+
+    def clear(self):
+
+        self.steps.clear()
+
     def generate(self, kernel):
 
         state = kernel.get_state()
@@ -11,6 +40,43 @@ class DecisionTrace:
         print("==================================================")
 
         print()
+
+        print("Decision Steps")
+
+        print("------------------------------------------")
+
+        if not self.steps:
+
+            print("No decision steps recorded.")
+
+        else:
+
+            for index, step in enumerate(
+                self.steps,
+                start=1
+            ):
+
+                print(
+                    f"[{index}] {step['stage']}"
+                )
+
+                print(
+                    f"    {step['message']}"
+                )
+
+                if step["metadata"]:
+
+                    for key, value in step[
+                        "metadata"
+                    ].items():
+
+                        print(
+                            f"    {key}: {value}"
+                        )
+
+                print()
+
+        print("------------------------------------------")
 
         print("Conversation")
 
@@ -40,11 +106,17 @@ class DecisionTrace:
 
         print("------------------------------------------")
 
-        print(f"Events                 : {state.event_counter}")
+        print(
+            f"Events                 : {state.event_counter}"
+        )
 
-        print(f"Tasks                  : {len(state.tasks)}")
+        print(
+            f"Tasks                  : {len(state.tasks)}"
+        )
 
-        print(f"Workers                : {len(state.workers)}")
+        print(
+            f"Workers                : {len(state.workers)}"
+        )
 
         print(
             f"Conversation Messages  : "

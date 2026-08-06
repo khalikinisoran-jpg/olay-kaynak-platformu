@@ -1,9 +1,9 @@
 from simulation.core.reducer import Reducer
-from simulation.core.state import State
 from simulation.core.event import Event
 
 from simulation.persistence.snapshot_manager import SnapshotManager
 from simulation.recovery.recovery_engine import RecoveryEngine
+from simulation.decision.decision_trace import DecisionTrace
 
 
 class Kernel:
@@ -15,6 +15,8 @@ class Kernel:
         self.event_store = event_store
 
         self.snapshot_manager = SnapshotManager()
+
+        self.decision_trace = DecisionTrace()
 
         recovery = RecoveryEngine(
             event_store=self.event_store,
@@ -33,6 +35,14 @@ class Kernel:
     def dispatch(self, event):
 
         sequence = len(self.events) + 1
+
+        self.decision_trace.record(
+            stage="Dispatch",
+            message=event.event_type,
+            metadata={
+                "sequence": sequence
+            }
+        )
 
         stored_event = Event(
             event_type=event.event_type,
@@ -70,3 +80,7 @@ class Kernel:
     def get_state(self):
 
         return self.state
+
+    def get_decision_trace(self):
+
+        return self.decision_trace
