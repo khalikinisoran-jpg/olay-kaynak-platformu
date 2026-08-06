@@ -1,8 +1,16 @@
 import operator
 import re
 
+from simulation.tools.base_tool import BaseTool
 
-class Calculator:
+
+class Calculator(BaseTool):
+
+    NAME = "calculator"
+
+    DESCRIPTION = "Basic arithmetic operations"
+
+    VERSION = "1.0"
 
     OPERATORS = {
 

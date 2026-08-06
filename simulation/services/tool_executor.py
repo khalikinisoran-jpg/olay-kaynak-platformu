@@ -1,15 +1,11 @@
-from simulation.tools.calculator import Calculator
+from simulation.tools.registry import ToolRegistry
 
 
 class ToolExecutor:
 
     def __init__(self):
 
-        self.tools = {
-
-            "calculator": Calculator()
-
-        }
+        self.registry = ToolRegistry()
 
     def execute(
         self,
@@ -17,7 +13,9 @@ class ToolExecutor:
         user_input
     ):
 
-        tool = self.tools.get(strategy)
+        tool = self.registry.get(
+            strategy
+        )
 
         if tool is None:
 
