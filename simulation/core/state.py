@@ -13,6 +13,10 @@ class State:
         default_factory=dict
     )
 
+    memory: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
     conversation_history: List[dict] = field(
         default_factory=list
     )
@@ -53,6 +57,8 @@ class State:
 
             "workers": workers,
 
+            "memory": self.memory,
+
             "conversation_history": self.conversation_history
 
         }
@@ -81,6 +87,11 @@ class State:
 
             workers=data.get(
                 "workers",
+                {}
+            ),
+
+            memory=data.get(
+                "memory",
                 {}
             ),
 

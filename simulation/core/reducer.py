@@ -1,14 +1,22 @@
+from dataclasses import replace
+
 from simulation.core.state import State
 from simulation.domain.task import Task
 
 
 class Reducer:
 
-    def apply(self, state: State, event):
+    def apply(
+        self,
+        state: State,
+        event
+    ):
 
         tasks = dict(state.tasks)
 
         workers = dict(state.workers)
+
+        memory = dict(state.memory)
 
         conversation_history = list(
             state.conversation_history
@@ -47,11 +55,24 @@ class Reducer:
                 "\nReducer -> AI Event işlendi."
             )
 
+        elif event.event_type == "MemoryStored":
+
+            memory[
+                event.payload["key"]
+            ] = event.payload["value"]
+
+            print(
+                f"\nReducer -> Memory kaydedildi: "
+                f"{event.payload['key']}"
+            )
+
         return State(
 
             tasks=tasks,
 
             workers=workers,
+
+            memory=memory,
 
             conversation_history=conversation_history,
 
