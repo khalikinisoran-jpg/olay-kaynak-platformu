@@ -96,6 +96,23 @@ class EventStore:
 
         return events
 
+    def read_after(
+        self,
+        sequence
+    ):
+
+        events = self.read_all()
+
+        return [
+
+            event
+
+            for event in events
+
+            if event.sequence > sequence
+
+        ]
+
     def last_hash(self):
 
         if not self.path.exists():

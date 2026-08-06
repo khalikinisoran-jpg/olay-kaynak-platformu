@@ -1,19 +1,22 @@
-from simulation.persistence.snapshot import SnapshotStore
+from simulation.persistence.snapshot_manager import SnapshotManager
+from simulation.core.state import State
 
 
-snapshot = SnapshotStore()
+manager = SnapshotManager()
 
-snapshot.save(
-    {
-        "event_counter": 1,
-        "tasks": {
-            "T001": {
-                "name": "Disk Test"
-            }
-        }
-    }
-)
+state = State()
 
-print("Snapshot kaydedildi.")
+manager.save_snapshot(state)
 
-print(snapshot.load())
+snapshot = manager.snapshot_store.load()
+
+
+print()
+
+print("===================================")
+print(" SNAPSHOT TEST")
+print("===================================")
+
+print(snapshot)
+
+print("===================================")

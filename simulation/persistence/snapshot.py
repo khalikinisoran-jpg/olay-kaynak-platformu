@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from datetime import datetime, timezone
 
 
 class SnapshotStore:
@@ -17,15 +18,34 @@ class SnapshotStore:
         )
 
 
-    def save(self, state):
+    def save(
+        self,
+        state,
+        last_sequence=None
+    ):
 
         if hasattr(state, "to_dict"):
 
-            data = state.to_dict()
+            state_data = state.to_dict()
 
         else:
 
-            data = state
+            state_data = state
+
+
+        snapshot = {
+
+            "version": 2,
+
+            "last_sequence": last_sequence,
+
+            "created_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+
+            "state": state_data
+
+        }
 
 
         with open(
@@ -35,7 +55,7 @@ class SnapshotStore:
         ) as f:
 
             json.dump(
-                data,
+                snapshot,
                 f,
                 ensure_ascii=False,
                 indent=4
