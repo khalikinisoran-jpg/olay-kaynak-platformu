@@ -56,3 +56,37 @@ class State:
             "conversation_history": self.conversation_history
 
         }
+
+    @classmethod
+    def from_dict(
+        cls,
+        data
+    ):
+
+        if data is None:
+
+            return cls()
+
+        return cls(
+
+            event_counter=data.get(
+                "event_counter",
+                0
+            ),
+
+            tasks=data.get(
+                "tasks",
+                {}
+            ),
+
+            workers=data.get(
+                "workers",
+                {}
+            ),
+
+            conversation_history=data.get(
+                "conversation_history",
+                []
+            )
+
+        )
