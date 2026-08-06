@@ -7,7 +7,12 @@ class Reducer:
     def apply(self, state: State, event):
 
         tasks = dict(state.tasks)
+
         workers = dict(state.workers)
+
+        conversation_history = list(
+            state.conversation_history
+        )
 
         if event.event_type == "TaskCreated":
 
@@ -18,14 +23,38 @@ class Reducer:
 
             tasks[task.task_id] = task
 
+        elif event.event_type == "UserQuestionReceived":
+
+            conversation_history.append({
+
+                "role": "user",
+
+                "content": event.payload["prompt"]
+
+            })
 
         elif event.event_type == "AIResponseReceived":
 
-            print("\nReducer -> AI Event işlendi.")
+            conversation_history.append({
 
+                "role": "assistant",
+
+                "content": event.payload["response"]
+
+            })
+
+            print(
+                "\nReducer -> AI Event işlendi."
+            )
 
         return State(
+
             tasks=tasks,
+
             workers=workers,
+
+            conversation_history=conversation_history,
+
             event_counter=state.event_counter + 1
+
         )

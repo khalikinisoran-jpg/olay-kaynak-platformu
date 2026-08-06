@@ -36,4 +36,21 @@ class ContextBuilder:
                     f"- {task.task_id}: {task.name}"
                 )
 
+        if state.conversation_history:
+
+            lines.append("")
+            lines.append(
+                "=== CONVERSATION HISTORY ==="
+            )
+
+            for message in state.conversation_history[-10:]:
+
+                role = message["role"].upper()
+
+                content = message["content"]
+
+                lines.append(
+                    f"{role}: {content}"
+                )
+
         return "\n".join(lines)
