@@ -1,11 +1,17 @@
 from simulation.context.context_builder import ContextBuilder
 from simulation.core.event import Event
+
 from simulation.llm.models import (
     Message,
     LLMRequest
 )
+
 from simulation.llm.provider_factory import ProviderFactory
+
 from simulation.loop.loop_engine import LoopEngine
+
+from simulation.planner.planner import Planner
+from simulation.services.tool_executor import ToolExecutor
 
 
 class Agent:
@@ -20,11 +26,15 @@ class Agent:
 
         self.loop = LoopEngine()
 
+        self.planner = Planner()
+
+        self.tool_executor = ToolExecutor()
+
     def chat(self, prompt):
 
         self.loop.start(prompt)
 
-        # Kullanıcının sorusunu Event Store'a kaydet
+        # User Event
         self.kernel.dispatch(
 
             Event(
@@ -41,34 +51,67 @@ class Agent:
 
         )
 
-        # Güncel context'i oluştur
-        context = self.context_builder.build(
-            self.kernel
-        )
+        plan = self.planner.plan(prompt)
 
-        request = LLMRequest(
+        if plan["strategy"] == "calculator":
 
-            messages=[
+            tool_result = self.tool_executor.execute(
 
-                Message(
-                    role="system",
-                    content=context
-                ),
+                "calculator",
 
-                Message(
-                    role="user",
-                    content=prompt
-                )
+                prompt
 
-            ]
+            )
 
-        )
+            class ToolResponse:
 
-        response = self.provider.chat(
-            request
-        )
+                def __init__(self, result):
 
-        # AI cevabını Event olarak kaydet
+                    self.content = result["output"]
+
+                    self.model = result["tool"]
+
+                    self.tokens_used = 0
+
+            response = ToolResponse(
+                tool_result
+            )
+
+        else:
+
+            context = self.context_builder.build(
+                self.kernel
+            )
+
+            request = LLMRequest(
+
+                messages=[
+
+                    Message(
+
+                        role="system",
+
+                        content=context
+
+                    ),
+
+                    Message(
+
+                        role="user",
+
+                        content=prompt
+
+                    )
+
+                ]
+
+            )
+
+            response = self.provider.chat(
+                request
+            )
+
+        # AI Event
         self.kernel.dispatch(
 
             Event(
