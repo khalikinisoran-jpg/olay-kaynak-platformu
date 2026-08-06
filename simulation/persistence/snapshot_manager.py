@@ -5,31 +5,35 @@ class SnapshotManager:
 
     def __init__(
         self,
-        interval=10
+        interval=2
     ):
 
         self.interval = interval
         self.counter = 0
         self.snapshot_store = SnapshotStore()
 
-
     def should_snapshot(self):
 
-        return self.counter > 0 and self.counter % self.interval == 0
-
+        return (
+            self.counter > 0
+            and self.counter % self.interval == 0
+        )
 
     def event_applied(self):
 
         self.counter += 1
 
-
-    def save_snapshot(self, state):
+    def save_snapshot(
+        self,
+        state,
+        last_sequence=None
+    ):
 
         self.snapshot_store.save(
-            state
+            state=state,
+            last_sequence=last_sequence
         )
 
         print(
-            "Otomatik snapshot alındı. Event sayısı:",
-            self.counter
+            f"Otomatik snapshot alındı. Event sayısı: {last_sequence}"
         )

@@ -5,18 +5,24 @@ class ReplayEngine:
 
     def __init__(
         self,
-        event_store,
         reducer
     ):
 
-        self.event_store = event_store
         self.reducer = reducer
 
-    def replay(self):
+    def replay(
+        self,
+        events,
+        initial_state=None
+    ):
 
-        state = State()
+        if initial_state is None:
 
-        events = self.event_store.read_all()
+            state = State()
+
+        else:
+
+            state = initial_state
 
         for event in events:
 

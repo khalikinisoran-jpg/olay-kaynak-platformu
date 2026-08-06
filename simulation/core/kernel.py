@@ -3,7 +3,7 @@ from simulation.core.state import State
 from simulation.core.event import Event
 
 from simulation.persistence.snapshot_manager import SnapshotManager
-from simulation.replay.replay_engine import ReplayEngine
+from simulation.recovery.recovery_engine import RecoveryEngine
 
 
 class Kernel:
@@ -16,39 +16,29 @@ class Kernel:
 
         self.snapshot_manager = SnapshotManager()
 
+        recovery = RecoveryEngine(
+            event_store=self.event_store,
+            snapshot_store=self.snapshot_manager.snapshot_store,
+            reducer=self.reducer
+        )
+
+        self.state = recovery.recover()
+
         self.events = self.event_store.read_all()
 
-        if self.events:
-
-            replay = ReplayEngine(
-                event_store=self.event_store,
-                reducer=self.reducer
-            )
-
-            self.state = replay.replay()
-
-            print(
-                f"Recovered {len(self.events)} events."
-            )
-
-        else:
-
-            self.state = State()
+        print(
+            f"Recovered {len(self.events)} events."
+        )
 
     def dispatch(self, event):
 
         sequence = len(self.events) + 1
 
         stored_event = Event(
-
             event_type=event.event_type,
-
             payload=event.payload,
-
             sequence=sequence,
-
             event_id=event.event_id
-
         )
 
         self.state = self.reducer.apply(
@@ -69,7 +59,8 @@ class Kernel:
         if self.snapshot_manager.should_snapshot():
 
             self.snapshot_manager.save_snapshot(
-                self.state
+                state=self.state,
+                last_sequence=len(self.events)
             )
 
     def event_count(self):
