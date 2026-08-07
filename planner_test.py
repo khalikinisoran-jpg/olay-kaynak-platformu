@@ -9,13 +9,15 @@ tests = [
 
     "Bugün hava nasıl?",
 
+    "Benim adım Ahmet",
+
     "Merhaba"
 
 ]
 
 for text in tests:
 
-    plan = planner.create_plan(text)
+    plan = planner.plan(text)
 
     print()
 

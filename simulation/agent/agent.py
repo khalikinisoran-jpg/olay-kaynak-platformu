@@ -1,3 +1,5 @@
+import re
+
 from simulation.context.context_builder import ContextBuilder
 from simulation.core.event import Event
 
@@ -12,6 +14,8 @@ from simulation.loop.loop_engine import LoopEngine
 
 from simulation.planner.planner import Planner
 from simulation.services.tool_executor import ToolExecutor
+
+from simulation.memory.memory_events import MemoryEvents
 
 
 class Agent:
@@ -53,6 +57,10 @@ class Agent:
 
         plan = self.planner.plan(prompt)
 
+        # -------------------------------------------------
+        # Calculator Strategy
+        # -------------------------------------------------
+
         if plan["strategy"] == "calculator":
 
             tool_result = self.tool_executor.execute(
@@ -76,6 +84,73 @@ class Agent:
             response = ToolResponse(
                 tool_result
             )
+
+        # -------------------------------------------------
+        # Memory Strategy
+        # -------------------------------------------------
+
+        elif plan["strategy"] == "memory":
+
+            match = re.search(
+
+                r"benim adım\s+(.+)",
+
+                prompt,
+
+                re.IGNORECASE
+
+            )
+
+            if match:
+
+                name = match.group(1).strip()
+
+                self.kernel.dispatch(
+
+                    MemoryEvents.stored(
+
+                        "user.name",
+
+                        name
+
+                    )
+
+                )
+
+                class ToolResponse:
+
+                    def __init__(self):
+
+                        self.content = (
+                            f"Memnun oldum {name}. "
+                            f"İsmini hatırlayacağım."
+                        )
+
+                        self.model = "memory"
+
+                        self.tokens_used = 0
+
+                response = ToolResponse()
+
+            else:
+
+                class ToolResponse:
+
+                    def __init__(self):
+
+                        self.content = (
+                            "İsmini anlayamadım."
+                        )
+
+                        self.model = "memory"
+
+                        self.tokens_used = 0
+
+                response = ToolResponse()
+
+        # -------------------------------------------------
+        # Default LLM Strategy
+        # -------------------------------------------------
 
         else:
 

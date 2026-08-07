@@ -10,6 +10,8 @@ class Planner:
 
         text = user_input.lower().strip()
 
+        # Calculator
+
         if re.search(
             r"\d+\s*[\+\-\*/]\s*\d+",
             text
@@ -26,6 +28,8 @@ class Planner:
                 ]
 
             }
+
+        # Weather
 
         if any(
 
@@ -56,6 +60,40 @@ class Planner:
                 ]
 
             }
+
+        # Memory
+
+        if any(
+
+            phrase in text
+
+            for phrase in [
+
+                "benim adım",
+
+                "adım",
+
+                "beni",
+
+                "ben "
+
+            ]
+
+        ):
+
+            return {
+
+                "strategy": "memory",
+
+                "steps": [
+
+                    "store_memory"
+
+                ]
+
+            }
+
+        # Default
 
         return {
 
