@@ -1,11 +1,13 @@
+from simulation.context.context_builder import ContextBuilder
 from simulation.core.event import Event
 
+from simulation.llm.provider_factory import ProviderFactory
+
 from simulation.loop.loop_engine import LoopEngine
+
 from simulation.planner.planner import Planner
 
-from simulation.agent.executors.calculator_executor import CalculatorExecutor
-from simulation.agent.executors.memory_executor import MemoryExecutor
-from simulation.agent.executors.llm_executor import LLMExecutor
+from simulation.agent.strategy_dispatcher import StrategyDispatcher
 
 
 class Agent:
@@ -14,20 +16,17 @@ class Agent:
 
         self.kernel = kernel
 
+        self.provider = ProviderFactory.create()
+
+        self.context_builder = ContextBuilder()
+
         self.loop = LoopEngine()
 
         self.planner = Planner()
 
-        self.calculator = CalculatorExecutor()
+        self.dispatcher = StrategyDispatcher()
 
-        self.memory = MemoryExecutor()
-
-        self.llm = LLMExecutor()
-
-    def chat(
-        self,
-        prompt
-    ):
+    def chat(self, prompt):
 
         self.loop.start(prompt)
 
@@ -49,85 +48,15 @@ class Agent:
 
         plan = self.planner.plan(prompt)
 
-        strategy = plan["strategy"]
+        response = self.dispatcher.dispatch(
 
-        # ------------------------------------
-        # Calculator
-        # ------------------------------------
+            plan["strategy"],
 
-        if strategy == "calculator":
+            self,
 
-            response = self.calculator.execute(
+            prompt
 
-                self,
-
-                prompt
-
-            )
-
-        # ------------------------------------
-        # Memory Store
-        # ------------------------------------
-
-        elif strategy == "memory_store":
-
-            response = self.memory.execute(
-
-                self,
-
-                prompt
-
-            )
-
-        # ------------------------------------
-        # Memory Recall
-        # ------------------------------------
-
-        elif strategy == "memory_recall":
-
-            name = self.kernel.state.memory.get(
-
-                "user.name"
-
-            )
-
-            class Response:
-
-                def __init__(
-
-                    self,
-
-                    name
-
-                ):
-
-                    if name:
-
-                        self.content = f"Adın {name}."
-
-                    else:
-
-                        self.content = "Henüz ismini bilmiyorum."
-
-                    self.model = "memory"
-
-                    self.tokens_used = 0
-
-            response = Response(name)
-
-        # ------------------------------------
-        # LLM
-        # ------------------------------------
-
-        else:
-
-            response = self.llm.execute(
-
-                self,
-
-                prompt
-
-            )
+        )
 
         self.kernel.dispatch(
 

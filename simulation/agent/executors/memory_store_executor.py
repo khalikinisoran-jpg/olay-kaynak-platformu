@@ -3,7 +3,7 @@ import re
 from simulation.memory.memory_events import MemoryEvents
 
 
-class MemoryExecutor:
+class MemoryStoreExecutor:
 
     def execute(
         self,
@@ -49,7 +49,10 @@ class MemoryExecutor:
 
         class Response:
 
-            content = f"Memnun oldum {name}. İsmini hatırlayacağım."
+            content = (
+                f"Memnun oldum {name}. "
+                f"İsmini hatırlayacağım."
+            )
 
             model = "memory"
 
