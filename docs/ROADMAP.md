@@ -1,110 +1,150 @@
 # ROADMAP
 
----
+Version: 2.0
 
-# Vision
+Status: Active
 
-Build an enterprise-grade Event-Sourced AI Runtime.
-
-The project evolves through small, verified, production-quality milestones.
+Last Updated: 2026-08-07
 
 ---
 
-# Current Version
+# Product Direction
 
-v0.4.0
+The Event-Sourced AI Runtime is being built in phases.
 
-Native Memory Engine
+Each phase has a single objective.
 
----
-
-# v0.5.0
-
-## Memory Recall
-
-Goals
-
-- Automatic memory lookup
-- "Benim adım ne?" support
-- Memory recall without LLM
-- Agent Strategy Dispatcher
-
-Status
-
-In Progress
+Features are added only after the underlying architecture is ready.
 
 ---
 
-# v0.6.0
+# Phase 1 — Developer Runtime
 
-## Weather Tool
+Status: In Progress
 
-Goals
+Goal:
 
-- Weather Tool
-- Tool Registry integration
-- Planner support
+Create a runtime that developers can use to build trustworthy AI applications.
+
+Completed:
+
+- Event Store
+- Replay Engine
+- Snapshot Recovery
+- Verify Chain
+- Planner
+- Native Memory
+- Memory Recall
+- Executor Architecture
+- Living Documentation
+
+Remaining:
+
+- Executor Registry
+- Dispatcher Refactor
+- Search Executor
+- Weather Executor
+- Multi-step Planning
+- Goal Execution
+
+Exit Criteria:
+
+A developer can build an AI application entirely on top of the runtime.
 
 ---
 
-# v0.7.0
+# Phase 2 — Production Runtime
 
-## Search Tool
+Status: Planned
 
-Goals
+Goal:
 
-- Search Tool
-- Web integration
-- Search strategy
+Prepare the runtime for production applications.
+
+Features:
+
+- Plugin API
+- Configuration System
+- Logging
+- Metrics
+- Observability
+- Better Error Handling
+- Runtime Diagnostics
+- CI Pipeline
+- Automated Tests
+
+Exit Criteria:
+
+The runtime can be safely used in production environments.
 
 ---
 
-# v0.8.0
+# Phase 3 — Enterprise Runtime
 
-## Signed Events
+Status: Future
 
-Goals
+Goal:
 
-- Event signing
-- Ed25519 integration
-- Signature verification
+Support regulated industries.
 
----
+Features:
 
-# v0.9.0
-
-## Compliance Layer
-
-Goals
-
+- Signed Event Chain
+- Compliance Layer
 - Audit Reports
-- AI Act support
-- Runtime verification
-- Compliance Dashboard
+- Deployment Profiles
+- Enterprise Configuration
+- Security Hardening
+
+Exit Criteria:
+
+The runtime satisfies enterprise deployment requirements.
 
 ---
 
-# v1.0.0
+# Phase 4 — Autonomous Runtime
 
-## Enterprise Runtime
+Status: Vision
 
-Goals
+Goal:
 
-- Stable API
-- Multi Tool Runtime
+Support autonomous AI execution.
+
+Features:
+
+- Goal Decomposition
+- Autonomous Planning
 - Worker Runtime
-- Dashboard
-- Production Ready
+- Multi-Agent Coordination
+- Long-Term Memory
+- Learning Pipelines
+
+Exit Criteria:
+
+The runtime can coordinate long-running autonomous AI workflows.
+
+---
+
+# Sprint Focus
+
+Sprint-18
+
+Primary Goal:
+
+Executor Registry
+
+Nothing else.
+
+When Sprint-18 is complete, the runtime should execute every strategy through a common registry instead of conditional logic.
 
 ---
 
 # Long-Term Vision
 
-Future capabilities include:
+The runtime should eventually become infrastructure that developers integrate into their own AI applications.
 
-- Multi-Agent Runtime
-- Autonomous Planning
-- Plugin SDK
-- Enterprise Dashboard
-- Compliance Automation
-- AI Runtime Analytics
+Models may change.
+
+Tools may change.
+
+The runtime remains.
