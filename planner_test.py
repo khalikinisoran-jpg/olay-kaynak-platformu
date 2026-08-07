@@ -1,6 +1,5 @@
 from simulation.planner.planner import Planner
 
-
 planner = Planner()
 
 tests = [
@@ -10,6 +9,8 @@ tests = [
     "Bugün hava nasıl?",
 
     "Benim adım Ahmet",
+
+    "Benim adım ne?",
 
     "Merhaba"
 

@@ -10,7 +10,9 @@ class Planner:
 
         text = user_input.lower().strip()
 
+        # -----------------------------------
         # Calculator
+        # -----------------------------------
 
         if re.search(
             r"\d+\s*[\+\-\*/]\s*\d+",
@@ -29,7 +31,9 @@ class Planner:
 
             }
 
+        # -----------------------------------
         # Weather
+        # -----------------------------------
 
         if any(
 
@@ -61,7 +65,9 @@ class Planner:
 
             }
 
-        # Memory
+        # -----------------------------------
+        # Memory Recall
+        # -----------------------------------
 
         if any(
 
@@ -69,13 +75,11 @@ class Planner:
 
             for phrase in [
 
-                "benim adım",
+                "benim adım ne",
 
-                "adım",
+                "adımı söyle",
 
-                "beni",
-
-                "ben "
+                "ismim ne"
 
             ]
 
@@ -83,7 +87,25 @@ class Planner:
 
             return {
 
-                "strategy": "memory",
+                "strategy": "memory_recall",
+
+                "steps": [
+
+                    "recall_memory"
+
+                ]
+
+            }
+
+        # -----------------------------------
+        # Memory Store
+        # -----------------------------------
+
+        if "benim adım" in text:
+
+            return {
+
+                "strategy": "memory_store",
 
                 "steps": [
 
@@ -93,7 +115,9 @@ class Planner:
 
             }
 
+        # -----------------------------------
         # Default
+        # -----------------------------------
 
         return {
 
