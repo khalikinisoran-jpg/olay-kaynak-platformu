@@ -1,51 +1,30 @@
 from simulation.agent.strategy_dispatcher import StrategyDispatcher
 
+
 dispatcher = StrategyDispatcher()
 
 
-def calculator():
-
-    return "calculator"
-
-
-def memory():
-
-    return "memory"
+assert dispatcher.registry.exists("calculator")
+assert dispatcher.registry.exists("memory_store")
+assert dispatcher.registry.exists("memory_recall")
+assert dispatcher.registry.exists("llm")
 
 
-callbacks = {
+response = dispatcher.dispatch(
+    "calculator",
+    None,
+    "15 + 27"
+)
 
-    "calculator": calculator,
 
-    "memory": memory
-
-}
+assert response.content == "42"
 
 
 print()
-
 print("------------------------------")
-
+print("Strategy Dispatcher Test Passed")
+print("------------------------------")
 print(
-
-    dispatcher.dispatch(
-
-        "calculator",
-
-        callbacks
-
-    )
-
-)
-
-print(
-
-    dispatcher.dispatch(
-
-        "memory",
-
-        callbacks
-
-    )
-
+    "Registered strategies:",
+    dispatcher.registry.strategies()
 )
