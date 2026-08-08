@@ -12,6 +12,7 @@ def test_planner_strategy_executor_contract():
         ("Merhaba", "llm"),
         ("Benim adım Ahmet", "memory_store"),
         ("Benim adım ne?", "memory_recall"),
+        ("worker: test worker task", "worker"),
     ]
 
     for prompt, expected_strategy in test_cases:

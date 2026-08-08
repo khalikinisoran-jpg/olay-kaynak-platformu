@@ -20,15 +20,10 @@ class Planner:
         ):
 
             return {
-
                 "strategy": "calculator",
-
                 "steps": [
-
                     "execute_calculator"
-
                 ]
-
             }
 
         # -----------------------------------
@@ -36,33 +31,20 @@ class Planner:
         # -----------------------------------
 
         if any(
-
             word in text
-
             for word in [
-
                 "hava",
-
                 "weather",
-
                 "sıcaklık",
-
                 "yağmur"
-
             ]
-
         ):
 
             return {
-
                 "strategy": "weather",
-
                 "steps": [
-
                     "execute_weather"
-
                 ]
-
             }
 
         # -----------------------------------
@@ -70,31 +52,19 @@ class Planner:
         # -----------------------------------
 
         if any(
-
             phrase in text
-
             for phrase in [
-
                 "benim adım ne",
-
                 "adımı söyle",
-
                 "ismim ne"
-
             ]
-
         ):
 
             return {
-
                 "strategy": "memory_recall",
-
                 "steps": [
-
                     "recall_memory"
-
                 ]
-
             }
 
         # -----------------------------------
@@ -104,15 +74,23 @@ class Planner:
         if "benim adım" in text:
 
             return {
-
                 "strategy": "memory_store",
-
                 "steps": [
-
                     "store_memory"
-
                 ]
+            }
 
+        # -----------------------------------
+        # Worker
+        # -----------------------------------
+
+        if text.startswith("worker:"):
+
+            return {
+                "strategy": "worker",
+                "steps": [
+                    "execute_worker"
+                ]
             }
 
         # -----------------------------------
@@ -120,13 +98,8 @@ class Planner:
         # -----------------------------------
 
         return {
-
             "strategy": "llm",
-
             "steps": [
-
                 "generate_response"
-
             ]
-
         }
