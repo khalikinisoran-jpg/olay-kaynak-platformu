@@ -19,6 +19,10 @@ class EventStore:
             exist_ok=True
         )
 
+        self.path.touch(
+            exist_ok=True
+        )
+
     def append(self, event):
 
         previous_hash = self.last_hash()

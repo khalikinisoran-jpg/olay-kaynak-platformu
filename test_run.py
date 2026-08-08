@@ -3,30 +3,34 @@ from simulation.core.event import Event
 from simulation.persistence.event_store import EventStore
 
 
-store = EventStore()
+def main():
 
-kernel = Kernel(
-    event_store=store
-)
+    store = EventStore()
 
-
-for i in range(1, 11):
-
-    event = Event(
-        event_type="TaskCreated",
-        payload={
-            "task_id": f"T00{i}",
-            "name": f"Test Task {i}"
-        },
-        sequence=i,
-        event_id=f"EV00{i}"
+    kernel = Kernel(
+        event_store=store
     )
 
-    kernel.dispatch(event)
+    for i in range(1, 11):
+
+        event = Event(
+            event_type="TaskCreated",
+            payload={
+                "task_id": f"T00{i}",
+                "name": f"Test Task {i}"
+            },
+            sequence=i,
+            event_id=f"EV00{i}"
+        )
+
+        kernel.dispatch(event)
+
+    print("Event sayısı:", kernel.event_count())
+
+    print("Disk kayıtları:")
+
+    print(store.read_all())
 
 
-print("Event sayısı:", kernel.event_count())
-
-print("Disk kayıtları:")
-
-print(store.read_all())
+if __name__ == "__main__":
+    main()
