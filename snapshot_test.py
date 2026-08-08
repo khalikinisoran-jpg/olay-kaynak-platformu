@@ -1,22 +1,38 @@
+import tempfile
+
+from simulation.persistence.snapshot import SnapshotStore
 from simulation.persistence.snapshot_manager import SnapshotManager
 from simulation.core.state import State
 
 
-manager = SnapshotManager()
+with tempfile.TemporaryDirectory() as temp_dir:
 
-state = State()
+    snapshot_path = f"{temp_dir}/snapshot.json"
 
-manager.save_snapshot(state)
+    snapshot_store = SnapshotStore(
+        path=snapshot_path
+    )
 
-snapshot = manager.snapshot_store.load()
+    manager = SnapshotManager(
+        snapshot_store=snapshot_store
+    )
+
+    state = State()
+
+    manager.save_snapshot(
+        state=state,
+        last_sequence=0
+    )
+
+    snapshot = snapshot_store.load()
 
 
-print()
+    print()
 
-print("===================================")
-print(" SNAPSHOT TEST")
-print("===================================")
+    print("===================================")
+    print(" SNAPSHOT TEST")
+    print("===================================")
 
-print(snapshot)
+    print(snapshot)
 
-print("===================================")
+    print("===================================")
