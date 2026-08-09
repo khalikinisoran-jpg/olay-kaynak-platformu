@@ -1,9 +1,24 @@
 from pathlib import Path
 
-from simulation.agent.worker.patch_generator import PatchGenerator
-from simulation.agent.worker.worker_policy import WorkerPolicy
-from simulation.agent.worker.worker_result import WorkerResult
-from simulation.agent.worker.worker_task import WorkerTask
+from simulation.agent.worker.llm_code_analyzer import (
+    LLMCodeAnalyzer
+)
+
+from simulation.agent.worker.patch_proposal import (
+    PatchProposal
+)
+
+from simulation.agent.worker.worker_policy import (
+    WorkerPolicy
+)
+
+from simulation.agent.worker.worker_result import (
+    WorkerResult
+)
+
+from simulation.agent.worker.worker_task import (
+    WorkerTask
+)
 
 
 class WorkerAgent:
@@ -11,8 +26,7 @@ class WorkerAgent:
     def __init__(self):
 
         self.policy = WorkerPolicy()
-
-        self.patch_generator = PatchGenerator()
+        self.llm_analyzer = LLMCodeAnalyzer()
 
     def run(
         self,
@@ -92,25 +106,49 @@ class WorkerAgent:
                     "characters": len(content)
                 })
 
-                patch = self.patch_generator.generate(
+                (
+                    diagnosis,
+                    old_text,
+                    new_text
+                ) = self.llm_analyzer.analyze(
                     path=path_value,
+                    content=content,
+                    description=task.description
+                )
+
+                if content.count(old_text) != 1:
+
+                    raise ValueError(
+                        "LLM old_text must occur exactly "
+                        "once in the current file."
+                    )
+
+                new_content = content.replace(
+                    old_text,
+                    new_text,
+                    1
+                )
+
+                patch = PatchProposal(
+                    path=path_value,
+                    action="modify",
+                    reason=diagnosis,
                     old_content=content,
-                    description=task.description,
+                    new_content=new_content,
                     allowed_paths=task.allowed_paths
                 )
 
                 patches.append(patch)
 
                 proposals.append(
-                    f"Patch proposal generated for "
-                    f"{path_value}."
+                    diagnosis
                 )
 
             except Exception as exc:
 
                 evidence.append({
                     "path": path_value,
-                    "action": "read",
+                    "action": "inspect",
                     "status": "failed",
                     "error": str(exc)
                 })
@@ -121,11 +159,17 @@ class WorkerAgent:
             else None
         )
 
+        success = len(patches) > 0
+
         return WorkerResult(
             task_id=task.task_id,
-            success=True,
+            success=success,
             summary=(
                 "Worker inspection and patch proposal completed."
+                if success
+                else
+                "Worker inspection failed to produce "
+                "a patch proposal."
             ),
             evidence=tuple(evidence),
             proposal=proposal_text,
