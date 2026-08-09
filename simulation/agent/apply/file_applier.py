@@ -4,8 +4,16 @@ from simulation.agent.worker.patch_proposal import (
     PatchProposal
 )
 
+from simulation.security.path_policy import (
+    PathPolicy
+)
+
 
 class FileApplier:
+
+    def __init__(self):
+
+        self.path_policy = PathPolicy()
 
     def apply(
         self,
@@ -19,21 +27,18 @@ class FileApplier:
                 f"Unsupported action: {patch.action}"
             )
 
-        allowed_paths = patch.allowed_paths
-
-        if not allowed_paths:
-
-            return (
-                False,
-                "Patch scope is empty; "
-                "allowed_paths must be provided."
+        in_scope, scope_message = (
+            self.path_policy.check_scope(
+                patch.path,
+                patch.allowed_paths
             )
+        )
 
-        if patch.path not in allowed_paths:
+        if not in_scope:
 
             return (
                 False,
-                "Patch path is outside the allowed scope."
+                scope_message
             )
 
         path = Path(patch.path)
