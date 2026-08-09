@@ -38,7 +38,8 @@ class ApplyExecutor:
     ) -> ApplyResult:
 
         if not self.authorization.authorize(
-            decision
+            decision,
+            patch
         ):
 
             return ApplyResult(
@@ -46,7 +47,8 @@ class ApplyExecutor:
                 path=patch.path,
                 message=(
                     "Apply denied: "
-                    "Controller approval required."
+                    "Controller approval does not "
+                    "match this patch."
                 )
             )
 

@@ -6,3 +6,4 @@ class ControllerDecision:
 
     approved: bool
     reason: str
+    patch_fingerprint: str = ""

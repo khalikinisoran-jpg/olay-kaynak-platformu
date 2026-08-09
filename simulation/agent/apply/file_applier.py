@@ -13,17 +13,35 @@ class FileApplier:
     ) -> tuple[bool, str]:
 
         if patch.action != "modify":
+
             return (
                 False,
                 f"Unsupported action: {patch.action}"
             )
 
+        if patch.allowed_paths:
+
+            if patch.path not in patch.allowed_paths:
+
+                return (
+                    False,
+                    "Patch path is outside the allowed scope."
+                )
+
         path = Path(patch.path)
 
         if not path.exists():
+
             return (
                 False,
                 f"File does not exist: {patch.path}"
+            )
+
+        if not path.is_file():
+
+            return (
+                False,
+                f"Patch target is not a file: {patch.path}"
             )
 
         current_content = path.read_text(
@@ -31,10 +49,18 @@ class FileApplier:
         )
 
         if current_content != patch.old_content:
+
             return (
                 False,
                 "Patch is stale: current file content "
                 "does not match old_content."
+            )
+
+        if patch.old_content == patch.new_content:
+
+            return (
+                False,
+                "Patch does not contain a change."
             )
 
         path.write_text(

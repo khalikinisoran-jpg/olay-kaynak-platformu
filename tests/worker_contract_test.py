@@ -29,6 +29,7 @@ def test_worker_executor_contract():
     )
 
     assert result.success is True
+
     assert result.task_id == "worker-task"
 
     assert (
@@ -37,9 +38,11 @@ def test_worker_executor_contract():
     )
 
     assert result.evidence
+
     assert result.evidence[0]["status"] == "success"
 
     assert result.proposal is not None
+
     assert result.patches
 
     patch = result.patches[0]
@@ -54,6 +57,7 @@ def test_worker_executor_contract():
     )
 
     assert patch.action == "modify"
+
     assert patch.old_content != patch.new_content
 
 
@@ -150,6 +154,49 @@ def test_patch_generator_produces_real_change(
     )
 
 
+def test_patch_fingerprint_is_deterministic():
+
+    patch = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Fingerprint test.",
+        old_content="old\n",
+        new_content="new\n"
+    )
+
+    fingerprint_1 = patch.fingerprint()
+
+    fingerprint_2 = patch.fingerprint()
+
+    assert fingerprint_1 == fingerprint_2
+
+    assert len(fingerprint_1) == 64
+
+
+def test_patch_fingerprint_changes_when_patch_changes():
+
+    patch_1 = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Fingerprint test.",
+        old_content="old\n",
+        new_content="new\n"
+    )
+
+    patch_2 = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Fingerprint test.",
+        old_content="old\n",
+        new_content="different\n"
+    )
+
+    assert (
+        patch_1.fingerprint()
+        != patch_2.fingerprint()
+    )
+
+
 def test_worker_executor_creates_scoped_task():
 
     executor = WorkerExecutor()
@@ -160,6 +207,7 @@ def test_worker_executor_creates_scoped_task():
     )
 
     assert result.success is True
+
     assert result.patches
 
     patch = result.patches[0]
@@ -169,6 +217,10 @@ def test_worker_executor_creates_scoped_task():
     )
 
     assert patch.action == "modify"
+
+    assert patch.allowed_paths == (
+        "tests/worker_contract_test.py",
+    )
 
 
 def test_patch_validator_accepts_valid_patch(
@@ -182,6 +234,7 @@ def test_patch_validator_accepts_valid_patch(
     target = tmp_path / "validator_target.txt"
 
     old_content = "original content\n"
+
     new_content = "updated content\n"
 
     target.write_text(
@@ -194,7 +247,8 @@ def test_patch_validator_accepts_valid_patch(
         action="modify",
         reason="Update test content.",
         old_content=old_content,
-        new_content=new_content
+        new_content=new_content,
+        allowed_paths=(str(target),)
     )
 
     validator = PatchValidator()
@@ -237,7 +291,8 @@ def test_patch_validator_rejects_stale_patch(
         action="modify",
         reason="Stale patch test.",
         old_content="old content\n",
-        new_content="new content\n"
+        new_content="new content\n",
+        allowed_paths=(str(target),)
     )
 
     validator = PatchValidator()
@@ -276,7 +331,8 @@ def test_patch_validator_rejects_no_change(
         action="modify",
         reason="No change test.",
         old_content=content,
-        new_content=content
+        new_content=content,
+        allowed_paths=(str(target),)
     )
 
     validator = PatchValidator()
@@ -289,6 +345,55 @@ def test_patch_validator_rejects_no_change(
 
     assert (
         "does not contain a change"
+        in message
+    )
+
+
+def test_patch_validator_rejects_out_of_scope_patch(
+    tmp_path
+):
+
+    from simulation.agent.worker.patch_validator import (
+        PatchValidator
+    )
+
+    allowed = tmp_path / "allowed.txt"
+
+    outside = tmp_path / "outside.txt"
+
+    old_content = "old\n"
+
+    new_content = "new\n"
+
+    allowed.write_text(
+        old_content,
+        encoding="utf-8"
+    )
+
+    outside.write_text(
+        old_content,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(outside),
+        action="modify",
+        reason="Scope violation test.",
+        old_content=old_content,
+        new_content=new_content,
+        allowed_paths=(str(allowed),)
+    )
+
+    validator = PatchValidator()
+
+    valid, message = validator.validate(
+        patch
+    )
+
+    assert valid is False
+
+    assert (
+        "outside the allowed scope"
         in message
     )
 
@@ -321,6 +426,11 @@ def test_controller_approves_validated_patch():
         == "Controller approved validated patch."
     )
 
+    assert (
+        decision.patch_fingerprint
+        == patch.fingerprint()
+    )
+
 
 def test_controller_rejects_invalid_validation():
 
@@ -351,6 +461,8 @@ def test_controller_rejects_invalid_validation():
         in decision.reason
     )
 
+    assert decision.patch_fingerprint == ""
+
 
 def test_controller_rejects_unsupported_action():
 
@@ -380,6 +492,8 @@ def test_controller_rejects_unsupported_action():
         in decision.reason.lower()
     )
 
+    assert decision.patch_fingerprint == ""
+
 
 def test_worker_validator_controller_pipeline():
 
@@ -399,6 +513,7 @@ def test_worker_validator_controller_pipeline():
     )
 
     assert result.success is True
+
     assert result.patches
 
     patch = result.patches[0]
@@ -429,6 +544,11 @@ def test_worker_validator_controller_pipeline():
         == "Controller approved validated patch."
     )
 
+    assert (
+        decision.patch_fingerprint
+        == patch.fingerprint()
+    )
+
 
 def test_apply_authorization_accepts_controller_approval():
 
@@ -442,13 +562,25 @@ def test_apply_authorization_accepts_controller_approval():
 
     authorization = ApplyAuthorization()
 
+    patch = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Authorization test.",
+        old_content="old\n",
+        new_content="new\n"
+    )
+
     decision = ControllerDecision(
         approved=True,
-        reason="Controller approved validated patch."
+        reason="Controller approved validated patch.",
+        patch_fingerprint=patch.fingerprint()
     )
 
     assert (
-        authorization.authorize(decision)
+        authorization.authorize(
+            decision,
+            patch
+        )
         is True
     )
 
@@ -465,13 +597,102 @@ def test_apply_authorization_rejects_controller_rejection():
 
     authorization = ApplyAuthorization()
 
+    patch = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Authorization rejection test.",
+        old_content="old\n",
+        new_content="new\n"
+    )
+
     decision = ControllerDecision(
         approved=False,
-        reason="Controller rejected patch."
+        reason="Controller rejected patch.",
+        patch_fingerprint=patch.fingerprint()
     )
 
     assert (
-        authorization.authorize(decision)
+        authorization.authorize(
+            decision,
+            patch
+        )
+        is False
+    )
+
+
+def test_apply_authorization_rejects_missing_fingerprint():
+
+    from simulation.agent.apply.apply_authorization import (
+        ApplyAuthorization
+    )
+
+    from simulation.agent.controller.controller_decision import (
+        ControllerDecision
+    )
+
+    authorization = ApplyAuthorization()
+
+    patch = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Missing fingerprint test.",
+        old_content="old\n",
+        new_content="new\n"
+    )
+
+    decision = ControllerDecision(
+        approved=True,
+        reason="Controller approved validated patch."
+    )
+
+    assert (
+        authorization.authorize(
+            decision,
+            patch
+        )
+        is False
+    )
+
+
+def test_apply_authorization_rejects_wrong_patch():
+
+    from simulation.agent.apply.apply_authorization import (
+        ApplyAuthorization
+    )
+
+    from simulation.agent.controller.controller_decision import (
+        ControllerDecision
+    )
+
+    authorization = ApplyAuthorization()
+
+    approved_patch = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Approved patch.",
+        old_content="old\n",
+        new_content="new\n"
+    )
+
+    different_patch = PatchProposal(
+        path="example.txt",
+        action="modify",
+        reason="Different patch.",
+        old_content="old\n",
+        new_content="different\n"
+    )
+
+    decision = ControllerDecision(
+        approved=True,
+        reason="Controller approved validated patch.",
+        patch_fingerprint=approved_patch.fingerprint()
+    )
+
+    assert (
+        authorization.authorize(
+            decision,
+            different_patch
+        )
         is False
     )
 
@@ -502,7 +723,8 @@ def test_apply_executor_requires_controller_approval(
         action="modify",
         reason="Apply rejection test.",
         old_content=original,
-        new_content="should not be written\n"
+        new_content="should not be written\n",
+        allowed_paths=(str(target),)
     )
 
     decision = ControllerDecision(
@@ -523,7 +745,11 @@ def test_apply_executor_requires_controller_approval(
 
     assert (
         result.message
-        == "Apply denied: Controller approval required."
+        == (
+            "Apply denied: "
+            "Controller approval does not "
+            "match this patch."
+        )
     )
 
     assert (
@@ -542,8 +768,8 @@ def test_apply_executor_accepts_controller_approval(
         ApplyExecutor
     )
 
-    from simulation.agent.controller.controller_decision import (
-        ControllerDecision
+    from simulation.agent.controller.controller import (
+        Controller
     )
 
     target = tmp_path / "approved_target.txt"
@@ -566,12 +792,15 @@ def test_apply_executor_accepts_controller_approval(
         action="modify",
         reason="Approved apply test.",
         old_content=original,
-        new_content=updated
+        new_content=updated,
+        allowed_paths=(str(target),)
     )
 
-    decision = ControllerDecision(
-        approved=True,
-        reason="Controller approved validated patch."
+    controller = Controller()
+
+    decision = controller.approve(
+        patch,
+        "Patch validation passed."
     )
 
     executor = ApplyExecutor()
@@ -626,7 +855,8 @@ def test_file_applier_performs_real_write(
         action="modify",
         reason="Real write test.",
         old_content=original,
-        new_content=updated
+        new_content=updated,
+        allowed_paths=(str(target),)
     )
 
     applier = FileApplier()
@@ -670,7 +900,8 @@ def test_file_applier_rejects_stale_patch(
         action="modify",
         reason="Stale FileApplier test.",
         old_content="old content\n",
-        new_content="new content\n"
+        new_content="new content\n",
+        allowed_paths=(str(target),)
     )
 
     applier = FileApplier()
@@ -718,7 +949,8 @@ def test_file_applier_rejects_unsupported_action(
         action="delete",
         reason="Unsupported action test.",
         old_content=original,
-        new_content=""
+        new_content="",
+        allowed_paths=(str(target),)
     )
 
     applier = FileApplier()
@@ -742,6 +974,60 @@ def test_file_applier_rejects_unsupported_action(
     )
 
 
+def test_file_applier_rejects_out_of_scope_patch(
+    tmp_path
+):
+
+    from simulation.agent.apply.file_applier import (
+        FileApplier
+    )
+
+    allowed = tmp_path / "allowed.txt"
+
+    outside = tmp_path / "outside.txt"
+
+    original = "original content\n"
+
+    allowed.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    outside.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(outside),
+        action="modify",
+        reason="Scope enforcement test.",
+        old_content=original,
+        new_content="changed content\n",
+        allowed_paths=(str(allowed),)
+    )
+
+    applier = FileApplier()
+
+    success, message = applier.apply(
+        patch
+    )
+
+    assert success is False
+
+    assert (
+        "outside the allowed scope"
+        in message
+    )
+
+    assert (
+        outside.read_text(
+            encoding="utf-8"
+        )
+        == original
+    )
+
+
 def test_apply_executor_performs_approved_real_write(
     tmp_path
 ):
@@ -750,8 +1036,8 @@ def test_apply_executor_performs_approved_real_write(
         ApplyExecutor
     )
 
-    from simulation.agent.controller.controller_decision import (
-        ControllerDecision
+    from simulation.agent.controller.controller import (
+        Controller
     )
 
     target = tmp_path / "executor_write_target.txt"
@@ -774,12 +1060,15 @@ def test_apply_executor_performs_approved_real_write(
         action="modify",
         reason="Approved executor write test.",
         old_content=original,
-        new_content=updated
+        new_content=updated,
+        allowed_paths=(str(target),)
     )
 
-    decision = ControllerDecision(
-        approved=True,
-        reason="Controller approved validated patch."
+    controller = Controller()
+
+    decision = controller.approve(
+        patch,
+        "Patch validation passed."
     )
 
     executor = ApplyExecutor()

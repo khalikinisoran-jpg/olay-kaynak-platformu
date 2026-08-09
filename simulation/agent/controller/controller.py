@@ -16,6 +16,7 @@ class Controller:
     ) -> ControllerDecision:
 
         if not validation_message:
+
             return ControllerDecision(
                 approved=False,
                 reason="Missing validator result."
@@ -24,6 +25,7 @@ class Controller:
         if validation_message != (
             "Patch validation passed."
         ):
+
             return ControllerDecision(
                 approved=False,
                 reason=(
@@ -33,6 +35,7 @@ class Controller:
             )
 
         if patch.action != "modify":
+
             return ControllerDecision(
                 approved=False,
                 reason=(
@@ -45,5 +48,6 @@ class Controller:
             approved=True,
             reason=(
                 "Controller approved validated patch."
-            )
+            ),
+            patch_fingerprint=patch.fingerprint()
         )

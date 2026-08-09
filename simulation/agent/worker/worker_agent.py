@@ -9,12 +9,18 @@ from simulation.agent.worker.worker_task import WorkerTask
 class WorkerAgent:
 
     def __init__(self):
+
         self.policy = WorkerPolicy()
+
         self.patch_generator = PatchGenerator()
 
-    def run(self, task: WorkerTask) -> WorkerResult:
+    def run(
+        self,
+        task: WorkerTask
+    ) -> WorkerResult:
 
         if not self.policy.allows("read"):
+
             return WorkerResult(
                 task_id=task.task_id,
                 success=False,
@@ -22,6 +28,7 @@ class WorkerAgent:
             )
 
         if not self.policy.allows("inspect"):
+
             return WorkerResult(
                 task_id=task.task_id,
                 success=False,
@@ -29,6 +36,7 @@ class WorkerAgent:
             )
 
         if not self.policy.allows("propose"):
+
             return WorkerResult(
                 task_id=task.task_id,
                 success=False,
@@ -36,6 +44,7 @@ class WorkerAgent:
             )
 
         if not task.allowed_paths:
+
             return WorkerResult(
                 task_id=task.task_id,
                 success=False,
@@ -86,7 +95,8 @@ class WorkerAgent:
                 patch = self.patch_generator.generate(
                     path=path_value,
                     old_content=content,
-                    description=task.description
+                    description=task.description,
+                    allowed_paths=task.allowed_paths
                 )
 
                 patches.append(patch)
@@ -114,7 +124,9 @@ class WorkerAgent:
         return WorkerResult(
             task_id=task.task_id,
             success=True,
-            summary="Worker inspection and patch proposal completed.",
+            summary=(
+                "Worker inspection and patch proposal completed."
+            ),
             evidence=tuple(evidence),
             proposal=proposal_text,
             patches=tuple(patches)

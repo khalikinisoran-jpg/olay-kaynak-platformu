@@ -7,7 +7,8 @@ class PatchGenerator:
         self,
         path: str,
         old_content: str,
-        description: str
+        description: str,
+        allowed_paths: tuple[str, ...] = ()
     ) -> PatchProposal:
 
         new_content = (
@@ -23,5 +24,6 @@ class PatchGenerator:
             action="modify",
             reason=description,
             old_content=old_content,
-            new_content=new_content
+            new_content=new_content,
+            allowed_paths=allowed_paths
         )
