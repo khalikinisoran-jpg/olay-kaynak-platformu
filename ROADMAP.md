@@ -16,18 +16,48 @@ The current system has:
 - Controlled file application
 - Worker contract tests
 - Isolated worker analyzer tests
+- Project vision and roadmap documentation
 
 Current verified baseline:
 
 - Full test suite: 28 passed
 - Working tree verified clean
 - Worker contract tests isolated from the live LLM
+- Main branch synchronized with origin
 
 ---
 
-# Phase 1 - Verification
+# Phase 1 - Verification Contract
 
-## 1. VerificationExecutor
+## 1. VerificationResult
+
+First establish a deterministic result contract for verification.
+
+Potential structure:
+
+VerificationResult
+- success
+- exit_code
+- stdout
+- stderr
+- command
+- test_name
+- failure_reason
+- evidence
+
+Rules:
+
+- Verification must produce an explicit PASS or FAIL result.
+- Application success must never be treated as verification success.
+- Verification evidence must be preserved.
+- The result must be usable by later recovery logic.
+- The first implementation must not depend on an LLM.
+
+---
+
+# Phase 2 - Verification Execution
+
+## 2. VerificationExecutor
 
 Goal:
 
@@ -58,36 +88,43 @@ Requirements:
 - Record verification evidence
 - Distinguish PASS from FAIL
 - Never treat application success as verification success
-- Keep the first implementation deterministic
-- Do not depend on an LLM for verification
+- Keep execution deterministic
+- Prevent verification from modifying unrelated project state
 
 ---
 
-# Phase 2 - Verification Evidence
+# Phase 3 - Verification Evidence
 
-## 2. Structured VerificationResult
+## 3. Failure Evidence
 
-A verification failure must produce useful evidence.
+A failed verification must produce structured evidence.
 
 Potential structure:
 
-VerificationResult
-- success
+Verification Failure
+- command
 - exit_code
 - stdout
 - stderr
-- test_name
+- failed_test
 - failure_reason
 - evidence
 
-The result must be sufficient for a later Worker
+The evidence must be sufficient for a later Worker
 re-analysis without relying on hidden state.
+
+Rules:
+
+- Preserve every verification attempt
+- Never silently overwrite previous evidence
+- Make failures reproducible where possible
+- Separate verification evidence from LLM interpretation
 
 ---
 
-# Phase 3 - Closed-Loop Recovery
+# Phase 4 - Controlled Recovery
 
-## 3. Controlled Retry
+## 4. Closed-Loop Retry
 
 If verification fails:
 
@@ -100,6 +137,10 @@ Verification Failure
 -> Apply
 -> Verification
 
+Initial target:
+
+max_attempts = 3
+
 Requirements:
 
 - Limit retry count
@@ -108,16 +149,26 @@ Requirements:
 - Record failure evidence
 - Prevent retry/probing abuse
 - Never allow unlimited self-modification
+- A failed retry must terminate safely
 
-Initial target:
+Target behavior:
 
-max_attempts = 3
+PASS
+-> Accept
+
+FAIL
+-> Re-analyze if attempts remain
+
+FAIL + attempts exhausted
+-> Stop
+-> Preserve evidence
+-> Require external intervention
 
 ---
 
-# Phase 4 - Structured LLM Result
+# Phase 5 - Worker Intelligence Contract
 
-## 4. AnalysisResult
+## 5. Structured LLM Result
 
 The Worker analysis should evolve from a minimal patch response
 into a structured analysis contract.
@@ -140,52 +191,14 @@ LLM confidence is a signal, not a security decision.
 LLM claims must be supported by evidence and validated by
 deterministic system controls.
 
----
-
-# Phase 5 - Event & Decision Trace
-
-## 5. Worker Event Lifecycle
-
-Worker operations should become auditable events.
-
-Potential event sequence:
-
-WorkerTaskCreated
--> WorkerInspectionCompleted
--> PatchProposed
--> PatchValidated
--> PatchApproved
--> PatchApplied
--> VerificationCompleted
-
-The purpose is to answer:
-
-"Why did the Worker make this change?"
-
-The answer should be reconstructable from recorded evidence.
-
----
-
-## 6. Structured Decision Trace
-
-Potential decision chain:
-
-Task
--> Evidence
--> LLM Analysis
--> Patch
--> Validation
--> Authorization
--> Application
--> Verification
-
-The trace should support reproducibility and auditability.
+The system must not assume that an LLM diagnosis is correct
+merely because the model produced it.
 
 ---
 
 # Phase 6 - Security Enforcement
 
-## 7. Security Boundaries
+## 6. Security Boundaries
 
 Security requirements must be enforced by code and tests,
 not only documented.
@@ -196,6 +209,7 @@ not only documented.
 - path traversal prevention
 - absolute path policy
 - symlink policy
+- path normalization
 
 ### Action Security
 
@@ -206,6 +220,17 @@ Separate:
 - propose
 - modify
 - execute
+
+### Patch Security
+
+Verify:
+
+- old_text exists
+- old_text occurs exactly once when required
+- new_content is actually different
+- target path is allowed
+- patch fingerprint is valid
+- approved fingerprint matches the applied fingerprint
 
 ### Approval Boundary
 
@@ -224,9 +249,92 @@ fingerprint."
 
 ---
 
-# Phase 7 - Risk & Policy Engine
+# Phase 7 - Secret & Supply-Chain Protection
 
-## 8. Risk Classification
+## 7. Secret Scanning
+
+Introduce system-enforced protection for:
+
+- API keys
+- Tokens
+- Credentials
+- Environment secrets
+- Accidental secret commits
+
+Desired direction:
+
+Secret Scanning
++
+.gitignore
++
+Pre-commit Checks
++
+CI Validation
+
+Security should not depend on human memory.
+
+The system should detect secrets before they become part of
+the repository history whenever technically possible.
+
+---
+
+# Phase 8 - Event & Decision Trace
+
+## 8. Worker Event Lifecycle
+
+Worker operations should become auditable events.
+
+Potential event sequence:
+
+WorkerTaskCreated
+-> WorkerInspectionCompleted
+-> PatchProposed
+-> PatchValidated
+-> PatchApproved
+-> PatchApplied
+-> VerificationCompleted
+
+Recovery should also become observable:
+
+VerificationFailed
+-> RetryRequested
+-> WorkerReanalysisStarted
+-> NewPatchProposed
+
+The purpose is to answer:
+
+"Why did the Worker make this change?"
+
+The answer should be reconstructable from recorded evidence.
+
+---
+
+## 9. Structured Decision Trace
+
+Potential decision chain:
+
+Task
+-> Evidence
+-> LLM Analysis
+-> Patch
+-> Validation
+-> Authorization
+-> Application
+-> Verification
+-> Recovery if required
+
+The trace should support:
+
+- reproducibility
+- auditability
+- debugging
+- recovery analysis
+
+---
+
+# Phase 9 - Risk & Policy Engine
+
+## 10. Risk Classification
 
 Introduce explicit risk levels:
 
@@ -242,6 +350,7 @@ Risk should influence:
 - Whether automatic application is allowed
 - Whether human approval is required
 - Verification depth
+- Retry permissions
 
 Risk should not depend exclusively on an LLM-provided
 risk value.
@@ -258,9 +367,9 @@ Potential system signals:
 
 ---
 
-# Phase 8 - Human Approval Boundary
+# Phase 10 - Human Approval Boundary
 
-## 9. Human-in-the-Loop
+## 11. Human-in-the-Loop
 
 Define explicit operations that require human approval.
 
@@ -275,11 +384,21 @@ Potential examples:
 Human approval should be represented as an explicit
 authorization event.
 
+Potential flow:
+
+Worker
+-> Validator
+-> Risk Engine
+-> Human Approval
+-> Controller
+-> Apply
+-> Verification
+
 ---
 
-# Phase 9 - Reliability, Scale & Concurrency
+# Phase 11 - Reliability, Scale & Concurrency
 
-## 10. Runtime Benchmarks
+## 12. Runtime Benchmarks
 
 Measure:
 
@@ -302,7 +421,7 @@ Measure first.
 
 ---
 
-## 11. Multi-Agent / Multi-Worker Testing
+## 13. Multi-Agent / Multi-Worker Testing
 
 Test:
 
@@ -313,40 +432,15 @@ Test:
 - Hash-chain integrity
 - Duplicate operations
 - Retry races
+- Verification races
 
 The goal is to identify race conditions before production use.
 
 ---
 
-# Phase 10 - Secret & Supply-Chain Protection
+# Phase 12 - Full Agent Loop
 
-## 12. Secret Scanning
-
-Introduce system-enforced protection for:
-
-- API keys
-- Tokens
-- Credentials
-- Environment secrets
-- Accidental secret commits
-
-Desired direction:
-
-Secret Scanning
-+
-.gitignore
-+
-Pre-commit Checks
-+
-CI Validation
-
-Security should not depend on human memory.
-
----
-
-# Phase 11 - Full Agent Loop
-
-## 13. Integrated Agent Runtime
+## 14. Integrated Agent Runtime
 
 Target architecture:
 
@@ -370,14 +464,46 @@ FAIL
 -> FAILURE EVIDENCE
 -> RE-ANALYZE
 -> NEW PROPOSAL
+-> VALIDATION
+-> AUTHORIZATION
+-> APPLY
+-> VERIFICATION
 
-The retry loop must remain bounded and auditable.
+The retry loop must remain:
+
+- bounded
+- auditable
+- policy-controlled
+- recoverable
 
 ---
 
-# Phase 12 - Compliance & Commercial Validation
+# Phase 13 - Recovery & Replay Integrity
 
-## 14. External Validation
+## 15. Full Recovery Testing
+
+Verify that the system can reconstruct meaningful state after:
+
+- verification failure
+- interrupted application
+- retry
+- process restart
+- snapshot recovery
+- replay
+
+Validate:
+
+- event ordering
+- snapshot consistency
+- hash-chain integrity
+- decision trace continuity
+- recovery determinism
+
+---
+
+# Phase 14 - Compliance & Commercial Validation
+
+## 16. External Validation
 
 After the technical foundation is sufficiently mature:
 
@@ -392,17 +518,69 @@ After the technical foundation is sufficiently mature:
 Compliance claims must be verified against authoritative
 sources before being used as product claims.
 
+Commercial claims must be separated from technical evidence.
+
 ---
 
-# Engineering Rule
+# Engineering Rules
+
+## Rule 1 - Evidence First
 
 > Claim -> Test -> Measure -> Fix -> Verify
 
 No architectural assumption should become a permanent system
 requirement without evidence when that assumption can be tested.
 
-AI-generated conclusions are hypotheses until supported by
-observable evidence or deterministic validation.
+---
+
+## Rule 2 - AI Is Not Authority
+
+AI-generated conclusions are hypotheses until supported by:
+
+- observable evidence
+- deterministic validation
+- policy checks
+- authorization
+- verification
+
+---
+
+## Rule 3 - Application Is Not Verification
+
+A successful file write does not mean the change is correct.
+
+The system must distinguish:
+
+Apply Success
+from
+Verification Success
+
+---
+
+## Rule 4 - No Unlimited Self-Modification
+
+A Worker must never be allowed to repeatedly modify the system
+without bounded attempts and explicit policy.
+
+---
+
+## Rule 5 - Security Must Be Executable
+
+Security requirements must exist as:
+
+- code
+- contracts
+- tests
+- enforcement boundaries
+
+Documentation alone is insufficient.
+
+---
+
+## Rule 6 - Preserve Evidence
+
+Every significant AI-driven action should leave enough evidence
+to reconstruct what happened and why.
 
 ---
 
@@ -410,23 +588,35 @@ observable evidence or deterministic validation.
 
 The immediate engineering target is:
 
+## VerificationResult
+
+Then:
+
 ## VerificationExecutor
+
+Target pipeline:
 
 Worker
 -> Validator
 -> Controller
 -> Apply
--> Verification
+-> VerificationExecutor
+-> VerificationResult
 -> PASS / FAIL
 
-First implementation goal:
+First implementation sequence:
 
-1. Create VerificationResult
-2. Create VerificationExecutor
-3. Run py_compile
-4. Run the relevant pytest target
-5. Capture verification evidence
-6. Add deterministic tests
-7. Integrate with the existing Apply pipeline
-8. Run the complete test suite
-9. Commit only after verification passes
+1. Define VerificationResult
+2. Write deterministic contract tests
+3. Create VerificationExecutor
+4. Implement py_compile verification
+5. Implement relevant pytest verification
+6. Capture stdout/stderr and exit status
+7. Add failure evidence
+8. Integrate with the existing Apply pipeline
+9. Run the complete test suite
+10. Commit only after verification passes
+
+After that:
+
+Closed-loop recovery.
