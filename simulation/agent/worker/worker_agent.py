@@ -23,10 +23,18 @@ from simulation.agent.worker.worker_task import (
 
 class WorkerAgent:
 
-    def __init__(self):
+    def __init__(
+        self,
+        analyzer=None
+    ):
 
         self.policy = WorkerPolicy()
-        self.llm_analyzer = LLMCodeAnalyzer()
+
+        self.llm_analyzer = (
+            analyzer
+            if analyzer is not None
+            else LLMCodeAnalyzer()
+        )
 
     def run(
         self,

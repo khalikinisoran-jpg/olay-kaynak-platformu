@@ -4,10 +4,22 @@ from simulation.agent.worker.worker_task import WorkerTask
 
 class WorkerExecutor:
 
-    def __init__(self):
-        self.worker = WorkerAgent()
+    def __init__(
+        self,
+        worker=None
+    ):
 
-    def execute(self, agent, prompt):
+        self.worker = (
+            worker
+            if worker is not None
+            else WorkerAgent()
+        )
+
+    def execute(
+        self,
+        agent,
+        prompt
+    ):
 
         task = WorkerTask(
             task_id="worker-task",

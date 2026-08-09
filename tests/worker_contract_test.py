@@ -1,3 +1,6 @@
+from tests.fake_worker_analyzer import (
+    FakeWorkerAnalyzer
+)
 from simulation.agent.executors.worker.worker_executor import (
     WorkerExecutor
 )
@@ -19,9 +22,18 @@ from simulation.agent.worker.patch_generator import (
 )
 
 
+from simulation.agent.worker.worker_agent import (
+    WorkerAgent
+)
+
+
 def test_worker_executor_contract():
 
-    executor = WorkerExecutor()
+    executor = WorkerExecutor(
+        worker=WorkerAgent(
+            analyzer=FakeWorkerAnalyzer()
+        )
+    )
 
     result = executor.execute(
         None,
@@ -199,7 +211,11 @@ def test_patch_fingerprint_changes_when_patch_changes():
 
 def test_worker_executor_creates_scoped_task():
 
-    executor = WorkerExecutor()
+    executor = WorkerExecutor(
+        worker=WorkerAgent(
+            analyzer=FakeWorkerAnalyzer()
+        )
+    )
 
     result = executor.execute(
         None,
@@ -505,7 +521,11 @@ def test_worker_validator_controller_pipeline():
         Controller
     )
 
-    executor = WorkerExecutor()
+    executor = WorkerExecutor(
+        worker=WorkerAgent(
+            analyzer=FakeWorkerAnalyzer()
+        )
+    )
 
     result = executor.execute(
         None,
