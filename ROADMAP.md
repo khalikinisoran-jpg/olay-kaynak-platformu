@@ -25,7 +25,7 @@ Current verified baseline:
 
 ---
 
-# Phase 1 — Verification
+# Phase 1 - Verification
 
 ## 1. VerificationExecutor
 
@@ -37,10 +37,18 @@ runtime behavior.
 Pipeline:
 
 Worker
-→ Validator
-→ Controller
-→ Apply
-→ Verification
+-> Validator
+-> Controller
+-> Apply
+-> Verification
+
+Initial implementation:
+
+Apply
+-> VerificationExecutor
+-> py_compile
+-> relevant pytest
+-> VerificationResult
 
 Requirements:
 
@@ -50,23 +58,47 @@ Requirements:
 - Record verification evidence
 - Distinguish PASS from FAIL
 - Never treat application success as verification success
+- Keep the first implementation deterministic
+- Do not depend on an LLM for verification
 
 ---
 
-# Phase 2 — Closed-Loop Recovery
+# Phase 2 - Verification Evidence
 
-## 2. Controlled Retry
+## 2. Structured VerificationResult
+
+A verification failure must produce useful evidence.
+
+Potential structure:
+
+VerificationResult
+- success
+- exit_code
+- stdout
+- stderr
+- test_name
+- failure_reason
+- evidence
+
+The result must be sufficient for a later Worker
+re-analysis without relying on hidden state.
+
+---
+
+# Phase 3 - Closed-Loop Recovery
+
+## 3. Controlled Retry
 
 If verification fails:
 
 Verification Failure
-→ Evidence
-→ Worker Re-analysis
-→ New Proposal
-→ Validation
-→ Controller
-→ Apply
-→ Verification
+-> Evidence
+-> Worker Re-analysis
+-> New Proposal
+-> Validation
+-> Controller
+-> Apply
+-> Verification
 
 Requirements:
 
@@ -75,12 +107,179 @@ Requirements:
 - Never silently overwrite previous proposals
 - Record failure evidence
 - Prevent retry/probing abuse
+- Never allow unlimited self-modification
+
+Initial target:
+
+max_attempts = 3
 
 ---
 
-# Phase 3 — Reliability & Scale
+# Phase 4 - Structured LLM Result
 
-## 3. Runtime Benchmarks
+## 4. AnalysisResult
+
+The Worker analysis should evolve from a minimal patch response
+into a structured analysis contract.
+
+Potential structure:
+
+AnalysisResult
+- diagnosis
+- evidence
+- confidence
+- old_text
+- new_text
+- risk
+- explanation
+
+Important rule:
+
+LLM confidence is a signal, not a security decision.
+
+LLM claims must be supported by evidence and validated by
+deterministic system controls.
+
+---
+
+# Phase 5 - Event & Decision Trace
+
+## 5. Worker Event Lifecycle
+
+Worker operations should become auditable events.
+
+Potential event sequence:
+
+WorkerTaskCreated
+-> WorkerInspectionCompleted
+-> PatchProposed
+-> PatchValidated
+-> PatchApproved
+-> PatchApplied
+-> VerificationCompleted
+
+The purpose is to answer:
+
+"Why did the Worker make this change?"
+
+The answer should be reconstructable from recorded evidence.
+
+---
+
+## 6. Structured Decision Trace
+
+Potential decision chain:
+
+Task
+-> Evidence
+-> LLM Analysis
+-> Patch
+-> Validation
+-> Authorization
+-> Application
+-> Verification
+
+The trace should support reproducibility and auditability.
+
+---
+
+# Phase 6 - Security Enforcement
+
+## 7. Security Boundaries
+
+Security requirements must be enforced by code and tests,
+not only documented.
+
+### Path Security
+
+- allowed_paths
+- path traversal prevention
+- absolute path policy
+- symlink policy
+
+### Action Security
+
+Separate:
+
+- read
+- inspect
+- propose
+- modify
+- execute
+
+### Approval Boundary
+
+Worker:
+
+"I want to perform this action."
+
+Controller:
+
+"I authorize this action."
+
+ApplyExecutor:
+
+"The applied fingerprint exactly matches the approved
+fingerprint."
+
+---
+
+# Phase 7 - Risk & Policy Engine
+
+## 8. Risk Classification
+
+Introduce explicit risk levels:
+
+- LOW
+- MEDIUM
+- HIGH
+- CRITICAL
+
+Risk should influence:
+
+- Required validation
+- Required authorization
+- Whether automatic application is allowed
+- Whether human approval is required
+- Verification depth
+
+Risk should not depend exclusively on an LLM-provided
+risk value.
+
+Potential system signals:
+
+- path
+- action
+- file type
+- scope
+- environment
+- change size
+- security sensitivity
+
+---
+
+# Phase 8 - Human Approval Boundary
+
+## 9. Human-in-the-Loop
+
+Define explicit operations that require human approval.
+
+Potential examples:
+
+- High-risk file modifications
+- Security-sensitive changes
+- Production changes
+- Configuration changes
+- Irreversible operations
+
+Human approval should be represented as an explicit
+authorization event.
+
+---
+
+# Phase 9 - Reliability, Scale & Concurrency
+
+## 10. Runtime Benchmarks
 
 Measure:
 
@@ -103,9 +302,7 @@ Measure first.
 
 ---
 
-# Phase 4 — Concurrency
-
-## 4. Multi-Agent / Multi-Worker Testing
+## 11. Multi-Agent / Multi-Worker Testing
 
 Test:
 
@@ -121,32 +318,9 @@ The goal is to identify race conditions before production use.
 
 ---
 
-# Phase 5 — Security Enforcement
+# Phase 10 - Secret & Supply-Chain Protection
 
-## 5. Security Boundaries
-
-Verify that security policies are enforced by code.
-
-Areas:
-
-- Path escape prevention
-- Allowed-path enforcement
-- Action restrictions
-- Privilege boundaries
-- Patch scope validation
-- Controller approval requirements
-- Apply authorization
-- Retry/probing protection
-- Integrity boundary protection
-
-Security requirements must be executable and testable,
-not merely documented.
-
----
-
-# Phase 6 — Secret & Supply-Chain Protection
-
-## 6. Secret Scanning
+## 12. Secret Scanning
 
 Introduce system-enforced protection for:
 
@@ -170,72 +344,40 @@ Security should not depend on human memory.
 
 ---
 
-# Phase 7 — Decision Trace
+# Phase 11 - Full Agent Loop
 
-## 7. Structured Decision Evidence
+## 13. Integrated Agent Runtime
 
-Every significant AI-driven action should be traceable.
+Target architecture:
 
-Potential structure:
+USER TASK
+-> CONTROLLER
+-> WORKER
+-> MEMORY / LLM
+-> ANALYSIS
+-> PATCH PROPOSAL
+-> VALIDATOR
+-> CONTROLLER
+-> APPLY
+-> VERIFICATION
 
-Decision
-→ Input
-→ Context
-→ Model
-→ Proposal
-→ Evidence
-→ Validation
-→ Authorization
-→ Action
-→ Result
+Verification result:
 
-The goal is reproducibility and auditability.
+PASS
+-> ACCEPT
 
----
+FAIL
+-> FAILURE EVIDENCE
+-> RE-ANALYZE
+-> NEW PROPOSAL
 
-# Phase 8 — Risk Engine
-
-## 8. Risk Classification
-
-Introduce explicit risk levels:
-
-- LOW
-- MEDIUM
-- HIGH
-- CRITICAL
-
-Risk should influence:
-
-- Required validation
-- Required authorization
-- Whether automatic application is allowed
-- Whether human approval is required
-- Verification depth
+The retry loop must remain bounded and auditable.
 
 ---
 
-# Phase 9 — Human Approval Boundary
+# Phase 12 - Compliance & Commercial Validation
 
-## 9. Human-in-the-Loop
-
-Define explicit actions that require human approval.
-
-Potential examples:
-
-- High-risk file modifications
-- Security-sensitive changes
-- Production changes
-- Configuration changes
-- Irreversible operations
-
-Human approval should be represented as an explicit
-authorization event rather than an informal external decision.
-
----
-
-# Phase 10 — Compliance & Commercial Research
-
-## 10. External Validation
+## 14. External Validation
 
 After the technical foundation is sufficiently mature:
 
@@ -247,16 +389,20 @@ After the technical foundation is sufficiently mature:
 - Define product differentiation
 - Validate the market hypothesis
 
-Compliance claims must be verified against authoritative sources.
+Compliance claims must be verified against authoritative
+sources before being used as product claims.
 
 ---
 
 # Engineering Rule
 
-> Claim → Test → Measure → Fix → Verify
+> Claim -> Test -> Measure -> Fix -> Verify
 
 No architectural assumption should become a permanent system
 requirement without evidence when that assumption can be tested.
+
+AI-generated conclusions are hypotheses until supported by
+observable evidence or deterministic validation.
 
 ---
 
@@ -267,8 +413,20 @@ The immediate engineering target is:
 ## VerificationExecutor
 
 Worker
-→ Validator
-→ Controller
-→ Apply
-→ Verification
-→ PASS / FAIL
+-> Validator
+-> Controller
+-> Apply
+-> Verification
+-> PASS / FAIL
+
+First implementation goal:
+
+1. Create VerificationResult
+2. Create VerificationExecutor
+3. Run py_compile
+4. Run the relevant pytest target
+5. Capture verification evidence
+6. Add deterministic tests
+7. Integrate with the existing Apply pipeline
+8. Run the complete test suite
+9. Commit only after verification passes
