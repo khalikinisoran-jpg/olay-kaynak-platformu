@@ -414,6 +414,100 @@ def test_patch_validator_rejects_out_of_scope_patch(
     )
 
 
+def test_patch_validator_rejects_empty_allowed_paths(
+    tmp_path
+):
+
+    from simulation.agent.worker.patch_validator import (
+        PatchValidator
+    )
+
+    target = tmp_path / "empty_scope_target.txt"
+
+    old_content = "original content\n"
+
+    target.write_text(
+        old_content,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="Empty scope test.",
+        old_content=old_content,
+        new_content="changed content\n",
+        allowed_paths=()
+    )
+
+    validator = PatchValidator()
+
+    valid, message = validator.validate(
+        patch
+    )
+
+    assert valid is False
+
+    assert (
+        "allowed_paths"
+        in message
+    )
+
+    assert (
+        target.read_text(
+            encoding="utf-8"
+        )
+        == old_content
+    )
+
+
+def test_patch_validator_rejects_none_allowed_paths(
+    tmp_path
+):
+
+    from simulation.agent.worker.patch_validator import (
+        PatchValidator
+    )
+
+    target = tmp_path / "none_scope_target.txt"
+
+    old_content = "original content\n"
+
+    target.write_text(
+        old_content,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="None scope test.",
+        old_content=old_content,
+        new_content="changed content\n",
+        allowed_paths=None
+    )
+
+    validator = PatchValidator()
+
+    valid, message = validator.validate(
+        patch
+    )
+
+    assert valid is False
+
+    assert (
+        "allowed_paths"
+        in message
+    )
+
+    assert (
+        target.read_text(
+            encoding="utf-8"
+        )
+        == old_content
+    )
+
+
 def test_controller_approves_validated_patch():
 
     from simulation.agent.controller.controller import (
@@ -1042,6 +1136,159 @@ def test_file_applier_rejects_out_of_scope_patch(
 
     assert (
         outside.read_text(
+            encoding="utf-8"
+        )
+        == original
+    )
+
+
+def test_file_applier_rejects_empty_allowed_paths(
+    tmp_path
+):
+
+    from simulation.agent.apply.file_applier import (
+        FileApplier
+    )
+
+    target = tmp_path / "applier_empty_scope.txt"
+
+    original = "original content\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="Applier empty scope test.",
+        old_content=original,
+        new_content="changed content\n",
+        allowed_paths=()
+    )
+
+    applier = FileApplier()
+
+    success, message = applier.apply(
+        patch
+    )
+
+    assert success is False
+
+    assert (
+        "allowed_paths"
+        in message
+    )
+
+    assert (
+        target.read_text(
+            encoding="utf-8"
+        )
+        == original
+    )
+
+
+def test_file_applier_rejects_none_allowed_paths(
+    tmp_path
+):
+
+    from simulation.agent.apply.file_applier import (
+        FileApplier
+    )
+
+    target = tmp_path / "applier_none_scope.txt"
+
+    original = "original content\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="Applier None scope test.",
+        old_content=original,
+        new_content="changed content\n",
+        allowed_paths=None
+    )
+
+    applier = FileApplier()
+
+    success, message = applier.apply(
+        patch
+    )
+
+    assert success is False
+
+    assert (
+        "allowed_paths"
+        in message
+    )
+
+    assert (
+        target.read_text(
+            encoding="utf-8"
+        )
+        == original
+    )
+
+
+def test_apply_executor_denies_empty_scope_patch(
+    tmp_path
+):
+
+    from simulation.agent.apply.apply_executor import (
+        ApplyExecutor
+    )
+
+    from simulation.agent.controller.controller import (
+        Controller
+    )
+
+    target = tmp_path / "executor_empty_scope.txt"
+
+    original = "original content\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="Executor empty scope test.",
+        old_content=original,
+        new_content="changed content\n",
+        allowed_paths=()
+    )
+
+    controller = Controller()
+
+    decision = controller.approve(
+        patch,
+        "Patch validation passed."
+    )
+
+    executor = ApplyExecutor()
+
+    result = executor.apply(
+        patch,
+        decision
+    )
+
+    assert result.success is False
+
+    assert (
+        "allowed_paths"
+        in result.message
+    )
+
+    assert (
+        target.read_text(
             encoding="utf-8"
         )
         == original

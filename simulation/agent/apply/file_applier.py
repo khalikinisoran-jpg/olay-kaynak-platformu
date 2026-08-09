@@ -19,14 +19,22 @@ class FileApplier:
                 f"Unsupported action: {patch.action}"
             )
 
-        if patch.allowed_paths:
+        allowed_paths = patch.allowed_paths
 
-            if patch.path not in patch.allowed_paths:
+        if not allowed_paths:
 
-                return (
-                    False,
-                    "Patch path is outside the allowed scope."
-                )
+            return (
+                False,
+                "Patch scope is empty; "
+                "allowed_paths must be provided."
+            )
+
+        if patch.path not in allowed_paths:
+
+            return (
+                False,
+                "Patch path is outside the allowed scope."
+            )
 
         path = Path(patch.path)
 
