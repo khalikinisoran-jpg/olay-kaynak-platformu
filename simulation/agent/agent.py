@@ -14,7 +14,13 @@ from simulation.agent.worker.worker_result import WorkerResult
 
 class Agent:
 
-    def __init__(self, kernel, dispatcher=None, provider=None):
+    def __init__(
+        self,
+        kernel,
+        dispatcher=None,
+        provider=None,
+        worker_pipeline=None
+    ):
 
         self.kernel = kernel
 
@@ -35,6 +41,8 @@ class Agent:
             if dispatcher is not None
             else StrategyDispatcher()
         )
+
+        self.worker_pipeline = worker_pipeline
 
     def chat(self, prompt):
 
@@ -71,6 +79,16 @@ class Agent:
         if isinstance(response, WorkerResult):
 
             self.loop.verifying()
+
+            if self.worker_pipeline is not None:
+
+                result = self.worker_pipeline.execute(
+                    response
+                )
+
+                self.loop.complete()
+
+                return result
 
             self.loop.complete()
 

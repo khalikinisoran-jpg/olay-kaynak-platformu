@@ -32,7 +32,8 @@ def test_worker_executor_contract():
     executor = WorkerExecutor(
         worker=WorkerAgent(
             analyzer=FakeWorkerAnalyzer()
-        )
+        ),
+        allowed_paths=("tests/worker_contract_test.py",),
     )
 
     result = executor.execute(
@@ -214,7 +215,8 @@ def test_worker_executor_creates_scoped_task():
     executor = WorkerExecutor(
         worker=WorkerAgent(
             analyzer=FakeWorkerAnalyzer()
-        )
+        ),
+        allowed_paths=("tests/worker_contract_test.py",),
     )
 
     result = executor.execute(
@@ -618,7 +620,8 @@ def test_worker_validator_controller_pipeline():
     executor = WorkerExecutor(
         worker=WorkerAgent(
             analyzer=FakeWorkerAnalyzer()
-        )
+        ),
+        allowed_paths=("tests/worker_contract_test.py",),
     )
 
     result = executor.execute(
