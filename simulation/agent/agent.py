@@ -9,14 +9,20 @@ from simulation.planner.planner import Planner
 
 from simulation.agent.strategy_dispatcher import StrategyDispatcher
 
+from simulation.agent.worker.worker_result import WorkerResult
+
 
 class Agent:
 
-    def __init__(self, kernel):
+    def __init__(self, kernel, dispatcher=None, provider=None):
 
         self.kernel = kernel
 
-        self.provider = ProviderFactory.create()
+        self.provider = (
+            provider
+            if provider is not None
+            else ProviderFactory.create()
+        )
 
         self.context_builder = ContextBuilder()
 
@@ -24,7 +30,11 @@ class Agent:
 
         self.planner = Planner()
 
-        self.dispatcher = StrategyDispatcher()
+        self.dispatcher = (
+            dispatcher
+            if dispatcher is not None
+            else StrategyDispatcher()
+        )
 
     def chat(self, prompt):
 
@@ -57,6 +67,14 @@ class Agent:
             prompt
 
         )
+
+        if isinstance(response, WorkerResult):
+
+            self.loop.verifying()
+
+            self.loop.complete()
+
+            return response
 
         self.kernel.dispatch(
 

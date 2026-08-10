@@ -4,11 +4,15 @@ from simulation.agent.executors.calculator_executor import CalculatorExecutor
 from simulation.agent.executors.memory_store_executor import MemoryStoreExecutor
 from simulation.agent.executors.memory_recall_executor import MemoryRecallExecutor
 from simulation.agent.executors.llm_executor import LLMExecutor
+from simulation.agent.executors.worker.worker_executor import WorkerExecutor
 
 
 class StrategyDispatcher:
 
-    def __init__(self):
+    def __init__(
+        self,
+        worker_executor=None
+    ):
 
         self.registry = ExecutorRegistry()
 
@@ -30,6 +34,15 @@ class StrategyDispatcher:
         self.registry.register(
             "llm",
             LLMExecutor()
+        )
+
+        self.registry.register(
+            "worker",
+            (
+                worker_executor
+                if worker_executor is not None
+                else WorkerExecutor()
+            )
         )
 
     def dispatch(

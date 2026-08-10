@@ -11,6 +11,19 @@ class Planner:
         text = user_input.lower().strip()
 
         # -----------------------------------
+        # Worker
+        # -----------------------------------
+
+        if text.startswith("worker:"):
+
+            return {
+                "strategy": "worker",
+                "steps": [
+                    "execute_worker"
+                ]
+            }
+
+        # -----------------------------------
         # Calculator
         # -----------------------------------
 
@@ -77,19 +90,6 @@ class Planner:
                 "strategy": "memory_store",
                 "steps": [
                     "store_memory"
-                ]
-            }
-
-        # -----------------------------------
-        # Worker
-        # -----------------------------------
-
-        if text.startswith("worker:"):
-
-            return {
-                "strategy": "worker",
-                "steps": [
-                    "execute_worker"
                 ]
             }
 
