@@ -24,7 +24,7 @@ worker-action-pipeline
 
 Branch HEAD
 
-19c6e85
+3966e18
 
 ---
 
@@ -63,6 +63,8 @@ Current development is post-v0.5.0 on the worker-action-pipeline branch (no new 
 
 Worker Action Pipeline & Bounded Verification Recovery
 
+Current mission (MISSION-003): OpenRouter provider hardening (request timeout, fail-closed error handling, secret-safe logging, debug print removal) and a gated real-LLM proposal-only integration test (`live_llm` marker, opt-in via `RUN_LIVE_LLM=1`).
+
 Current pipeline (implemented and committed):
 
 Worker
@@ -84,7 +86,7 @@ Evidence hierarchy used:
 
 1. Git history (commits)
 2. Source code behavior
-3. Automated test results (python -m pytest -q = 150 passed, 5 skipped)
+3. Automated test results (python -m pytest -q = 159 passed, 7 skipped)
 4. Documentation (lowest priority; docs may be stale)
 
 ## VERIFIED
@@ -113,7 +115,7 @@ Code exists, is committed, and is covered by passing deterministic tests.
 
 Code exists but deterministic verification coverage is not complete.
 
-- **LLM-driven patch analysis (LLMCodeAnalyzer)** — implementation exists, but every automated test uses FakeWorkerAnalyzer. Live LLM provider behavior is not covered by the deterministic suite.
+- **LLM-driven patch analysis (LLMCodeAnalyzer)** — implementation exists, but every deterministic automated test uses FakeWorkerAnalyzer. Live LLM provider behavior is covered only by the opt-in `live_llm` integration test (`RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provider_integration_test.py -q`), which passed on 2026-08-11 (2/2: in-memory proposal and Worker proposal-only chain).
 - **Recovery in the shipped runnable entry point** — the recovery assembly is tested in isolation (test_f2), but agent_run.py uses the default Agent(kernel) and does not enable the pipeline/recovery. End-to-end operation through the shipped entry point is not verified.
 - **Decision trace for the worker pipeline** — DecisionTrace exists and is tested for the LLM loop, but it is not integrated with the worker action pipeline (no trace record for validation/apply/verification/recovery steps).
 
@@ -135,7 +137,7 @@ Documented in ROADMAP.md but no implementation exists.
 
 Cannot be classified from available evidence.
 
-- Live LLM end-to-end behavior and JSON contract compliance with a real provider
+- Live LLM end-to-end behavior and JSON contract compliance with a real provider (proposal-only level verified via gated test; full pipeline including apply/verification/recovery still untested live)
 - Security behavior on environments where symlink/junction tests are skipped (5 junction-dependent tests skip when junction creation is unavailable)
 - Production/deployment behavior (no production configuration exists)
 
@@ -196,16 +198,20 @@ Cannot be classified from available evidence.
 - Verification Executor (compile + pytest, PASS/FAIL, evidence preserved)
 - Worker Action Pipeline (per-proposal gates, fail-closed)
 - Bounded Verification Recovery (max 3 attempts, append-only attempt history)
+- OpenRouter provider hardening (connect/read timeout, fail-closed ProviderError, secret-safe logging, no debug prints)
+- Gated real-LLM integration test (`live_llm` marker; opt-in only, proposal-only, no file mutation)
 
 ---
 
 # Verified Baseline
 
-Test suite: 150 passed, 5 skipped (python -m pytest -q, 2026-08-11).
+Test suite: 159 passed, 7 skipped (python -m pytest -q, 2026-08-11). The 7 skipped tests are: 5 junction-dependent path-security tests and 2 opt-in `live_llm` integration tests that never run in the normal suite (no API cost, no provider call).
+
+Live LLM (opt-in): `RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provider_integration_test.py -q` = 2 passed (2026-08-11): real provider produces an in-memory proposal; real Worker + real LLM chain produces a proposal without mutating the file.
 
 git diff --check: clean.
 
-Working tree: clean on worker-action-pipeline @ 19c6e85.
+Working tree: clean on worker-action-pipeline @ 3966e18.
 
 ---
 

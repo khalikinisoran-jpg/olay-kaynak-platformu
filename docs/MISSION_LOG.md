@@ -410,4 +410,67 @@ Test suite:
 
 ---
 
+## MISSION-003 — Real-LLM Gated Integration Test + Provider Hardening
+
+**Status:** VERIFIED (deterministic hardening) + live smoke executed
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+**Commit:** (main mission commit — hash post-commit doc fix ile doldurulacak)
+
+### Objective
+
+1. OpenRouter provider hardening (timeout, fail-closed errors, secret-safe logging, debug print removal).
+2. Gated proposal-only real-LLM integration test that never runs in the normal pytest suite.
+
+### Changed Files
+
+- `simulation/llm/base_provider.py` — `ProviderError` eklendi (fail-closed provider hataları için tek hata tipi).
+- `simulation/llm/openrouter_provider.py` — module-level debug print'leri kaldırıldı; `requests.post(timeout=(10, 120))` eklendi; HTTP >= 400 / ağ / JSON hataları `ProviderError`'a sarıldı; response body ve API key asla loglanmaz; yalnızca durum kodu + model DEBUG seviyesinde loglanır.
+- `tests/llm_provider_test.py` (yeni) — 9 deterministik test: timeout iletimi, Timeout/ConnectionError/HTTP/JSON hatalarında `ProviderError`, valid parse, loglarda secret/body sızıntısı yok.
+- `tests/llm_provider_integration_test.py` (yeni) — `live_llm` marker + `RUN_LIVE_LLM=1` guard'lı 2 canlı test (in-memory proposal; Worker proposal-only zinciri; dosya mutasyonu yok).
+- `conftest.py` — `live_llm` marker kaydı.
+- `docs/PROJECT_STATE.md` — HEAD 3966e18, baseline 159 passed / 7 skipped, LLM durumu güncellendi.
+
+### Design Decisions
+
+- Timeout `(10, 120)` saniye: 10 sn connect + 120 sn read. Bağlantı uzun süre asılı kalmasın (requests varsayılanı timeout'suzdur ve sonsuza dek bekleyebilir); LLM üretimi max_tokens 2000–4096 ile birkaç dakikayı nadiren aştığından read için 120 sn güvenli üst sınır. Kod tabanında mevcut tek timeout örüntüsü `subprocess.run(timeout=...)`'dir; burada requests'in (connect, read) ikilisi kullanıldı.
+- Hatalar tek tip `ProviderError` ile fail-closed: HTTP >= 400'de body asla hata mesajına/çıktıya taşınmaz; JSON parse/şema hataları da `ProviderError`'a dönüşür. WorkerAgent zaten tüm Exception'ları yakalayıp evidence'ye işlediği için mimariye uyumlu.
+- Debug print'ler kaldırıldı; istisnasız hiçbir yerde response body veya API key yazdırılmaz. Gerekli tek meta veri (HTTP durum kodu, model) `logging.getLogger(__name__)` DEBUG seviyesinde loglanır.
+- Canlı test çift guard'lı: `live_llm` marker'ı + `RUN_LIVE_LLM=1` skipif. Normal `python -m pytest -q` testleri koleksiyona alır ama çalıştırmaz (skip) → API maliyeti sıfır.
+
+### Security Impact
+
+- API key hiçbir log/çıktı/exception mesajında yer almaz.
+- Ham HTTP response body artık stdout'a basılmıyor (önceki `print(response.text)` sızıntı riski kaldırıldı).
+- Timeout eklenmesi, asılı kalan isteklerin fail-closed hata yoluyla sonlanmasını sağlar.
+- Apply/FileApplier/Recovery canlı testte hiçbir şekilde tetiklenmez; Worker yalnızca proposal üretir, dosya içeriği doğrulanarak değişmediği test edilir.
+
+### Tests
+
+Deterministik suite: `python -m pytest -q` = **159 passed, 7 skipped** (5 junction + 2 gated live). Normal suite API çağrısı yapmaz.
+
+Canlı (bilinçli çalıştırma):
+
+```
+$env:RUN_LIVE_LLM="1"; python -m pytest -m live_llm tests/llm_provider_integration_test.py -q
+```
+
+Sonuç: **2 passed in 8.03s** — gerçek DeepSeek (OpenRouter) in-memory synthetic içerikten proposal üretti; gerçek Worker + gerçek LLM zinciri proposal-only seviyesinde çalıştı ve hedef dosya değişmedi.
+
+### Known Limitations
+
+- Canlı test normal suite'ten ayrıdır; deterministik suite hâlâ FakeWorkerAnalyzer kullanır.
+- JSON uyumluluğu tek provider/model üzerinden doğrulandı; diğer modeller/provider davranışı UNKNOWN.
+- Decision Trace hâlâ worker pipeline'a bağlı değil (mevcut bilinen eksiklik, bu mission kapsamı dışında).
+
+### Remaining Work
+
+- Worker event lifecycle'ın event store'a yazılması.
+- Structured AnalysisResult (confidence/risk) ve risk sınıflandırma.
+- Human-in-the-loop onay sınırı ve secret scanning.
+- Recovery'nin shipped runtime giriş noktasına bağlanması.
+- Worker pipeline'a Decision Trace entegrasyonu.
+
+---
+
 # End of Mission Log
