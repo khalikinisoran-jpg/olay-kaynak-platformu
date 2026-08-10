@@ -24,7 +24,7 @@ worker-action-pipeline
 
 Branch HEAD
 
-3966e18
+18a1f6c
 
 ---
 
@@ -211,7 +211,7 @@ Live LLM (opt-in): `RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provid
 
 git diff --check: clean.
 
-Working tree: clean on worker-action-pipeline @ 3966e18.
+Working tree: clean on worker-action-pipeline @ 18a1f6c.
 
 ---
 

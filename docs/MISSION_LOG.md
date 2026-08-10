@@ -415,7 +415,7 @@ Test suite:
 **Status:** VERIFIED (deterministic hardening) + live smoke executed
 **Date:** 2026-08-11
 **Branch:** worker-action-pipeline
-**Commit:** (main mission commit — hash post-commit doc fix ile doldurulacak)
+**Commit:** `18a1f6c` (Harden OpenRouter provider and add gated LLM integration test)
 
 ### Objective
 
