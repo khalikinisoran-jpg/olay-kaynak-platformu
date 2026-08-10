@@ -19,7 +19,8 @@ class Agent:
         kernel,
         dispatcher=None,
         provider=None,
-        worker_pipeline=None
+        worker_pipeline=None,
+        recovery_engine=None
     ):
 
         self.kernel = kernel
@@ -43,6 +44,8 @@ class Agent:
         )
 
         self.worker_pipeline = worker_pipeline
+
+        self.recovery_engine = recovery_engine
 
     def chat(self, prompt):
 
@@ -79,6 +82,18 @@ class Agent:
         if isinstance(response, WorkerResult):
 
             self.loop.verifying()
+
+            if self.recovery_engine is not None:
+
+                result = self.recovery_engine.execute(
+                    self,
+                    prompt,
+                    initial_worker_result=response,
+                )
+
+                self.loop.complete()
+
+                return result
 
             if self.worker_pipeline is not None:
 

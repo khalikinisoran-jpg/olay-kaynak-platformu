@@ -25,7 +25,9 @@ class WorkerExecutor:
     def execute(
         self,
         agent,
-        prompt
+        prompt,
+        attempt=None,
+        recovery_evidence=()
     ):
 
         task = WorkerTask(
@@ -37,7 +39,9 @@ class WorkerExecutor:
                 "inspect",
                 "propose",
             ),
-            expected_output="patch proposal"
+            expected_output="patch proposal",
+            attempt=attempt,
+            recovery_evidence=tuple(recovery_evidence)
         )
 
         return self.worker.run(task)

@@ -161,7 +161,9 @@ class WorkerAgent:
                 ) = self.llm_analyzer.analyze(
                     path=path_value,
                     content=content,
-                    description=task.description
+                    description=self._analysis_description(
+                        task
+                    )
                 )
 
                 if content.count(old_text) != 1:
@@ -236,4 +238,35 @@ class WorkerAgent:
             evidence=tuple(evidence),
             proposal=proposal_text,
             patches=tuple(patches)
+        )
+
+    @staticmethod
+    def _analysis_description(task) -> str:
+
+        description = task.description
+
+        if not task.recovery_evidence:
+
+            return description
+
+        evidence_lines = [
+            WorkerAgent._format_evidence_line(record)
+            for record in task.recovery_evidence
+        ]
+
+        return (
+            description
+            + "\n\nPREVIOUS ATTEMPT FAILURE EVIDENCE "
+            f"(attempt {task.attempt}):\n"
+            + "\n".join(evidence_lines)
+        )
+
+    @staticmethod
+    def _format_evidence_line(record) -> str:
+
+        return (
+            f"- {record.stage}: "
+            f"exit_code={record.exit_code} "
+            f"stdout={record.stdout!r} "
+            f"stderr={record.stderr!r}"
         )

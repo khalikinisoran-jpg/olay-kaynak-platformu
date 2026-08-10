@@ -31,6 +31,19 @@ from simulation.agent.worker.worker_result import (
 )
 
 
+FAILURE_VALIDATION = "validation"
+
+FAILURE_CONTROLLER = "controller"
+
+FAILURE_APPLY = "apply"
+
+FAILURE_VERIFICATION = "verification"
+
+FAILURE_WORKER = "worker"
+
+FAILURE_UNEXPECTED = "unexpected"
+
+
 @dataclass(frozen=True)
 class PatchStageResult:
 
@@ -73,6 +86,7 @@ class WorkerPipelineResult:
         default_factory=tuple
     )
     verification_ran: bool = False
+    failure_stage: str = ""
 
     @property
     def apply_success(self) -> bool:
@@ -178,6 +192,7 @@ class WorkerActionPipeline:
                     "Worker produced no patch proposals."
                 ),
                 exit_code=-1,
+                failure_stage=FAILURE_WORKER,
             )
 
         stages = []
@@ -273,6 +288,9 @@ class WorkerActionPipeline:
                 if final.success
                 else final.message
             ),
+            failure_stage=WorkerActionPipeline._classify_failure(
+                final
+            ),
             exit_code=(
                 final.pipeline_result.exit_code
                 if final.pipeline_result is not None
@@ -289,6 +307,34 @@ class WorkerActionPipeline:
             evidence=evidence,
             verification_ran=verification_ran,
         )
+
+    @staticmethod
+    def _classify_failure(final: PatchStageResult) -> str:
+
+        if final.success:
+
+            return ""
+
+        if final.stage == WorkerActionPipeline.STAGE_VALIDATION:
+
+            return FAILURE_VALIDATION
+
+        if final.stage == WorkerActionPipeline.STAGE_CONTROLLER:
+
+            return FAILURE_CONTROLLER
+
+        if final.stage == WorkerActionPipeline.STAGE_APPLY_VERIFY:
+
+            if (
+                final.pipeline_result is not None
+                and final.pipeline_result.apply_success
+            ):
+
+                return FAILURE_VERIFICATION
+
+            return FAILURE_APPLY
+
+        return FAILURE_UNEXPECTED
 
     @staticmethod
     def _join_outputs(outputs):
