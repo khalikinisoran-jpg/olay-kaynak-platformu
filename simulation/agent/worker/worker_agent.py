@@ -20,15 +20,26 @@ from simulation.agent.worker.worker_task import (
     WorkerTask
 )
 
+from simulation.security.path_policy import (
+    PathPolicy
+)
+
 
 class WorkerAgent:
 
     def __init__(
         self,
-        analyzer=None
+        analyzer=None,
+        path_policy=None
     ):
 
         self.policy = WorkerPolicy()
+
+        self.path_policy = (
+            path_policy
+            if path_policy is not None
+            else PathPolicy()
+        )
 
         self.llm_analyzer = (
             analyzer
@@ -76,8 +87,37 @@ class WorkerAgent:
         evidence = []
         proposals = []
         patches = []
+        denials = []
 
-        for path_value in task.allowed_paths:
+        read_targets = (
+            task.read_paths
+            if task.read_paths
+            else task.allowed_paths
+        )
+
+        for path_value in read_targets:
+
+            in_scope, scope_message = (
+                self.path_policy.check_scope(
+                    path_value,
+                    task.allowed_paths
+                )
+            )
+
+            if not in_scope:
+
+                denials.append(
+                    scope_message
+                )
+
+                evidence.append({
+                    "path": path_value,
+                    "action": "read",
+                    "status": "denied",
+                    "error": scope_message
+                })
+
+                continue
 
             path = Path(path_value)
 
@@ -169,16 +209,30 @@ class WorkerAgent:
 
         success = len(patches) > 0
 
+        if denials and not patches:
+
+            summary = (
+                "Worker denied out-of-scope file reads."
+            )
+
+        elif success:
+
+            summary = (
+                "Worker inspection and patch proposal "
+                "completed."
+            )
+
+        else:
+
+            summary = (
+                "Worker inspection failed to produce "
+                "a patch proposal."
+            )
+
         return WorkerResult(
             task_id=task.task_id,
             success=success,
-            summary=(
-                "Worker inspection and patch proposal completed."
-                if success
-                else
-                "Worker inspection failed to produce "
-                "a patch proposal."
-            ),
+            summary=summary,
             evidence=tuple(evidence),
             proposal=proposal_text,
             patches=tuple(patches)
