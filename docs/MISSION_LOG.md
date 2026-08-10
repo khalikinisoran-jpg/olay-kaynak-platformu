@@ -232,7 +232,7 @@ Recovery davranÄ±ÅŸÄ±nÄ±n gÃ¼venlik sÄ±nÄ±rlarÄ± ayrÄ±ca incel
 
 ## Architecture Audit / Project State Synchronization
 
-**Status:** PLANNED
+**Status:** DONE — 2026-08-11
 
 ### Objective
 
@@ -313,6 +313,100 @@ Kod mevcut ancak doÄŸrulama kapsamÄ± henÃ¼z yeterli deÄŸildir.
 
 **REJECTED**
 Mission bilinÃ§li olarak yapÄ±lmamÄ±ÅŸtÄ±r.
+
+---
+
+## MISSION — Project State Synchronization
+
+**Commit:** bu kaydın bulunduğu commit (branch üzerindeki "Synchronize project state documentation" commit'i).
+**Status:** DONE
+
+### Objective
+
+Mevcut Git branch'i (worker-action-pipeline @ 19c6e85), kaynak kodu ve test sonuçlarını kanıt kabul ederek proje dokümantasyonunu gerçek sistem durumuyla senkronize etmek.
+
+Kod ve Git geçmişi birincil kanıttır; eski dokümantasyon ikincildir.
+
+### Files Reviewed
+
+- `docs/PROJECT_STATE.md`
+- `docs/PROJECT_CONTEXT.md`
+- `docs/ARCHITECTURE.md`
+- `ROADMAP.md`
+- `VISION.md`
+- `docs/MISSION_LOG.md`
+- `simulation/agent/pipeline/worker_action_pipeline.py`
+- `simulation/agent/pipeline/apply_verify_pipeline.py`
+- `simulation/agent/pipeline/apply_verify_result.py`
+- `simulation/agent/recovery/bounded_recovery_engine.py`
+- `simulation/agent/recovery/recovery_assembly.py`
+- `simulation/agent/recovery/recovery_attempt.py`
+- `simulation/agent/recovery/recovery_result.py`
+- `simulation/agent/worker/worker_agent.py`
+- `simulation/agent/worker/worker_task.py`
+- `simulation/agent/worker/worker_result.py`
+- `simulation/agent/worker/worker_policy.py`
+- `simulation/agent/worker/patch_proposal.py`
+- `simulation/agent/worker/patch_generator.py`
+- `simulation/agent/worker/patch_validator.py`
+- `simulation/agent/worker/llm_code_analyzer.py`
+- `simulation/agent/controller/controller.py`
+- `simulation/agent/controller/controller_decision.py`
+- `simulation/agent/apply/apply_executor.py`
+- `simulation/agent/apply/apply_authorization.py`
+- `simulation/agent/apply/file_applier.py`
+- `simulation/agent/apply/apply_result.py`
+- `simulation/agent/verify/verification_executor.py`
+- `simulation/agent/verify/verification_result.py`
+- `simulation/agent/verify/command_runner.py`
+- `simulation/agent/agent.py`
+- `simulation/agent/strategy_dispatcher.py`
+- `simulation/agent/executors/worker/worker_executor.py`
+- `simulation/security/path_policy.py`
+- `simulation/planner/planner.py`
+- `simulation/decision/decision_trace.py`
+- `agent_run.py`
+- Test dosyaları: `tests/recovery_engine_test.py`, `tests/worker_action_pipeline_test.py`, `tests/apply_verify_pipeline_test.py`, `tests/verification_executor_test.py`, `tests/worker_contract_test.py`, `tests/worker_runtime_test.py`, `tests/worker_runtime_integration_test.py`, `tests/security/path_security_test.py`, `tests/security/worker_read_scope_test.py`
+
+### Changes Made
+
+- `docs/PROJECT_STATE.md` gerçek durumla yeniden senkronize edildi (versiyon, sprint, durum sınıflandırması, tamamlanan özellikler, doğrulanmış baseline).
+- `docs/MISSION_LOG.md`'ye bu mission kaydı eklendi ve "Current Mission" durumu DONE olarak güncellendi.
+- Kaynak koduna dokunulmadı.
+
+### Verified Baseline
+
+Test suite:
+
+`python -m pytest -q` = **150 passed, 5 skipped**
+
+`git diff --check` = clean
+
+`git status` = clean (worker-action-pipeline @ 19c6e85)
+
+### State Classification (2026-08-11)
+
+- **VERIFIED:** Core Event Sourcing, Persistence (incl. Recovery Engine), Hash Chain, Planner/Loop/Decision Trace, Tool Framework, Memory, Worker, Validator, Controller, Apply, Verification, Worker Action Pipeline, Bounded Recovery, Path Security.
+- **IMPLEMENTED BUT UNVERIFIED:** LLM-driven patch analysis (tests use FakeWorkerAnalyzer), recovery in shipped runnable entry point (agent_run.py uses proposal-only default), worker-pipeline decision trace integration.
+- **NOT IMPLEMENTED:** Worker event lifecycle events, structured AnalysisResult (confidence/risk), risk classification, human approval boundary, secret scanning, benchmarks, concurrency testing, full recovery scenario coverage (restart/snapshot/replay+hash after recovery), external validation.
+- **UNKNOWN:** Live LLM end-to-end behavior, symlink/junction behavior where junction tests skip, production behavior.
+
+### Known Limitations
+
+- `docs/MISSION_LOG.md` mevcut kayıtlarında geçmişten gelen karakter kodlama bozulması (mojibake) vardır; eski kayıtlar değiştirilmediği için bu durum korunur.
+- `docs/PROJECT_CONTEXT.md`, `docs/ARCHITECTURE.md`, `README.md`, `ROADMAP.md` (Current Baseline bölümü) ve `CHANGELOG.md` hâlâ eski sürüm/sprint bilgileri içerir; bu mission kapsamında değiştirilmedi.
+- Recovery varsayılan olarak etkin değildir; yalnızca `build_recovery_agent()` ile açıkça kurulduğunda çalışır.
+- "VERIFIED" etiketi mevcut test kapsamına dayanır; tam güvenlik denetimi anlamına gelmez.
+
+### Remaining Work
+
+- Worker yaşam döngüsü olaylarının event store'a yazılması.
+- LLM analiz sonucu için yapılandırılmış sözleşme (confidence/risk).
+- Risk sınıflandırma ve insan onay sınırı.
+- Gizli anahtar taraması.
+- Benchmark ve eşzamanlılık testleri.
+- Yeniden başlatma/snapshot/replay sonrası recovery senaryoları.
+- Shipped runtime giriş noktasında recovery'nin etkinleştirilmesi.
 
 ---
 

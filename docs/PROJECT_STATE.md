@@ -16,7 +16,15 @@ Active Development
 
 Last Updated
 
-2026-08-07
+2026-08-11
+
+Active Branch
+
+worker-action-pipeline
+
+Branch HEAD
+
+19c6e85
 
 ---
 
@@ -35,57 +43,101 @@ Core Principles
 - Cryptographically Verifiable
 - Enterprise Ready
 
+Long-term direction: AI proposals must be validated, authorized, applied, verified and recorded as evidence before becoming trusted system mutations.
+
 ---
 
 # Current Version
 
-v0.4.0
+Latest release tag: v0.5.0
 
 Codename
 
-Native Memory Engine
+Sprint-17 — Executor Architecture & Memory Recall
+
+Current development is post-v0.5.0 on the worker-action-pipeline branch (no new release tag yet).
 
 ---
 
-# Current Sprint
+# Current Sprint / Objective
 
-Sprint-17
+Worker Action Pipeline & Bounded Verification Recovery
 
-Goal
+Current pipeline (implemented and committed):
 
-Memory Recall
+Worker
+→ Validator
+→ Controller
+→ Apply
+→ Verification
+→ Bounded Recovery (max 3 attempts)
 
-Current Objective
+Recovery is NOT active by default. It becomes active only when the runtime is explicitly assembled through build_recovery_agent() (simulation/agent/recovery/recovery_assembly.py). The default Agent(kernel) path (and agent_run.py) remains proposal-only: it never applies, verifies or retries.
 
-User
+---
 
-↓
+# Current State Classification
 
-"Benim adım Ahmet."
+This section is synchronized with the verified state on 2026-08-11.
 
-↓
+Evidence hierarchy used:
 
-MemoryStored Event
+1. Git history (commits)
+2. Source code behavior
+3. Automated test results (python -m pytest -q = 150 passed, 5 skipped)
+4. Documentation (lowest priority; docs may be stale)
 
-↓
+## VERIFIED
 
-State.memory
+Code exists, is committed, and is covered by passing deterministic tests.
 
-↓
+| Component | Evidence |
+|-----------|----------|
+| Core Event Sourcing (Event, State, Reducer, Kernel) | Committed; covered by root test suite |
+| Persistence (Event Store, Replay, Snapshot Manager) | Committed; covered by root test suite |
+| Persistence Recovery Engine (snapshot + replay + hash integrity) | Committed; covered by recovery_test.py |
+| Hash Chain & Integrity Verification | Committed; covered by hash/verify chain tests |
+| Planner, Loop Engine, Decision Trace | Committed; covered by planner/loop/decision trace tests |
+| Tool Framework (BaseTool, Registry, Executor, Calculator) | Committed; covered by tool/registry tests |
+| Memory (MemoryService, MemoryStored, store/recall executors) | Committed; covered by memory tests |
+| Worker (WorkerAgent, WorkerExecutor, WorkerTask, WorkerPolicy, PatchGenerator, PatchProposal) | Committed; worker_contract_test.py, worker_read_scope_test.py, worker_runtime_test.py, worker_runtime_integration_test.py |
+| Validator (PatchValidator) | Committed; worker_contract_test.py, path_security_test.py |
+| Controller (Controller + ControllerDecision) | Committed; worker_contract_test.py, worker_action_pipeline_test.py |
+| Apply (ApplyExecutor, ApplyAuthorization, FileApplier, ApplyResult) | Committed; worker_contract_test.py, path_security_test.py |
+| Verification (VerificationExecutor, CommandRunner, VerificationResult, VerificationEvidence) | Committed; verification_executor_test.py |
+| Worker Action Pipeline (WorkerActionPipeline, ApplyVerifyPipeline) | Committed; worker_action_pipeline_test.py, apply_verify_pipeline_test.py, worker_runtime_integration_test.py |
+| Bounded Recovery (BoundedRecoveryEngine, RecoveryAttempt, RecoveryResult, RecoveryAssembly) | Committed (90400c9); recovery_engine_test.py (~2100 lines, attempt cap, duplicate-fingerprint prevention, fail-closed behavior, runtime assembly test) |
+| Path Security (PathPolicy: traversal, scope, symlink/junction policy) | Committed; path_security_test.py, worker_read_scope_test.py |
 
-User
+## IMPLEMENTED BUT UNVERIFIED
 
-↓
+Code exists but deterministic verification coverage is not complete.
 
-"Benim adım ne?"
+- **LLM-driven patch analysis (LLMCodeAnalyzer)** — implementation exists, but every automated test uses FakeWorkerAnalyzer. Live LLM provider behavior is not covered by the deterministic suite.
+- **Recovery in the shipped runnable entry point** — the recovery assembly is tested in isolation (test_f2), but agent_run.py uses the default Agent(kernel) and does not enable the pipeline/recovery. End-to-end operation through the shipped entry point is not verified.
+- **Decision trace for the worker pipeline** — DecisionTrace exists and is tested for the LLM loop, but it is not integrated with the worker action pipeline (no trace record for validation/apply/verification/recovery steps).
 
-↓
+## NOT IMPLEMENTED
 
-Agent
+Documented in ROADMAP.md but no implementation exists.
 
-↓
+- Worker event lifecycle persisted to the event store (WorkerTaskCreated, PatchProposed, PatchValidated, PatchApproved, PatchApplied, VerificationCompleted, VerificationFailed, RetryRequested...)
+- Structured worker AnalysisResult contract (diagnosis, evidence, confidence, risk, explanation) — current analyzer returns only diagnosis/old_text/new_text
+- Risk classification engine (LOW / MEDIUM / HIGH / CRITICAL)
+- Human-in-the-loop approval boundary
+- Secret scanning and supply-chain protection
+- Runtime benchmarks (event append / replay / snapshot / hash / recovery latency)
+- Multi-agent / multi-worker concurrency testing
+- Full recovery scenario coverage (process restart, snapshot recovery, replay + hash-chain integrity after recovery)
+- External / compliance / commercial validation
 
-"Adın Ahmet."
+## UNKNOWN
+
+Cannot be classified from available evidence.
+
+- Live LLM end-to-end behavior and JSON contract compliance with a real provider
+- Security behavior on environments where symlink/junction tests are skipped (5 junction-dependent tests skip when junction creation is unavailable)
+- Production/deployment behavior (no production configuration exists)
 
 ---
 
@@ -103,27 +155,26 @@ Agent
 - Event Store
 - Replay Engine
 - Snapshot Manager
-- Recovery Engine
+- Recovery Engine (snapshot + replay + hash-integrity reconstruction)
 
 ## Security
 
 - Hash Chain
-- Integrity Verification
+- Integrity Verification (Verify Chain)
+- Path Policy (scope, traversal, symlink/junction containment)
 
 ## Runtime
 
 - Planner
 - Loop Engine
 - Decision Trace
+- Executor Registry & Strategy Dispatcher
 
 ## Tool Framework
 
 - BaseTool
 - Tool Registry
 - Tool Executor
-
-## Tools
-
 - Calculator Tool
 
 ## Memory
@@ -132,17 +183,47 @@ Agent
 - MemoryStored Event
 - MemoryEvents Factory
 - Automatic Memory Store
+- Memory Recall Executor
+
+## Worker Action Pipeline
+
+- Worker Agent (proposal-only by default)
+- LLM-driven patch analysis
+- Patch Proposal + deterministic fingerprint
+- Patch Validator
+- Controller authorization
+- Apply Executor + File Applier (fingerprint-matched approval)
+- Verification Executor (compile + pytest, PASS/FAIL, evidence preserved)
+- Worker Action Pipeline (per-proposal gates, fail-closed)
+- Bounded Verification Recovery (max 3 attempts, append-only attempt history)
+
+---
+
+# Verified Baseline
+
+Test suite: 150 passed, 5 skipped (python -m pytest -q, 2026-08-11).
+
+git diff --check: clean.
+
+Working tree: clean on worker-action-pipeline @ 19c6e85.
 
 ---
 
 # Next Milestone
 
-v0.5.0
+Unreleased. Candidate areas (see ROADMAP.md):
 
-Memory Recall
+- Worker event lifecycle as auditable events
+- Structured worker analysis contract
+- Risk classification
+- Human approval boundary
+- Secret scanning
+- Recovery wired into the shipped runtime entry point
 
 ---
 
 # Notes
 
-This document is updated after every completed sprint.
+This document is synchronized with actual code, git history and test results.
+
+Stale documentation must not be trusted over code and git history.
