@@ -34,6 +34,14 @@ from simulation.agent.worker.worker_result import (
     WorkerResult
 )
 
+from simulation.security.risk_engine import (
+    RiskEngine
+)
+
+from simulation.security.risk_policy import (
+    RiskPolicy
+)
+
 
 FAILURE_VALIDATION = "validation"
 
@@ -44,6 +52,10 @@ FAILURE_APPLY = "apply"
 FAILURE_VERIFICATION = "verification"
 
 FAILURE_WORKER = "worker"
+
+FAILURE_RISK = "risk"
+
+FAILURE_APPROVAL = "approval"
 
 FAILURE_UNEXPECTED = "unexpected"
 
@@ -150,13 +162,18 @@ class WorkerActionPipeline:
     STAGE_VALIDATION = "validation"
     STAGE_CONTROLLER = "controller"
     STAGE_APPLY_VERIFY = "apply_verify"
+    STAGE_RISK = "risk"
+    STAGE_APPROVAL = "approval"
 
     def __init__(
         self,
         patch_validator=None,
         controller=None,
         apply_verify_pipeline=None,
-        evidence_recorder=None
+        evidence_recorder=None,
+        risk_engine=None,
+        risk_policy=None,
+        approval_store=None
     ):
 
         self.patch_validator = (
@@ -178,6 +195,25 @@ class WorkerActionPipeline:
         )
 
         self.evidence_recorder = evidence_recorder
+
+        self.risk_engine = (
+            risk_engine
+            if risk_engine is not None
+            else RiskEngine()
+        )
+
+        self.risk_policy = (
+            risk_policy
+            if risk_policy is not None
+            else RiskPolicy()
+        )
+
+        self.approval_store = approval_store
+
+        self.risk_gate_enabled = (
+            risk_engine is not None
+            and risk_policy is not None
+        )
 
     def execute(
         self,
@@ -218,6 +254,10 @@ class WorkerActionPipeline:
 
         verification_ran = False
 
+        verification_depth = (
+            ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
+        )
+
         for patch in patches:
 
             if recorder is not None:
@@ -255,6 +295,61 @@ class WorkerActionPipeline:
 
                 break
 
+            if self.risk_gate_enabled:
+
+                assessment = self.risk_engine.classify(
+                    patch
+                )
+
+                risk_decision = self.risk_policy.decide(
+                    assessment
+                )
+
+                if risk_decision.allowed is not True:
+
+                    stages.append(
+                        PatchStageResult(
+                            patch=patch,
+                            success=False,
+                            stage=self.STAGE_RISK,
+                            message=risk_decision.reason,
+                        )
+                    )
+
+                    break
+
+                if risk_decision.requires_human_approval:
+
+                    approval = None
+
+                    if self.approval_store is not None:
+
+                        approval = (
+                            self.approval_store.find_valid(
+                                patch.fingerprint()
+                            )
+                        )
+
+                    if approval is None:
+
+                        stages.append(
+                            PatchStageResult(
+                                patch=patch,
+                                success=False,
+                                stage=self.STAGE_APPROVAL,
+                                message=(
+                                    "High-risk patch requires "
+                                    "human approval."
+                                ),
+                            )
+                        )
+
+                        break
+
+                verification_depth = (
+                    risk_decision.verification_depth
+                )
+
             decision = self.controller.approve(
                 patch,
                 ValidationResult(
@@ -290,6 +385,7 @@ class WorkerActionPipeline:
                 decision,
                 verify_paths=verify_paths,
                 test_targets=test_targets,
+                verification_depth=verification_depth,
             )
 
             if recorder is not None:
@@ -384,6 +480,14 @@ class WorkerActionPipeline:
         if final.stage == WorkerActionPipeline.STAGE_CONTROLLER:
 
             return FAILURE_CONTROLLER
+
+        if final.stage == WorkerActionPipeline.STAGE_RISK:
+
+            return FAILURE_RISK
+
+        if final.stage == WorkerActionPipeline.STAGE_APPROVAL:
+
+            return FAILURE_APPROVAL
 
         if final.stage == WorkerActionPipeline.STAGE_APPLY_VERIFY:
 

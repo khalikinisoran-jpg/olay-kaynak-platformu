@@ -28,6 +28,10 @@ class ApplyVerifyPipeline:
     passed. Verification never runs when the patch fails to apply.
     """
 
+    VERIFICATION_DEPTH_COMPILE = "compile"
+
+    VERIFICATION_DEPTH_COMPILE_TESTS = "compile+tests"
+
     def __init__(
         self,
         apply_executor=None,
@@ -51,7 +55,8 @@ class ApplyVerifyPipeline:
         patch: PatchProposal,
         decision: ControllerDecision,
         verify_paths=None,
-        test_targets=()
+        test_targets=(),
+        verification_depth=VERIFICATION_DEPTH_COMPILE_TESTS
     ) -> ApplyVerifyResult:
 
         apply_result = self.apply_executor.apply(
@@ -68,18 +73,34 @@ class ApplyVerifyPipeline:
                 verification_ran=False,
             )
 
-        verification_result = (
-            self.verification_executor.verify(
-                paths=(
-                    tuple(verify_paths)
-                    if verify_paths
-                    else (patch.path,)
-                ),
-                test_targets=tuple(
-                    test_targets
-                ),
+        if verification_depth == (
+            self.VERIFICATION_DEPTH_COMPILE
+        ):
+
+            verification_result = (
+                self.verification_executor.verify_python_compile(
+                    paths=(
+                        tuple(verify_paths)
+                        if verify_paths
+                        else (patch.path,)
+                    ),
+                )
             )
-        )
+
+        else:
+
+            verification_result = (
+                self.verification_executor.verify(
+                    paths=(
+                        tuple(verify_paths)
+                        if verify_paths
+                        else (patch.path,)
+                    ),
+                    test_targets=tuple(
+                        test_targets
+                    ),
+                )
+            )
 
         return ApplyVerifyResult(
             apply_result=apply_result,
