@@ -141,14 +141,25 @@ Severity: MEDIUM → mitigated (default-deny when restricted).
 
 ### E) FileApplier TOCTOU between scope check and write
 
-**Classification: OPEN (hardened in MISSION-006).**
+**Classification: OPEN (audit time) — HARDENED in MISSION-006.**
 
 `simulation/agent/apply/file_applier.py` runs `PathPolicy.check_scope` on
 `patch.path`, then later `Path(patch.path).write_text(...)`. Both the scope
 check and the write resolve the path independently, leaving a small window in
 which a symlink/junction at `patch.path` could be swapped after the check.
-Severity: LOW in the current single-process context; MISSION-006 writes through
-the canonical resolved path and verifies the write by read-back.
+Severity: LOW in the current single-process context.
+
+MISSION-006 hardening:
+- `PathPolicy.resolve_target()` exposes the exact canonical form `check_scope`
+  uses; `FileApplier` now reads and writes through that resolved target, so the
+  write goes to the same verified path.
+- After every write the target is read back; any mismatch with the approved
+  `new_content` triggers a bounded restore of `old_content` and a FAIL
+  ("Patch integrity check failed ... target restored").
+- New deterministic tests in `tests/patch_integrity_test.py` (stale/concurrent
+  modification, second stale patch on the same file, write-through in-scope
+  symlink, corrupted-write detection + restore, approved-fingerprint == applied
+  content, fingerprint-mismatch denial before write).
 
 ### F) Decision Trace is in-memory only
 

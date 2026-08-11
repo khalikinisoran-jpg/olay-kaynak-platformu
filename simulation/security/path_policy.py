@@ -110,6 +110,24 @@ class PathPolicy:
             "Patch path is outside the allowed scope."
         )
 
+    def resolve_target(
+        self,
+        raw
+    ) -> str | None:
+
+        """Return the exact canonical form check_scope uses, or None.
+
+        The caller (FileApplier) writes through this canonical target so
+        the write goes to the same resolved path that was verified in
+        scope, closing the gap between the scope check and the write.
+        """
+
+        if self._path_error(raw):
+
+            return None
+
+        return self._canonical(raw)
+
     def _path_error(
         self,
         path

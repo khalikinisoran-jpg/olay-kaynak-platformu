@@ -41,7 +41,21 @@ class FileApplier:
                 scope_message
             )
 
-        path = Path(patch.path)
+        canonical = (
+            self.path_policy.resolve_target(
+                patch.path
+            )
+        )
+
+        if canonical is None:
+
+            return (
+                False,
+                "Patch target could not be "
+                "resolved; rejected."
+            )
+
+        path = Path(canonical)
 
         if not path.exists():
 
@@ -57,9 +71,18 @@ class FileApplier:
                 f"Patch target is not a file: {patch.path}"
             )
 
-        current_content = path.read_text(
-            encoding="utf-8"
-        )
+        try:
+
+            current_content = path.read_text(
+                encoding="utf-8"
+            )
+
+        except Exception as exc:
+
+            return (
+                False,
+                f"Unable to read patch target: {exc}"
+            )
 
         if current_content != patch.old_content:
 
@@ -76,12 +99,66 @@ class FileApplier:
                 "Patch does not contain a change."
             )
 
-        path.write_text(
-            patch.new_content,
-            encoding="utf-8"
-        )
+        try:
+
+            path.write_text(
+                patch.new_content,
+                encoding="utf-8"
+            )
+
+        except Exception as exc:
+
+            return (
+                False,
+                f"Failed to write patch target: {exc}"
+            )
+
+        try:
+
+            written = path.read_text(
+                encoding="utf-8"
+            )
+
+        except Exception as exc:
+
+            return (
+                False,
+                "Unable to verify patch target "
+                f"after write: {exc}"
+            )
+
+        if written != patch.new_content:
+
+            self._restore(
+                path,
+                patch.old_content
+            )
+
+            return (
+                False,
+                "Patch integrity check failed: "
+                "written content does not match "
+                "new_content; target restored."
+            )
 
         return (
             True,
             "File applied successfully."
         )
+
+    @staticmethod
+    def _restore(
+        path,
+        old_content
+    ):
+
+        try:
+
+            path.write_text(
+                old_content,
+                encoding="utf-8"
+            )
+
+        except Exception:
+
+            pass
