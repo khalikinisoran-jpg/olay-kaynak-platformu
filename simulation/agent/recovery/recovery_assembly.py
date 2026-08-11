@@ -36,6 +36,14 @@ from simulation.agent.worker.patch_validator import (
     PatchValidator
 )
 
+from simulation.security.risk_engine import (
+    RiskEngine
+)
+
+from simulation.security.risk_policy import (
+    RiskPolicy
+)
+
 
 def build_recovery_agent(
     kernel,
@@ -46,6 +54,8 @@ def build_recovery_agent(
     max_attempts=BoundedRecoveryEngine.DEFAULT_MAX_ATTEMPTS,
     provider=None,
     evidence_recorder=None,
+    risk_engine=None,
+    risk_policy=None,
 ) -> Agent:
 
     """Explicit production assembly for bounded recovery.
@@ -60,6 +70,11 @@ def build_recovery_agent(
     decision to the Kernel event store and decision trace. It defaults
     to a recorder backed by the supplied kernel, so the auditable
     trace is always active when this assembly is used.
+
+    The risk gate is OFF unless BOTH ``risk_engine`` and ``risk_policy``
+    are explicitly provided. Wiring it in makes HIGH/CRITICAL proposals
+    require human approval, which currently has no implementation
+    (MISSION-012), so it stays an explicit opt-in.
     """
 
     recorder = (
@@ -88,6 +103,8 @@ def build_recovery_agent(
             ),
         ),
         evidence_recorder=recorder,
+        risk_engine=risk_engine,
+        risk_policy=risk_policy,
     )
 
     recovery_engine = BoundedRecoveryEngine(

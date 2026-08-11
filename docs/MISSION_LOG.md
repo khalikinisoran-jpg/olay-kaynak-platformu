@@ -934,4 +934,126 @@ the strict core and adds advisory-only fields
 
 ---
 
+## MISSION-011 — Risk / Policy Engine (RiskEngine, RiskPolicy, RiskLevel)
+
+**Status:** VERIFIED / CLOSED
+**Date:** 2026-08-12
+**Branch:** worker-action-pipeline
+**Commit:** `96ed72d` (Integrate risk-aware worker action pipeline) — the
+implementation commit; the close-out (tests + docs) is uncommitted
+working-tree evidence.
+
+### Objective
+
+Close MISSION-011 by making the risk layer (`RiskLevel`, `RiskEngine`,
+`RiskPolicy`) real, deterministic, tested and correctly integrated with the
+worker action pipeline, without inventing hypothetical behavior.
+
+### Changed Files
+
+- `simulation/security/risk_engine.py` — **fail-closed bug fix:** a missing,
+  empty or non-string `action` now sets the `UNKNOWN` base level (previous
+  code used `RiskLevel.max_level(level, RiskLevel.UNKNOWN)`, which is a
+  no-op because UNKNOWN is severity 0, leaving the result at LOW). This
+  matches the documented contract ("Malformed input produces
+  `RiskLevel.UNKNOWN`") and makes the fail-closed path reach the policy DENY.
+- `simulation/agent/recovery/recovery_assembly.py` — `build_recovery_agent`
+  now accepts optional `risk_engine` / `risk_policy`; when both are passed
+  the pipeline risk gate is enabled. Default behavior (gate off) is
+  unchanged and backward compatible.
+- `tests/risk_level_test.py` (new) — 20 tests.
+- `tests/risk_engine_test.py` (new) — 30 tests.
+- `tests/risk_policy_test.py` (new) — 18 tests.
+- `tests/risk_pipeline_test.py` (new) — 15 tests.
+
+### RiskLevel (tests/risk_level_test.py)
+
+- Deterministic ordering UNKNOWN < LOW < MEDIUM < HIGH < CRITICAL with
+  strictly increasing severity; `HIGH.severity == 3` and
+  `CRITICAL.severity == 4` asserted directly.
+- `parse` returns the same member for member input; normalizes
+  case/whitespace; raises ValueError on None, non-string and unknown labels
+  (fail-closed, never coerces garbage to UNKNOWN).
+- `at_least` and `max_level` behaviors; malformed inputs never dominate;
+  empty `max_level` returns UNKNOWN.
+
+### RiskEngine (tests/risk_engine_test.py, 30 tests)
+
+- `classify(None)` and missing/empty/non-string action => UNKNOWN (fail-closed).
+- modify baseline => LOW; destructive actions (delete/drop/truncate/format/
+  remove/purge/reset/replace) => CRITICAL; non-modify non-destructive =>
+  HIGH; security-sensitive path => HIGH; privilege-boundary => CRITICAL;
+  production-config => HIGH; secret-file suffix/name => CRITICAL;
+  executable-source suffix => MEDIUM; change > 500 chars => HIGH; PEM block
+  => CRITICAL; secret-like assignment => HIGH.
+- Advisory LLM risk can only RAISE the level, never lower it; invalid
+  advisory dropped; advisory UNKNOWN not applied; confidence recorded only
+  when numeric and never a decision input.
+
+### RiskPolicy (tests/risk_policy_test.py, 18 tests)
+
+- Missing/malformed assessment or level => DENY (UNKNOWN, `allowed=False`,
+  `allow_auto_apply=False`, `max_attempts=0`).
+- UNKNOWN => DENY, never auto-approvable.
+- LOW => auto-apply, `max_attempts=3`; MEDIUM => auto-apply,
+  `max_attempts=2`; HIGH/CRITICAL => `requires_human_approval=True`,
+  `allow_auto_apply=False`, `max_attempts=1`.
+- `max_attempts` never exceeds the recovery hard cap of 3.
+- `verification_depth` per level is `compile+tests` (real contract).
+
+### Pipeline Integration (tests/risk_pipeline_test.py, 15 tests)
+
+- Gate enabled: RiskEngine -> RiskPolicy -> Controller -> ApplyVerifyPipeline
+  flow for LOW and MEDIUM patches (apply + verify run, file updated).
+- Risk rejection (policy DENY) => failure_stage `risk`, no apply, no verify.
+- HIGH/CRITICAL without an approval store => failure_stage `approval`, no
+  apply (fail-closed at the MISSION-012 boundary).
+- HIGH with a store that returns a valid approval => apply + verify run.
+- Policy-chosen `verification_depth` is confirmed to reach the pipeline
+  (recorded on `ApplyVerifyPipeline.execute`).
+- `verification_depth="compile"` path calls `verify_python_compile` only;
+  default / `compile+tests` calls `verify`.
+- Gate disabled never consults the risk engine (backward compatibility).
+- `build_recovery_agent`: default gate off; explicit `risk_engine` +
+  `risk_policy` turns it on; either alone leaves it off.
+
+### Design Decision (D-021)
+
+The risk gate is NOT wired into the shipped assembly by default. Reason:
+HIGH/CRITICAL require human approval, which depends on the `approval_store`
+contract that has no implementation (MISSION-012). Wiring the gate into
+`build_recovery_agent` would silently hard-block every HIGH/CRITICAL patch
+with no resolution path. The gate stays a tested, explicit opt-in at both
+the pipeline and assembly level; re-evaluating default-on is MISSION-012's
+scope. See docs/DECISION_LOG.md.
+
+### Tests
+
+`python -m pytest -q` = **334 passed, 9 skipped** (MISSION-011 close-out;
+MISSION-011 öncesi baseline: 251 passed / 9 skipped; +83 from the four new
+risk test modules). `python -m compileall -q simulation tests` = exit 0.
+`git diff --check` = clean (only LF/CRLF line-ending warnings).
+
+### Known Limitations
+
+- The policy currently maps every non-deny level to
+  `verification_depth="compile+tests"`; the `compile`-only depth is
+  exercised at the ApplyVerifyPipeline level, not selected by any policy
+  level.
+- The pipeline-level UNKNOWN/DENY path is tested through the policy contract
+  (a deny-producing engine); the real RiskEngine can only produce UNKNOWN
+  for `patch is None` or a malformed action, which the validator rejects
+  before the risk gate.
+- Human approval for HIGH/CRITICAL remains blocked until MISSION-012
+  implements `ApprovalStore`.
+
+### Remaining Work
+
+- MISSION-012 Human Approval Boundary.
+- MISSION-013 Advanced adversarial benchmark.
+- MISSION-014 Agent-independent enforcement.
+- MISSION-015 Productization readiness assessment.
+
+---
+
 # End of Mission Log

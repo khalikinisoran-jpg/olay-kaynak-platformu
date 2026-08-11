@@ -1,275 +1,280 @@
 # ARCHITECTURE
 
----
-
-# Purpose
-
-The Event-Sourced AI Runtime is designed around a simple principle:
-
-Every important AI action becomes an immutable event.
-
-Instead of treating execution as temporary, the runtime preserves the complete execution history.
+> Canonical architecture of what is ACTUALLY implemented on branch
+> `worker-action-pipeline` @ `96ed72d` (2026-08-11; risk-layer section
+> refreshed by the MISSION-011 close-out, 2026-08-12). This document
+> describes verified code only. Roadmap/future ideas are not presented as
+> current reality; see ROADMAP.md for the future.
 
 ---
 
-# High-Level Architecture
+# 1. High-Level Runtime
 
 ```text
-User
- │
- ▼
-Agent
- │
- ▼
-Loop Engine
- │
- ▼
-Kernel
- │
- ├── Reducer
- ├── Event Store
- ├── Replay Engine
- ├── Context Builder
- ├── Timeline
- └── Verify Chain
- │
- ▼
-LLM Provider
- │
- ▼
-AI Response
+User (CLI: agent_run.py)
+      │  prompt
+      ▼
+Agent (simulation/agent/agent.py)
+      │  loop.start(prompt)  ->  Kernel.dispatch(UserQuestionReceived)
+      ▼
+Planner (simulation/planner/planner.py)  ->  strategy name
+      │
+      ▼
+StrategyDispatcher (simulation/agent/strategy_dispatcher.py)  ->  registry
+      │  dispatch(strategy, agent, prompt)
+      ├── calculator      -> CalculatorExecutor
+      ├── memory_store    -> MemoryStoreExecutor
+      ├── memory_recall   -> MemoryRecallExecutor
+      ├── llm             -> LLMExecutor
+      └── worker          -> WorkerExecutor -> WorkerAgent
+             │
+             ▼  (if worker) WorkerResult
+      Agent.chat decides:
+        - recovery_engine set?  -> BoundedRecoveryEngine.execute(...)
+        - worker_pipeline set?  -> WorkerActionPipeline.execute(...)
+        - else                    -> proposal-only, no mutation
+      │
+      ▼  (non-worker) Kernel.dispatch(AIResponseReceived)
 ```
 
 ---
 
-# Why Agent?
+# 2. Core Event Sourcing (simulation/core/)
 
-The Agent is responsible for coordinating the runtime.
+| File | Responsibility |
+|------|----------------|
+| `event.py` | Immutable `Event` dataclass (event_type, payload, sequence, event_id) |
+| `state.py` | Immutable `State` (tasks, workers, memory, conversation_history, worker_trace, event_counter) with `to_dict`/`from_dict` for snapshots |
+| `reducer.py` | `Reducer.apply(state, event)`: TaskCreated / UserQuestionReceived / AIResponseReceived / MemoryStored / `Worker*` events -> worker_trace |
+| `kernel.py` | `Kernel` dispatches events: assigns sequence, records DecisionTrace, applies reducer, appends to EventStore, triggers snapshot manager. Recovery runs on construction (`RecoveryEngine.recover()`). |
 
-Responsibilities:
-
-- Receive user input
-- Build context
-- Call the LLM
-- Record runtime events
-- Coordinate Loop Engine
-
-The Agent should not own application state.
+`Kernel.dispatch` is the single write path for all events, including worker
+evidence events (simulation/core/kernel.py:40).
 
 ---
 
-# Why Loop Engine?
+# 3. Persistence, Replay, Recovery (simulation/persistence|replay|recovery/)
 
-The Loop Engine represents execution flow.
-
-Today:
-
-Question
-
-↓
-
-Answer
-
-Tomorrow:
-
-Goal
-
-↓
-
-Planning
-
-↓
-
-Execution
-
-↓
-
-Verification
-
-↓
-
-Retry
-
-↓
-
-Completion
-
-The Loop Engine should coordinate long-running AI tasks.
+- `EventStore` (`persistence/event_store.py`): append-only JSONL. Each
+  record stores event_id, event_type, payload, sequence, previous_hash,
+  current_hash (SHA-256 over the record, `HashChain.calculate`). Reads via
+  `read_all` / `read_after`.
+- `SnapshotStore` / `SnapshotManager` (`persistence/snapshot*.py`,
+  `snapshot/snapshot_manager.py`): periodic snapshot every `interval`
+  events (default 2).
+- `RecoveryEngine` (`recovery/recovery_engine.py`): on Kernel start,
+  verifies hash chain integrity, loads snapshot if present, replays only
+  events after `last_sequence`. Raises RuntimeError on chain break.
+- `ReplayEngine` (`replay/replay_engine.py`): deterministic replay with
+  optional `initial_state`.
+- `persistence/recovery.py` (legacy `Recovery.rebuild`) and
+  `persistence/event_store_backup.py`: present but not used by Kernel
+  (VERIFIED: Kernel uses `simulation/recovery/recovery_engine.py`).
 
 ---
 
-# Why Kernel?
+# 4. Runtime Orchestration
 
-The Kernel is the runtime core.
-
-Responsibilities:
-
-- Accept events
-- Dispatch events
-- Update runtime state
-- Trigger reducers
-- Store events
-
-Business logic should remain outside the Kernel.
-
----
-
-# Why Reducer?
-
-Reducers rebuild state.
-
-The current runtime state is always derived from events.
-
-State should never become the primary source of truth.
-
-Events are the source of truth.
+- `Planner` (`planner/planner.py`): keyword/prefix rules -> strategy:
+  `worker:`, arithmetic, weather keywords, memory recall/store phrases,
+  else `llm`. NOTE: `weather` strategy is produced but NOT registered in
+  the dispatcher registry (dispatcher raises ValueError on unknown
+  strategy) — a real gap (VERIFIED by code).
+- `LoopEngine` (`loop/loop_engine.py`): start/next/verifying/complete/fail
+  state machine; logs to stdout only.
+- `DecisionTrace` (`decision/decision_trace.py`): in-memory step list with
+  `record`/`clear`/`generate`; not persisted.
+- `StrategyDispatcher` (`agent/strategy_dispatcher.py`): registers
+  calculator, memory_store, memory_recall, llm, worker executors.
+- Executors under `agent/executors/`: `BaseExecutor`, `CalculatorExecutor`,
+  `MemoryStoreExecutor`, `MemoryRecallExecutor`, `LLMExecutor`,
+  `WorkerExecutor`. `WorkerExecutor` builds a `WorkerTask` (task_id
+  "worker-task", allowed_actions read/inspect/propose) and delegates to
+  `WorkerAgent.run`.
 
 ---
 
-# Why Event Store?
+# 5. Memory (simulation/memory/)
 
-Every meaningful action is stored.
-
-Benefits:
-
-- Replay
-- Audit
-- Recovery
-- Explainability
-
-The Event Store is append-only.
-
-Events are never modified.
+- `MemoryService`: pure functions over State (set/get/exists/delete/all).
+- `MemoryEvents.stored/deleted`: build `MemoryStored`/`MemoryDeleted`
+  events. `MemoryStored` is handled by the Reducer (memory dict).
+- Executors: `memory_store_executor` (reads the prompt after "benim adım "
+  and dispatches a MemoryStored event), `memory_recall_executor` (reads
+  back from State and returns an AI response).
 
 ---
 
-# Why Replay?
+# 6. Tool Framework (simulation/tools/, simulation/services/)
 
-Replay reconstructs runtime state from stored events.
-
-Benefits:
-
-- Crash recovery
-- Deterministic execution
-- Debugging
-- Historical inspection
+- `BaseTool`, `Registry`, `Calculator` (arithmetic via safe exec).
+- `services/tool_executor.py` and `services/runtime_service.py` exist
+  (VERIFIED present); the executors path used by the dispatcher is
+  `agent/executors/`, not `services/`.
 
 ---
 
-# Why Timeline?
+# 7. Worker Action Pipeline (simulation/agent/pipeline/)
 
-Timeline is the runtime inspector.
-
-It allows developers to understand:
-
-- what happened,
-- when it happened,
-- and in which order.
-
-Timeline is a debugging and observability tool.
-
----
-
-# Why Verify Chain?
-
-Every event references the previous event through a cryptographic hash.
-
-Benefits:
-
-- Tamper detection
-- Integrity verification
-- Audit confidence
-
-Verification should always succeed before release.
-
----
-
-# Why Context Builder?
-
-The LLM should not rely on hidden memory.
-
-Context Builder reconstructs the context from runtime state.
-
-This keeps execution deterministic and reproducible.
-
----
-
-# Design Principles
-
-The project follows these principles:
-
-- Event First
-- Replay Everything
-- Verify Before Release
-- Small Verified Steps
-- Keep Components Independent
-
----
-
-# Component Responsibilities
-
-| Component | Responsibility |
-|-----------|----------------|
-| Agent | Coordinates execution |
-| Loop Engine | Controls execution flow |
-| Kernel | Dispatches events |
-| Reducer | Builds state |
-| Event Store | Persists history |
-| Replay Engine | Reconstructs state |
-| Context Builder | Builds AI context |
-| Timeline | Runtime inspection |
-| Verify Chain | Integrity verification |
-
----
-
-# Future Architecture
-
-The current runtime answers questions.
-
-Future versions will execute goals.
+Proposal-to-apply chain. Active only when explicitly assembled
+(`build_recovery_agent()` or `WorkerActionPipeline(...)` passed to Agent).
 
 ```text
-Goal
-
-↓
-
-Planner
-
-↓
-
-Loop
-
-↓
-
-Workers
-
-↓
-
-Verification
-
-↓
-
-Replay
-
-↓
-
-Completion
+WorkerResult (proposals)
+   → [per patch] PatchValidator.validate  (scope/staleness/no-op)
+   → [opt-in risk gate] RiskEngine.classify + RiskPolicy.decide
+   → Controller.approve(ValidationResult)  (typed, valid is True)
+   → ApplyVerifyPipeline.execute(patch, decision)
+       → ApplyExecutor.apply
+           → ApplyAuthorization.authorize (approved True + fingerprint match)
+           → FileApplier.apply (canonical path write + read-back + restore)
+       → (if applied) VerificationExecutor.verify / verify_python_compile
+   → PatchStageResult per patch; first failure stops the run
 ```
 
-The architecture is intentionally modular so future capabilities can be added without redesigning the runtime.
+Pipeline failure stages: validation / controller / risk / approval /
+apply_verify (worker_action_pipeline.py:46-60). Result contract
+`WorkerPipelineResult` exposes apply_success, verification_passed,
+evidence, stdout/stderr, exit_code, failure_stage.
+
+Risk gate is OFF by default (`risk_gate_enabled` = both constructor args
+provided; worker_action_pipeline.py:213). `build_recovery_agent` enables
+it only when the caller explicitly passes `risk_engine` and `risk_policy`
+(MISSION-011 opt-in; default stays off by design, D-021). When active the
+flow is: RiskEngine.classify -> RiskPolicy.decide -> (UNKNOWN/DENY stops,
+HIGH/CRITICAL requires approval) -> Controller -> ApplyVerifyPipeline with
+the policy-chosen verification depth. VERIFIED — `tests/risk_pipeline_test.py`.
 
 ---
 
-# Final Principle
+# 8. Worker (simulation/agent/worker/)
 
-The runtime should always answer four questions:
+- `WorkerAgent`: enforces `WorkerPolicy` + task `allowed_actions`
+  (empty = unconstrained, non-empty = fail-closed), checks read path scope
+  via `PathPolicy`, reads files, calls the analyzer, verifies
+  `old_text` occurs exactly once, builds `PatchProposal` (full-file
+  old/new content).
+- `LLMCodeAnalyzer`: prompts an LLM provider, parses JSON into
+  `AnalysisResult` with fail-closed validation (MISSION-010); strips code
+  fences; rejects malformed/missing fields.
+- `AnalysisResult`: frozen contract; `confidence`/`risk` are advisory
+  only (risk authority is the RiskEngine).
+- `PatchProposal`: frozen; deterministic SHA-256 `fingerprint()` over all
+  fields.
+- `PatchValidator`: action=="modify", scope check, existence/is_file,
+  exact current-content==old_content, non-empty change.
+- `WorkerExecutor`: builds WorkerTask and runs WorkerAgent.
 
-1. What happened?
+---
 
-2. Why did it happen?
+# 9. Apply & Verification
 
-3. Can it be replayed?
+- `Controller` (`agent/controller/controller.py`): approves only when
+  `validation.valid is True` (strict identity) and action=="modify";
+  malformed/missing validation fails closed. Message text is never the
+  signal (MISSION-007).
+- `ApplyAuthorization`: `decision.approved is True` AND
+  `decision.patch_fingerprint == patch.fingerprint()`.
+- `FileApplier`: re-checks scope via `PathPolicy.resolve_target`
+  (canonical path), reads current content, requires exact
+  `old_content` match at write time, writes, reads back, and restores on
+  mismatch (MISSION-006).
+- `VerificationExecutor` (`agent/verify/verification_executor.py`):
+  `verify` = compileall + pytest; `verify_python_compile` = compile only.
+  Commands run as arg lists (no shell). PASS/FAIL with evidence. Both
+  depths are tested (MISSION-011); the risk policy currently selects
+  `compile+tests` for every non-deny level.
+- `CommandRunner`: subprocess.run with timeout; captures stdout/stderr.
 
-4. Can it be verified?
+---
 
-If the runtime cannot answer one of these questions, the architecture should be improved.
+# 10. Bounded Recovery (simulation/agent/recovery/)
+
+- `BoundedRecoveryEngine`: iterative loop over a single attempt counter,
+  hard cap `MAX_ATTEMPTS_CAP = 3`; verification FAIL retries if budget
+  remains; validator/controller/apply failures are terminal; duplicate
+  fingerprint suppression; exceptions terminal. Never recurses.
+- `RecoveryAttempt` / `RecoveryResult`: append-only evidence contracts
+  with final_apply/verification accessors.
+- `recovery_assembly.build_recovery_agent()`: the ONLY production wiring
+  that enables apply+verify+recovery; binds a `WorkerEvidenceRecorder`
+  backed by the Kernel. Optional `risk_engine`/`risk_policy` parameters
+  expose the pipeline risk gate as an explicit opt-in (off by default,
+  D-021).
+
+---
+
+# 11. Evidence Recording (simulation/agent/evidence/)
+
+- `WorkerEventType`: 13 worker lifecycle event types
+  (WorkerTaskCreated ... WorkerRecoveryFailed).
+- `build_worker_event`: factory with allow-list.
+- `WorkerEvidenceRecorder`: dispatches events via `kernel.dispatch`
+  (so sequence/hash-chain/snapshot/replay all apply) and mirrors steps
+  into DecisionTrace. Payload contract: fingerprints and status only,
+  never patch content / stdout / stderr / secrets.
+
+---
+
+# 12. Security (simulation/security/)
+
+- `PathPolicy`: fail-closed path scope. Canonicalization via
+  `Path.resolve(strict=False)` + `os.path.normcase`; `..` components
+  rejected; containment via `_within`; symlink/junction escape detected;
+  empty/None scope fails closed.
+- `HashChain` / `HashVerifier`: SHA-256 chaining; `verify` recomputes
+  from GENESIS and returns False on break (prints "Hash bozuk:" —
+  informational, no secrets).
+- `RiskEngine` / `RiskPolicy` / `RiskLevel` (MISSION-011): deterministic
+  system-derived risk from path/action/change-size/content signals;
+  advisory LLM risk can only raise the level; policy maps UNKNOWN->DENY,
+  HIGH/CRITICAL->human approval, LOW/MEDIUM->auto (max_attempts
+  bounded). Tested (tests/risk_*.py, 83 tests, MISSION-011). The gate is
+  opt-in: active only when both `risk_engine` and `risk_policy` are passed
+  to `WorkerActionPipeline` / `build_recovery_agent`.
+
+---
+
+# 13. LLM Providers (simulation/llm/)
+
+- `BaseProvider` ABC + `ProviderError`.
+- `OpenRouterProvider`: requests.post with `timeout=(10,120)`, fail-closed
+  ProviderError on HTTP>=400 / network / JSON errors, secret-safe logging
+  (only status code + model at DEBUG), no response-body prints
+  (MISSION-003).
+- `ProviderFactory.create()` -> OpenRouterProvider (only provider).
+- Default model: `deepseek/deepseek-chat`.
+
+---
+
+# 14. Shipped Entry Point (agent_run.py)
+
+- `--recovery` flag: uses `build_recovery_agent`.
+- `--allowed-path` (repeatable): worker read/propose/apply scope;
+  empty by default (fail-closed, no mutations).
+- Default: `Agent(kernel)` proposal-only chat loop.
+- REPL prompts in Turkish; on "exit"/"quit" exits.
+
+---
+
+# 15. Known Architectural Gaps (code-verified)
+
+- `weather` strategy planned but no executor registered -> ValueError at
+  runtime (planner.py:55, strategy_dispatcher.py).
+- `approval_store` interface consumed but never implemented
+  (MISSION-012); HIGH/CRITICAL risk therefore fails closed at the approval
+  stage until then.
+- Risk gate tested but DEFAULT OFF: it activates only when both
+  `risk_engine` and `risk_policy` are explicitly wired
+  (`build_recovery_agent`/`WorkerActionPipeline`); the shipped assembly
+  stays gate-off by design (D-021, explicit opt-in).
+- DecisionTrace in-memory only.
+- `simulation/domain/`, `simulation/services/`,
+  `persistence/event_store_backup.py`, `persistence/recovery.py`,
+  `snapshot/snapshot_manager.py` duplicate/overlap with
+  `simulation/snapshot/` (multiple snapshot implementations exist:
+  `persistence/snapshot.py`, `snapshot/snapshot_manager.py`).
+- Empty test subpackages `tests/chaos|integration|property|unit/`.
+- The simulation/ tree contains stray empty Turkish-named directories
+  (e.g., `(sadece/`, `Bırak/`, `Boş/`, `için)/`, `klasörü/`, `paketi/`,
+  `Python/`, `yapmak/`) — likely agent-created junk (VERIFIED by listing).

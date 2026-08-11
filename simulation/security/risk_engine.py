@@ -155,10 +155,7 @@ class RiskEngine:
 
             signals.append(("action", "missing"))
 
-            level = RiskLevel.max_level(
-                level,
-                RiskLevel.UNKNOWN,
-            )
+            level = RiskLevel.UNKNOWN
 
         elif action != "modify":
 
