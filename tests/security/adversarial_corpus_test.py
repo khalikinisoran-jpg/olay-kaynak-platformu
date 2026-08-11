@@ -503,11 +503,19 @@ def test_a05_unsupported_action_is_denied(corpus, tmp_path):
 
 def test_a05b_worker_enforces_task_allowed_actions(corpus, tmp_path):
 
+    from simulation.agent.worker.analysis_result import (
+        AnalysisResult
+    )
+
     class RecordingAnalyzer:
 
         def analyze(self, path, content, description):
             self.path = path
-            return ("proposal", content, content + "\n# marker\n")
+            return AnalysisResult(
+                diagnosis="proposal",
+                old_text=content,
+                new_text=content + "\n# marker\n",
+            )
 
     target = tmp_path / "target.txt"
 
@@ -558,13 +566,17 @@ def test_a05b_worker_enforces_task_allowed_actions(corpus, tmp_path):
 
 def test_a06_duplicate_old_text_is_rejected(corpus, tmp_path):
 
+    from simulation.agent.worker.analysis_result import (
+        AnalysisResult
+    )
+
     class DuplicateAnalyzer:
 
         def analyze(self, path, content, description):
-            return (
-                "duplicate match",
-                "dup\n",
-                "unique\n",
+            return AnalysisResult(
+                diagnosis="duplicate match",
+                old_text="dup\n",
+                new_text="unique\n",
             )
 
     target = tmp_path / "target.txt"

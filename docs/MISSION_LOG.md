@@ -848,4 +848,90 @@ tests pass on this environment).
 
 ---
 
+## MISSION-010 — Structured Worker Analysis Result
+
+**Status:** VERIFIED
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+
+### Objective
+
+Turn the Worker/LLM analysis output into a reliable, fail-closed
+structured contract. The real existing contract was the
+`(diagnosis, old_text, new_text)` tuple returned by
+`LLMCodeAnalyzer.analyze` / consumed by `WorkerAgent.run`; the new
+contract is a frozen `AnalysisResult` that keeps those three fields as
+the strict core and adds advisory-only fields
+(`evidence`, `confidence`, `risk`, `explanation`, `metadata`).
+
+### Changed Files
+
+- `simulation/agent/worker/analysis_result.py` (new) — frozen
+  `AnalysisResult` dataclass. Enforced at construction: non-empty string
+  `diagnosis`/`old_text`/`new_text`; `old_text != new_text` (no empty
+  proposal); `confidence` is `None` or a finite number in `[0, 1]`;
+  `risk` is `None` or one of LOW/MEDIUM/HIGH/CRITICAL/UNKNOWN
+  (case-insensitive, normalized); `evidence` is a tuple of strings;
+  `metadata` is a dict. Any malformed value raises → fail-closed.
+- `simulation/agent/worker/llm_code_analyzer.py` — optional `provider`
+  injection (deterministic tests); `analyze` now returns an
+  `AnalysisResult`; strict JSON/type validation (non-object JSON,
+  missing/empty diagnosis, missing/non-string old_text/new_text,
+  `old_text` absent from content, `old_text == new_text`, invalid
+  confidence/risk all fail closed); code-fence stripping preserved.
+- `simulation/agent/worker/worker_agent.py` — consumes
+  `AnalysisResult`; a non-`AnalysisResult` analyzer return is rejected
+  (fail-closed), recorded as inspection failure, never proposed.
+- `tests/fake_worker_analyzer.py`, `tests/security/worker_read_scope_test.py`,
+  `tests/security/adversarial_corpus_test.py` — test analyzers updated to
+  return `AnalysisResult`.
+- `tests/llm_provider_integration_test.py` — gated live test consumes the
+  structured result.
+- `tests/structured_analysis_test.py` (new) — 41 tests.
+
+### Design Decisions
+
+- `confidence` and `risk` are explicitly advisory. They are validated
+  for well-formedness but never treated as a security authority; the
+  deterministic validator/controller/apply/verification layers remain
+  the decision authority (KRTK: "LLM confidence is a signal").
+- Backward compatibility was deliberately not preserved for the tuple
+  return: accepting both tuple and `AnalysisResult` would weaken the
+  contract (a malformed analyzer return could slip through). All test
+  analyzers were updated to the single structured contract.
+- The analyzer validates shape, not semantics: suspicious `new_text`
+  content is still passed through as a proposal because bounding content
+  is the job of validator/controller/apply/verification, not the parser.
+
+### Security Impact
+
+- A malformed/missing field or unexpected type in an LLM analysis can no
+  longer reach the proposal stage; the worker records an inspection
+  failure and produces no patch.
+- LLM `risk`/`confidence` remain non-authoritative signals for later
+  missions (RiskEngine is the authority, MISSION-011).
+
+### Tests
+
+`python -m pytest -q` = **251 passed, 9 skipped** (was 210/9).
+`git diff --check` = clean (only LF/CRLF line-ending warnings).
+
+### Known Limitations
+
+- The analyzer cannot detect semantic lies in `diagnosis`/`new_text`;
+  malicious-but-well-formed proposals are handled by downstream
+  deterministic layers (tests assert the patch path stays task-scoped).
+- Live LLM end-to-end behavior is covered only by the opt-in
+  `live_llm` marker tests.
+
+### Remaining Work
+
+- MISSION-011 Risk/Policy Engine.
+- MISSION-012 Human Approval Boundary.
+- MISSION-013 Advanced adversarial benchmark.
+- MISSION-014 Agent-independent enforcement.
+- MISSION-015 Productization readiness assessment.
+
+---
+
 # End of Mission Log

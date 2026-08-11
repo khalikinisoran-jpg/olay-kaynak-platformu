@@ -43,7 +43,7 @@ def test_real_llm_produces_proposal_in_memory():
         "    return a - b\n"
     )
 
-    diagnosis, old_text, new_text = (
+    analysis = (
         analyzer.analyze(
             path="synthetic_proposal.py",
             content=content,
@@ -55,21 +55,24 @@ def test_real_llm_produces_proposal_in_memory():
         )
     )
 
-    assert isinstance(diagnosis, str)
+    assert isinstance(
+        analysis.diagnosis,
+        str
+    )
 
-    assert diagnosis.strip()
+    assert analysis.diagnosis.strip()
 
-    assert isinstance(old_text, str)
+    assert isinstance(analysis.old_text, str)
 
-    assert old_text.strip()
+    assert analysis.old_text.strip()
 
-    assert content.count(old_text) == 1
+    assert content.count(analysis.old_text) == 1
 
-    assert isinstance(new_text, str)
+    assert isinstance(analysis.new_text, str)
 
-    assert new_text.strip()
+    assert analysis.new_text.strip()
 
-    assert new_text != old_text
+    assert analysis.new_text != analysis.old_text
 
 
 @pytest.mark.skipif(

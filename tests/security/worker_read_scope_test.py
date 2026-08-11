@@ -4,6 +4,10 @@ import sys
 
 import pytest
 
+from simulation.agent.worker.analysis_result import (
+    AnalysisResult
+)
+
 from simulation.agent.worker.worker_agent import (
     WorkerAgent
 )
@@ -24,7 +28,7 @@ class RecordingAnalyzer:
         path,
         content,
         description
-    ):
+    ) -> AnalysisResult:
 
         self.calls.append({
             "path": path,
@@ -39,10 +43,12 @@ class RecordingAnalyzer:
             + "\n# Recorded worker marker\n"
         )
 
-        return (
-            "Recorded analyzer produced a patch.",
-            old_text,
-            new_text
+        return AnalysisResult(
+            diagnosis=(
+                "Recorded analyzer produced a patch."
+            ),
+            old_text=old_text,
+            new_text=new_text,
         )
 
 

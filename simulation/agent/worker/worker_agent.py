@@ -1,5 +1,9 @@
 from pathlib import Path
 
+from simulation.agent.worker.analysis_result import (
+    AnalysisResult
+)
+
 from simulation.agent.worker.llm_code_analyzer import (
     LLMCodeAnalyzer
 )
@@ -155,9 +159,7 @@ class WorkerAgent:
                 })
 
                 (
-                    diagnosis,
-                    old_text,
-                    new_text
+                    analysis
                 ) = self.llm_analyzer.analyze(
                     path=path_value,
                     content=content,
@@ -165,6 +167,22 @@ class WorkerAgent:
                         task
                     )
                 )
+
+                if not isinstance(
+                    analysis,
+                    AnalysisResult
+                ):
+
+                    raise ValueError(
+                        "Analyzer must return an "
+                        "AnalysisResult."
+                    )
+
+                diagnosis = analysis.diagnosis
+
+                old_text = analysis.old_text
+
+                new_text = analysis.new_text
 
                 if content.count(old_text) != 1:
 
