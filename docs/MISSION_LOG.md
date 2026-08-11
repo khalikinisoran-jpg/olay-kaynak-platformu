@@ -601,4 +601,251 @@ Bu kaydın ilişkili olduğu commit: `ea9b2ab` — `Add worker decision trace ev
 
 ---
 
+## MISSION-005 — Security Baseline Audit
+
+**Status:** VERIFIED (audit) + minimal hardening applied
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+**Commit:** `93a9d4b` (Security baseline audit and hardening)
+
+### Objective
+
+Extract the real code-level security baseline of the worker action
+pipeline and verify (with code + test evidence) three previously reported
+findings. Produce severity, evidence, existing/missing tests and minimal
+fixes. New audit artifact: `docs/SECURITY_BASELINE.md`.
+
+### Finding Classifications
+
+| Finding | Classification |
+|---------|----------------|
+| A) `test_apply_executor_is_disabled_by_default` | NOT REPRODUCED (as named). No such test exists. The property "apply not active by default" IS enforced and covered by `test_default_agent_does_not_construct_action_pipeline` and `test_default_agent_runtime_is_proposal_only_no_apply_no_verify`. |
+| B) `patch.path not in patch.allowed_paths` exact-match | NOT REPRODUCED. No exact-membership check exists; scope is canonical containment via `PathPolicy.check_scope` (resolve + normcase + `_within`). |
+| C) Controller string-based validator message dependency | VERIFIED. `Controller.approve` decided on `validation_message == "Patch validation passed."`. Fixed in MISSION-007. |
+| D) `WorkerTask.allowed_actions` carried but not enforced | VERIFIED. Fixed in this mission: `WorkerAgent.REQUIRED_ACTIONS` now checked against both `WorkerPolicy` and `task.allowed_actions` (empty = unconstrained, non-empty = fail-closed). |
+| E) FileApplier TOCTOU between scope check and write | OPEN at audit; hardened in MISSION-006. |
+
+### Changed Files
+
+- `simulation/agent/worker/worker_agent.py` — enforce `task.allowed_actions`.
+- `tests/security/worker_read_scope_test.py` — 4 new tests (allowed_actions
+  enforcement: read excluded, propose excluded, empty unconstrained, full set
+  accepted).
+- `docs/SECURITY_BASELINE.md` (new) — full audit findings with severity,
+  evidence, existing tests, missing tests, next steps.
+
+### Design Decisions
+
+- Empty `allowed_actions` stays unconstrained (backward compatible; existing
+  corpus constructs tasks without it). Non-empty restricts the worker.
+- Audit evidence is code + test, not documentation claims.
+
+### Security Impact
+
+- Fail-closed task-level action restriction added (default-deny when a task
+  declares a restricted action set).
+- No public pipeline/apply behavior changed.
+
+### Tests
+
+`python -m pytest -q` = **176 passed, 7 skipped** (was 172/7).
+
+### Limitations
+
+- Empty `allowed_actions` semantics is unconstrained, not deny-all (documented
+  in SECURITY_BASELINE.md).
+- Junction/symlink tests may skip where the OS lacks privileges.
+
+### Remaining Work
+
+- MISSION-006 patch integrity hardening.
+- MISSION-007 controller structured decision contract.
+- MISSION-008 adversarial corpus.
+
+---
+
+## MISSION-006 — Patch Integrity Hardening
+
+**Status:** VERIFIED
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+**Commit:** `f5d1fbc` (Harden patch integrity boundary)
+
+### Objective
+
+Strengthen the patch application boundary: stale state, concurrent
+modification, path normalization, fingerprint consistency and "approved
+patch == applied patch".
+
+### Changed Files
+
+- `simulation/security/path_policy.py` — new public `resolve_target(raw)`
+  returning the exact canonical form `check_scope` verifies.
+- `simulation/agent/apply/file_applier.py` — reads/writes through the
+  canonical resolved target; after every write the target is read back; a
+  mismatch triggers bounded restore of `old_content` and FAIL
+  ("Patch integrity check failed ... target restored"). Read failures are
+  now caught and reported.
+- `tests/patch_integrity_test.py` (new) — 6 tests: concurrent modification
+  between validation and apply; second stale patch on same file; write-through
+  in-scope symlink; corrupted-write detection + restore; approved-fingerprint
+  == applied content; fingerprint-mismatch denial before write.
+
+### Design Decisions
+
+- The existing full-file `old_content` exact-match at both validator and
+  applier was preserved (it already implements the
+  EXPECTED-OLD-STATE -> exact match? apply : DENY invariant).
+- The write is tied to the canonical path that was scope-verified, closing the
+  largest part of the symlink-swap window.
+- Post-write read-back turns a silent wrong write into a detectable FAIL with a
+  bounded restore; no rollback loop, no unlimited recovery.
+
+### Security Impact
+
+- Stale/concurrent-modified targets are never written.
+- Applied bytes on disk are verified against the approved `new_content`.
+- A silently corrupted write is detected and the target restored.
+
+### Tests
+
+`python -m pytest -q` = **181 passed, 8 skipped**.
+
+### Limitations
+
+- Restore is best-effort (a failed restore does not block the FAIL result).
+- The read-back/restore does not provide atomicity against an adversarial
+  concurrent writer (out of scope for the current single-process model).
+
+### Remaining Work
+
+- MISSION-007 controller structured decision contract.
+- MISSION-008 adversarial corpus.
+
+---
+
+## MISSION-007 — Controller Decision Hardening
+
+**Status:** VERIFIED
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+**Commit:** `2249a04` (Harden controller decision contract)
+
+### Objective
+
+Remove the Controller's fragile string-message dependency and anchor the
+approval decision to a typed, structured validation contract that fails
+closed on malformed/missing/unknown input.
+
+### Changed Files
+
+- `simulation/agent/worker/validation_result.py` (new) — frozen
+  `ValidationResult(valid: bool, message: str)` with `passed` property.
+- `simulation/agent/controller/controller.py` — `approve(patch, validation)`
+  now requires a `ValidationResult`; `None` -> "Missing validator result.";
+  non-ValidationResult -> "Malformed validator result."; decision only on
+  `validation.valid is True`; unsupported action rejected independently.
+  Message text is never consulted.
+- `simulation/agent/pipeline/worker_action_pipeline.py` — builds
+  `ValidationResult(valid, message)` from the validator output.
+- `tests/worker_contract_test.py`, `tests/worker_action_pipeline_test.py`,
+  `tests/apply_verify_pipeline_test.py` — updated to the typed contract.
+- `tests/controller_decision_test.py` (new) — 13 tests (PASS, FAIL, missing,
+  malformed string/dict, unknown status values, truthy non-bool valid,
+  unsupported action, message-not-the-signal, exact-True approval required,
+  fingerprint match required, pipeline scope denial before controller).
+
+### Design Decisions
+
+- `PatchValidator.validate` keeps its `(bool, str)` return (no churn); the
+  pipeline wraps it in a `ValidationResult`.
+- Strict `is True` comparison: `"yes"`, `1`, `None` all fail closed.
+
+### Security Impact
+
+- The approval gate no longer depends on a human-readable message string.
+- Malformed or missing validator output cannot produce an approval.
+
+### Tests
+
+`python -m pytest -q` = **194 passed, 8 skipped**.
+
+### Limitations
+
+- High-risk denial / risk engine is not implemented (ROADMAP phase; no risk
+  classification exists yet, so no high-risk policy to test).
+- The Controller still trusts the structured `valid` flag produced by the
+  pipeline; defense-in-depth relies on the typed contract + fail-closed type
+  check.
+
+### Remaining Work
+
+- MISSION-008 adversarial corpus.
+- MISSION-009 state/documentation synchronization.
+
+---
+
+## MISSION-008 — Adversarial Security Test Corpus V0.1
+
+**Status:** VERIFIED
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+**Commit:** `27effbf` (Add adversarial security test corpus)
+
+### Objective
+
+Convert the threat model into executable, deterministic tests that measure
+whether the security boundaries DENY / FAIL-CLOSED under attack-like input.
+All scenarios run in isolated `tmp_path` fixtures; no production file is ever
+touched.
+
+### Changed Files
+
+- `tests/security/adversarial_corpus_test.py` (new) — 16 test functions /
+  15 corpus records (A01-A12 + sub-cases) with a shared module-scoped
+  `Corpus` collector and a final summary test that prints the
+  ATTACK / EXPECTED / ACTUAL / PASS table and fails if any entry failed.
+
+### Corpus Coverage
+
+| ID | Attack | Result |
+|----|--------|--------|
+| A01 | Path traversal (`..`) | DENY, no write |
+| A02 | Absolute path outside scope | DENY, no write |
+| A03 / A03b | Symlink / junction escape | DENY, outside file untouched |
+| A04 | Unauthorized path (file not in allowed_paths) | DENY, victim unchanged |
+| A05 / A05b | Unauthorized action (`delete`); task `allowed_actions` restriction | DENY |
+| A06 | Duplicate old_text match | REJECT, no proposal |
+| A07 | Stale patch / concurrent modification | DENY, current content intact |
+| A08 / A08b | Fake success (apply != verify; corrupted write) | FAIL + restore |
+| A09 | Verification forgery / specification gaming | verification only from executor |
+| A10 | Retry / probing abuse (999 requested) | hard cap 3, never a 4th attempt |
+| A11 | Evidence tampering after dispatch | hash chain detects mutation |
+| A12 / A12b | Fingerprint boundary escape; prefix-confusion | DENY |
+
+### Security Impact
+
+- The corpus is fail-closed by construction: the summary test asserts every
+  recorded entry passed, so a regression in any covered boundary fails the
+  suite.
+
+### Tests
+
+`python -m pytest -q` = **210 passed, 9 skipped** (2 gated live-LLM + 7
+symlink-dependent tests skipped where the OS denies symlink creation; junction
+tests pass on this environment).
+
+### Limitations
+
+- Symlink test skips where the OS lacks privileges (junction variant covers
+  the Windows escape case).
+- The corpus measures current boundaries; it does not add new runtime
+  enforcement.
+
+### Remaining Work
+
+- MISSION-009 state/documentation synchronization.
+
+---
+
 # End of Mission Log

@@ -24,7 +24,7 @@ worker-action-pipeline
 
 Branch HEAD
 
-ea9b2ab
+27effbf
 
 ---
 
@@ -62,24 +62,33 @@ Current development is post-v0.5.0 on the worker-action-pipeline branch (no new 
 # Current Sprint / Objective
 
 Worker Action Pipeline & Bounded Verification Recovery & Decision Trace Evidence
+& Security Kernel Hardening
 
-Current mission (MISSION-004): Worker action lifecycle decisions (task created,
-inspection, patch proposed/validated/approved/rejected, apply, verification,
-recovery attempt/outcome) are recorded as hash-chained events in the existing
-Event Store and as Decision Trace steps. A new opt-in `--recovery` mode wires
-apply + verification + bounded recovery into the shipped `agent_run.py` entry
-point; the default runtime stays proposal-only.
+Completed this sprint (MISSION-005..MISSION-008, branch worker-action-pipeline):
 
-Current pipeline (implemented and committed):
+- MISSION-005 — Security baseline audit: `docs/SECURITY_BASELINE.md` with
+  code+test evidence; three previously reported findings classified
+  (A: NOT REPRODUCED as named but property verified by other tests;
+  B: NOT REPRODUCED; C: VERIFIED and fixed in MISSION-007); `WorkerTask.allowed_actions`
+  is now enforced (fail-closed when restricted).
+- MISSION-006 — Patch integrity hardening: FileApplier writes through the
+  canonical scope-verified path and verifies the write by read-back with
+  bounded restore; new `tests/patch_integrity_test.py`.
+- MISSION-007 — Controller decision hardening: typed `ValidationResult`
+  contract; approval decided on `valid is True`, never on message text;
+  malformed/missing/unknown input fails closed; new
+  `tests/controller_decision_test.py`.
+- MISSION-008 — Adversarial security test corpus V0.1
+  (`tests/security/adversarial_corpus_test.py`, A01-A12 + sub-cases, 15 records,
+  all PASS).
 
-Worker
-→ Validator
-→ Controller
-→ Apply
-→ Verification
-→ Bounded Recovery (max 3 attempts)
-
-Recovery is NOT active by default. It becomes active only when the runtime is explicitly assembled through build_recovery_agent() (simulation/agent/recovery/recovery_assembly.py) or when agent_run.py is started with --recovery. The default Agent(kernel) path (and the default agent_run.py invocation) remains proposal-only: it never applies, verifies or retries. Every pipeline/recovery decision is recorded as a WorkerEvidenceRecorder event when the assembly is used.
+The apply/verify/recovery pipeline is NOT active by default. It becomes active
+only when the runtime is explicitly assembled through build_recovery_agent()
+(simulation/agent/recovery/recovery_assembly.py) or when agent_run.py is
+started with --recovery. The default Agent(kernel) path (and the default
+agent_run.py invocation) remains proposal-only: it never applies, verifies or
+retries. Every pipeline/recovery decision is recorded as a
+WorkerEvidenceRecorder event when the assembly is used.
 
 ---
 
@@ -91,7 +100,7 @@ Evidence hierarchy used:
 
 1. Git history (commits)
 2. Source code behavior
-3. Automated test results (python -m pytest -q = 172 passed, 7 skipped)
+3. Automated test results (python -m pytest -q = 210 passed, 9 skipped)
 4. Documentation (lowest priority; docs may be stale)
 
 ## VERIFIED
@@ -116,6 +125,10 @@ Code exists, is committed, and is covered by passing deterministic tests.
 | Bounded Recovery (BoundedRecoveryEngine, RecoveryAttempt, RecoveryResult, RecoveryAssembly) | Committed (90400c9); recovery_engine_test.py (~2100 lines, attempt cap, duplicate-fingerprint prevention, fail-closed behavior, runtime assembly test) |
 | Worker Decision Trace Evidence (WorkerEvidenceRecorder, worker_events factory, State.worker_trace, reducer replay) | Committed; tests/worker_evidence_test.py (13 tests: stage event ordering, payload safety, hash-chain integrity after pipeline run, replay reconstruction, recovery attempt/outcome events) |
 | Path Security (PathPolicy: traversal, scope, symlink/junction policy) | Committed; path_security_test.py, worker_read_scope_test.py |
+| Worker Task Action Scope (WorkerAgent enforces task.allowed_actions) | Committed (93a9d4b); worker_read_scope_test.py (4 tests) |
+| Patch Integrity Boundary (FileApplier canonical-path write, read-back verify + restore, stale/concurrent denial, fingerprint==applied content) | Committed (f5d1fbc); patch_integrity_test.py (6 tests) |
+| Controller Structured Decision Contract (ValidationResult; fail-closed on malformed/missing/unknown; message text is never the signal) | Committed (2249a04); controller_decision_test.py (13 tests) |
+| Adversarial Security Corpus V0.1 (A01-A12 + sub-cases) | Committed (27effbf); adversarial_corpus_test.py (15 corpus records, all PASS, summary gate) |
 
 ## IMPLEMENTED BUT UNVERIFIED
 
@@ -143,7 +156,7 @@ Documented in ROADMAP.md but no implementation exists.
 Cannot be classified from available evidence.
 
 - Live LLM end-to-end behavior and JSON contract compliance with a real provider (proposal-only level verified via gated test; full pipeline including apply/verification/recovery still untested live)
-- Security behavior on environments where symlink/junction tests are skipped (5 junction-dependent tests skip when junction creation is unavailable)
+- Security behavior on environments where symlink creation is unavailable (7 symlink-dependent tests skip when the OS denies symlink creation; junction tests pass on this Windows environment)
 - Production/deployment behavior (no production configuration exists)
 
 ---
@@ -207,18 +220,23 @@ Cannot be classified from available evidence.
 - Opt-in `--recovery` mode in agent_run.py (apply + verification + bounded recovery wired to the shipped entry point; default stays proposal-only)
 - OpenRouter provider hardening (connect/read timeout, fail-closed ProviderError, secret-safe logging, no debug prints)
 - Gated real-LLM integration test (`live_llm` marker; opt-in only, proposal-only, no file mutation)
+- Security Baseline Audit (docs/SECURITY_BASELINE.md: severity, evidence, existing/missing tests)
+- Worker Task Action Scope enforcement (task.allowed_actions fail-closed when restricted)
+- Patch Integrity Boundary hardening (canonical-path write + read-back verification + bounded restore; stale/concurrent denial; approved-fingerprint == applied content)
+- Controller Structured Decision Contract (ValidationResult; typed fail-closed approval)
+- Adversarial Security Test Corpus V0.1 (A01-A12, executable, summary-gated)
 
 ---
 
 # Verified Baseline
 
-Test suite: 172 passed, 7 skipped (python -m pytest -q, 2026-08-11). The 7 skipped tests are: 5 junction-dependent path-security tests and 2 opt-in `live_llm` integration tests that never run in the normal suite (no API cost, no provider call).
+Test suite: 210 passed, 9 skipped (python -m pytest -q, 2026-08-11). The 9 skipped tests are: 2 opt-in `live_llm` integration tests that never run in the normal suite (no API cost, no provider call), and 7 symlink-dependent tests (5 baseline path-security/read-scope, 1 patch-integrity, 1 adversarial corpus) skipped where the OS denies symlink creation (Windows requires elevation or Developer Mode). Junction-based escape tests use `mklink /J` and pass on this environment.
 
 Live LLM (opt-in): `RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provider_integration_test.py -q` = 2 passed (2026-08-11): real provider produces an in-memory proposal; real Worker + real LLM chain produces a proposal without mutating the file.
 
 git diff --check: clean.
 
-Working tree: clean on worker-action-pipeline @ ea9b2ab.
+Working tree: clean on worker-action-pipeline @ 27effbf.
 
 ---
 
@@ -232,6 +250,8 @@ Unreleased. Candidate areas (see ROADMAP.md):
 - Secret scanning
 - Persistent decision trace / durable trace reconstruction
 - Recovery enabled in the default (flag-less) runtime — requires an explicit product decision (apply stays non-default by design)
+- Multi-agent / concurrent event-write testing
+- Benchmark measurements (event append / replay / hash)
 
 ---
 

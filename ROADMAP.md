@@ -20,10 +20,17 @@ The current system has:
 
 Current verified baseline:
 
-- Full test suite: 28 passed
+- Full test suite: 210 passed, 9 skipped
 - Working tree verified clean
 - Worker contract tests isolated from the live LLM
 - Main branch synchronized with origin
+- Worker Action Pipeline + Bounded Recovery + Decision Trace Evidence
+  (MISSION-003/004) on branch worker-action-pipeline
+- Security Kernel hardening (MISSION-005..MISSION-008): security baseline
+  audit (docs/SECURITY_BASELINE.md), worker task action scope enforcement,
+  patch integrity boundary (canonical write + read-back + restore), typed
+  Controller validation contract (ValidationResult, fail-closed), adversarial
+  security corpus V0.1 (A01-A12, summary-gated)
 
 ---
 

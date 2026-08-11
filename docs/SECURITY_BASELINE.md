@@ -195,7 +195,7 @@ creates fresh events (append-only, no overwrite). Documented in MISSION-004.
 | Patch path scope | Enforced in PatchValidator and FileApplier | VERIFIED |
 | Path traversal | `..` components rejected at both scope and patch level | VERIFIED |
 | Absolute paths | Canonicalized via resolve + normcase; absolute-outside denied | VERIFIED |
-| Symlink/junction behavior | Escapes rejected; in-scope symlinks accepted | VERIFIED (5 junction tests may skip) |
+| Symlink/junction behavior | Escapes rejected; in-scope symlinks accepted | VERIFIED (symlink tests may skip; junction tests pass on this env) |
 | allowed_paths | Empty/None/invalid entries fail closed | VERIFIED |
 | allowed_actions | Now enforced when provided (this mission) | VERIFIED (new) |
 | PatchProposal | Frozen dataclass; deterministic SHA-256 fingerprint over all fields | VERIFIED |
