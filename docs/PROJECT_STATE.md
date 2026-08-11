@@ -24,7 +24,7 @@ worker-action-pipeline
 
 Branch HEAD
 
-18a1f6c
+ea9b2ab
 
 ---
 
@@ -218,7 +218,7 @@ Live LLM (opt-in): `RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provid
 
 git diff --check: clean.
 
-Working tree: clean on worker-action-pipeline @ (MISSION-004 commit).
+Working tree: clean on worker-action-pipeline @ ea9b2ab.
 
 ---
 

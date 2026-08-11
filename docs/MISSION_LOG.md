@@ -478,7 +478,7 @@ Sonuç: **2 passed in 8.03s** — gerçek DeepSeek (OpenRouter) in-memory synthe
 **Status:** VERIFIED
 **Date:** 2026-08-11
 **Branch:** worker-action-pipeline
-**Commit:** (bu mission'ın commit hash'i — aşağıda Commit Hash bölümünde)
+**Commit:** `ea9b2ab` (Add worker decision trace evidence)
 
 ### Objective
 
@@ -597,8 +597,7 @@ Yeni testler (`tests/worker_evidence_test.py`, 13 test):
 
 ### Commit Hash
 
-Bu kaydın ilişkili olduğu commit: `Add worker decision trace evidence`
-(aşağıda raporlanan commit).
+Bu kaydın ilişkili olduğu commit: `ea9b2ab` — `Add worker decision trace evidence`.
 
 ---
 
