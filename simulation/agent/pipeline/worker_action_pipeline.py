@@ -151,7 +151,8 @@ class WorkerActionPipeline:
         self,
         patch_validator=None,
         controller=None,
-        apply_verify_pipeline=None
+        apply_verify_pipeline=None,
+        evidence_recorder=None
     ):
 
         self.patch_validator = (
@@ -172,6 +173,8 @@ class WorkerActionPipeline:
             else ApplyVerifyPipeline()
         )
 
+        self.evidence_recorder = evidence_recorder
+
     def execute(
         self,
         worker_result: WorkerResult,
@@ -182,6 +185,18 @@ class WorkerActionPipeline:
         patches = tuple(
             worker_result.patches
         )
+
+        recorder = self.evidence_recorder
+
+        if recorder is not None:
+
+            recorder.record_task_created(
+                worker_result
+            )
+
+            recorder.record_inspection(
+                worker_result
+            )
 
         if not patches:
 
@@ -201,11 +216,27 @@ class WorkerActionPipeline:
 
         for patch in patches:
 
+            if recorder is not None:
+
+                recorder.record_patch_proposed(
+                    worker_result.task_id,
+                    patch,
+                )
+
             valid, message = (
                 self.patch_validator.validate(
                     patch
                 )
             )
+
+            if recorder is not None:
+
+                recorder.record_patch_validated(
+                    worker_result.task_id,
+                    patch,
+                    valid,
+                    message,
+                )
 
             if not valid:
 
@@ -224,6 +255,14 @@ class WorkerActionPipeline:
                 patch,
                 message,
             )
+
+            if recorder is not None:
+
+                recorder.record_controller_decision(
+                    worker_result.task_id,
+                    patch,
+                    decision,
+                )
 
             if decision.approved is not True:
 
@@ -245,6 +284,22 @@ class WorkerActionPipeline:
                 verify_paths=verify_paths,
                 test_targets=test_targets,
             )
+
+            if recorder is not None:
+
+                recorder.record_apply_result(
+                    worker_result.task_id,
+                    patch,
+                    pipeline_result.apply_result,
+                )
+
+                if pipeline_result.verification is not None:
+
+                    recorder.record_verification_result(
+                        worker_result.task_id,
+                        patch,
+                        pipeline_result.verification,
+                    )
 
             if pipeline_result.verification_ran:
 

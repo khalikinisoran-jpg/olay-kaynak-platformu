@@ -9,13 +9,17 @@ from simulation.decision.decision_trace import DecisionTrace
 
 class Kernel:
 
-    def __init__(self, event_store):
+    def __init__(self, event_store, snapshot_manager=None):
 
         self.reducer = Reducer()
 
         self.event_store = event_store
 
-        self.snapshot_manager = SnapshotManager()
+        self.snapshot_manager = (
+            snapshot_manager
+            if snapshot_manager is not None
+            else SnapshotManager()
+        )
 
         self.decision_trace = DecisionTrace()
 

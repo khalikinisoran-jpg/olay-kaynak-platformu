@@ -8,6 +8,10 @@ from simulation.agent.controller.controller import (
     Controller
 )
 
+from simulation.agent.evidence.worker_evidence_recorder import (
+    WorkerEvidenceRecorder
+)
+
 from simulation.agent.pipeline.apply_verify_pipeline import (
     ApplyVerifyPipeline
 )
@@ -41,6 +45,7 @@ def build_recovery_agent(
     controller=None,
     max_attempts=BoundedRecoveryEngine.DEFAULT_MAX_ATTEMPTS,
     provider=None,
+    evidence_recorder=None,
 ) -> Agent:
 
     """Explicit production assembly for bounded recovery.
@@ -50,7 +55,18 @@ def build_recovery_agent(
     worker_pipeline and no recovery_engine. Recovery is enabled only
     when the caller explicitly wires this assembly and passes the
     resulting Agent to the runtime.
+
+    The optional evidence recorder binds every pipeline and recovery
+    decision to the Kernel event store and decision trace. It defaults
+    to a recorder backed by the supplied kernel, so the auditable
+    trace is always active when this assembly is used.
     """
+
+    recorder = (
+        evidence_recorder
+        if evidence_recorder is not None
+        else WorkerEvidenceRecorder(kernel=kernel)
+    )
 
     action_pipeline = WorkerActionPipeline(
         patch_validator=PatchValidator(),
@@ -71,12 +87,14 @@ def build_recovery_agent(
                 else VerificationExecutor()
             ),
         ),
+        evidence_recorder=recorder,
     )
 
     recovery_engine = BoundedRecoveryEngine(
         worker=worker_executor,
         worker_pipeline=action_pipeline,
         max_attempts=max_attempts,
+        evidence_recorder=recorder,
     )
 
     return Agent(

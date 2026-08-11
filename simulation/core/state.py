@@ -21,6 +21,10 @@ class State:
         default_factory=list
     )
 
+    worker_trace: List[Any] = field(
+        default_factory=list
+    )
+
     event_counter: int = 0
 
     def to_dict(self):
@@ -59,7 +63,9 @@ class State:
 
             "memory": self.memory,
 
-            "conversation_history": self.conversation_history
+            "conversation_history": self.conversation_history,
+
+            "worker_trace": self.worker_trace
 
         }
 
@@ -97,6 +103,11 @@ class State:
 
             conversation_history=data.get(
                 "conversation_history",
+                []
+            ),
+
+            worker_trace=data.get(
+                "worker_trace",
                 []
             )
 

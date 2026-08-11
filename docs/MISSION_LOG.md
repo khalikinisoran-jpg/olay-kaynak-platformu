@@ -473,4 +473,133 @@ Sonuç: **2 passed in 8.03s** — gerçek DeepSeek (OpenRouter) in-memory synthe
 
 ---
 
+## MISSION-004 — Worker Decision Trace Evidence
+
+**Status:** VERIFIED
+**Date:** 2026-08-11
+**Branch:** worker-action-pipeline
+**Commit:** (bu mission'ın commit hash'i — aşağıda Commit Hash bölümünde)
+
+### Objective
+
+Worker action lifecycle'ın önemli karar ve sonuçlarını mevcut Event Store /
+Decision Trace mimarisine güvenli ve denetlenebilir biçimde bağlamak. MISSION-003
+raporundaki açık bulgu başlangıç kanıtı olarak kabul edildi: Worker Action Pipeline
+→ Apply → Verification → Recovery karar zinciri Decision Trace/Evidence tarafına
+bağlı değildi. Yeni bir paralel evidence sistemi icat edilmedi; mevcut
+event-sourcing altyapısı (Event, EventStore, hash-chain, Kernel.dispatch,
+DecisionTrace) kullanıldı.
+
+### Changed Files
+
+- `simulation/agent/evidence/__init__.py` (yeni) — evidence paketi dışa aktarımı.
+- `simulation/agent/evidence/worker_events.py` (yeni) — 13 worker lifecycle event tipi
+  (WorkerTaskCreated, WorkerInspectionCompleted, WorkerPatchProposed/Validated/
+  Approved/Rejected/Applied/ApplyFailed, WorkerVerificationCompleted/Failed,
+  WorkerRecoveryAttempted/Succeeded/Failed) + `build_worker_event` factory.
+- `simulation/agent/evidence/worker_evidence_recorder.py` (yeni) — WorkerEvidenceRecorder;
+  tüm aşamaları `kernel.dispatch()` üzerinden Event Store'a (hash-chain korunur) ve
+  DecisionTrace'e yazar.
+- `simulation/agent/pipeline/worker_action_pipeline.py` — opsiyonel `evidence_recorder`
+  parametresi; her aşamada (task/inspection/propose/validate/controller/apply/
+  verification) kayıt. Varsayılan None → mevcut davranış değişmez.
+- `simulation/agent/recovery/bounded_recovery_engine.py` — opsiyonel
+  `evidence_recorder`; her attempt (SUCCESS/FAILED/BLOCKED/ERROR) + final outcome
+  event'i kaydedilir. Tüm return yolları kapsanır.
+- `simulation/agent/recovery/recovery_assembly.py` — `build_recovery_agent` artık
+  kernel destekli bir WorkerEvidenceRecorder oluşturup hem pipeline'a hem recovery
+  engine'e bağlar.
+- `simulation/core/kernel.py` — `Kernel.__init__`'e opsiyonel `snapshot_manager`
+  parametresi (test izolasyonu için; varsayılan davranış değişmez).
+- `simulation/core/state.py` — `worker_trace: List[Any]` alanı eklendi.
+- `simulation/core/reducer.py` — `Worker*` event'leri için replay'de worker_trace'i
+  yeniden inşa eden dallanma eklendi.
+- `agent_run.py` — opt-in `--recovery` + `--allowed-path` argümanları; varsayılan
+  runtime proposal-only kalır (Apply default değildir), recovery yalnızca açıkça
+  istendiğinde shipped giriş noktasına bağlanır.
+- `tests/worker_evidence_test.py` (yeni) — 13 deterministik test.
+
+### Design Decisions
+
+- **Mevcut altyapıyı kullan:** Yeni evidence kanalı yok. Tüm event'ler normal Event
+  olarak `kernel.dispatch()` ile yazılır → sequence ataması, hash-chain, snapshot ve
+  replay mekanizmaları aynen korunur.
+- **Minimum davranış değişikliği:** `WorkerActionPipeline` ve
+  `BoundedRecoveryEngine`'e `evidence_recorder` opsiyonel eklendi. Recorder
+  sağlanmazsa davranış birebir eski halindedir (mevcut 159 test değişmeden geçti).
+- **Event payload güvenliği:** Patch içeriği (old_content/new_content) asla event'e
+  yazılmaz; yalnızca deterministik `patch.fingerprint()` (SHA-256) kaydedilir.
+  Verification stdout/stderr asla yazılmaz; yalnızca status/exit_code/failure_reason
+  kaydedilir. WorkerInspection event'inde ham error metni yerine yalnızca
+  path/action/status/characters tutulur.
+- **Apply default değildir:** `agent_run.py` varsayılan olarak proposal-only
+  `Agent(kernel)` kullanır; `--recovery` verilmedikçe apply/verify/recovery çalışmaz.
+- **Recovery shipped runtime'a bağlı:** `--recovery` flag'i ile `build_recovery_agent`
+  kullanılır; `--allowed-path` yoksa worker fail-closed kalır (mutasyon yok).
+- **Idempotency/duplicate:** Mevcut append-only event store semantiği korundu (dedup
+  katmanı yok). Her aşama bir çalıştırma başına tam bir kez, taze `event_id` ile
+  kaydedilir; tekrar çalıştırma yeni event'ler üretir (overwrite yok, append-only).
+
+### Security Impact
+
+- Fail-closed davranış korundu: recorder yalnızca isteğe bağlıdır; default pipeline
+  üzerinde hiçbir etkisi yoktur.
+- Yetki sınırları genişletilmedi: kayıt yalnızca gözlem; onay/apply kararlarını
+  değiştirmez.
+- Secret/API key/verification çıktısı hiçbir event payload'ında yer almaz
+  (test ile doğrulandı).
+- Hash-chain bypass edilmedi: tüm event'ler EventStore.append üzerinden
+  previous_hash/current_hash zincirine girer.
+- DecisionTrace'e yazım Kernel'in var olan `get_decision_trace()` arayüzü üzerinden
+  yapılır; yeni yan kanal yok.
+
+### Tests
+
+Deterministik suite: `python -m pytest -q` = **172 passed, 7 skipped**
+(5 junction + 2 gated live). Normal suite API çağrısı yapmaz, gerçek LLM çağrısı yok.
+
+`git diff --check` = temiz.
+
+Yeni testler (`tests/worker_evidence_test.py`, 13 test):
+- Event tip sırası (pass / validation fail / controller reject / apply fail /
+  verification fail senaryoları).
+- DecisionTrace step kaydı.
+- Payload güvenliği: patch içeriği ve verification stdout/stderr hiçbir payload'da yok;
+  fingerprint 64 hex karakter.
+- Hash-chain integrity: gerçek Kernel + izole EventStore üzerinde çalıştırma sonrası
+  `HashVerifier.verify` = True; sequence 1..N sıralı.
+- Replay: ikinci Kernel aynı store üzerinde worker_trace'i yeniden inşa eder.
+- Recovery: 1. attempt FAILED + 2. attempt SUCCESS → 2× RecoveryAttempted +
+  RecoverySucceeded event'leri; gerçek dosya mutation'ı tmp_path üzerinde doğrulandı.
+- Assembly: `build_recovery_agent` recorder'ı pipeline ve recovery engine'e bağlar.
+
+### Known Limitations
+
+- Worker task_id hâlâ sabit `"worker-task"` (mevcut WorkerExecutor davranışı);
+  event ayırt edici kimliği event_id/sequence üzerinden sağlanır.
+- Recovery outcome event'inde task_id, yalnızca final attempt'ta worker_result
+  mevcutsa doldurulur (error/bloklu attempt'larda boş olabilir).
+- DecisionTrace in-memory'dir ve kalıcı değildir (mevcut mimari kararı); event log
+  kalıcı kanıttır.
+- `--recovery` modu opt-in'dir; varsayılan runtime'da apply/verify/recovery çalışmaz
+  (bilinçli güvenlik sınırı, bu mission'da değiştirilmedi).
+- Live LLM end-to-end davranışı bu mission kapsamında test edilmedi (test yok).
+
+### Remaining Work
+
+- Structured AnalysisResult (confidence/risk) ve risk sınıflandırma.
+- Human-in-the-loop onay sınırı ve secret scanning.
+- DecisionTrace'in kalıcı hale getirilmesi / event'lerle birleştirilmesi.
+- Recovery'nin default (flagsiz) runtime'da etkinleştirilmesi kararı (şu an bilinçli
+  olarak opt-in).
+- Multi-agent / concurrent event yazım testleri.
+- Benchmark (event append / replay / hash) ölçümleri.
+
+### Commit Hash
+
+Bu kaydın ilişkili olduğu commit: `Add worker decision trace evidence`
+(aşağıda raporlanan commit).
+
+---
+
 # End of Mission Log

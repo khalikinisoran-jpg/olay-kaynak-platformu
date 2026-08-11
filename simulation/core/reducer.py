@@ -22,6 +22,10 @@ class Reducer:
             state.conversation_history
         )
 
+        worker_trace = list(
+            state.worker_trace
+        )
+
         if event.event_type == "TaskCreated":
 
             task = Task(
@@ -66,6 +70,18 @@ class Reducer:
                 f"{event.payload['key']}"
             )
 
+        elif event.event_type.startswith("Worker"):
+
+            worker_trace.append({
+
+                "event_type": event.event_type,
+
+                "sequence": event.sequence,
+
+                "payload": event.payload
+
+            })
+
         return State(
 
             tasks=tasks,
@@ -75,6 +91,8 @@ class Reducer:
             memory=memory,
 
             conversation_history=conversation_history,
+
+            worker_trace=worker_trace,
 
             event_counter=state.event_counter + 1
 

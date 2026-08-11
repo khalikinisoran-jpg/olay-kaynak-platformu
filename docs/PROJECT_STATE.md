@@ -61,9 +61,14 @@ Current development is post-v0.5.0 on the worker-action-pipeline branch (no new 
 
 # Current Sprint / Objective
 
-Worker Action Pipeline & Bounded Verification Recovery
+Worker Action Pipeline & Bounded Verification Recovery & Decision Trace Evidence
 
-Current mission (MISSION-003): OpenRouter provider hardening (request timeout, fail-closed error handling, secret-safe logging, debug print removal) and a gated real-LLM proposal-only integration test (`live_llm` marker, opt-in via `RUN_LIVE_LLM=1`).
+Current mission (MISSION-004): Worker action lifecycle decisions (task created,
+inspection, patch proposed/validated/approved/rejected, apply, verification,
+recovery attempt/outcome) are recorded as hash-chained events in the existing
+Event Store and as Decision Trace steps. A new opt-in `--recovery` mode wires
+apply + verification + bounded recovery into the shipped `agent_run.py` entry
+point; the default runtime stays proposal-only.
 
 Current pipeline (implemented and committed):
 
@@ -74,7 +79,7 @@ Worker
 → Verification
 → Bounded Recovery (max 3 attempts)
 
-Recovery is NOT active by default. It becomes active only when the runtime is explicitly assembled through build_recovery_agent() (simulation/agent/recovery/recovery_assembly.py). The default Agent(kernel) path (and agent_run.py) remains proposal-only: it never applies, verifies or retries.
+Recovery is NOT active by default. It becomes active only when the runtime is explicitly assembled through build_recovery_agent() (simulation/agent/recovery/recovery_assembly.py) or when agent_run.py is started with --recovery. The default Agent(kernel) path (and the default agent_run.py invocation) remains proposal-only: it never applies, verifies or retries. Every pipeline/recovery decision is recorded as a WorkerEvidenceRecorder event when the assembly is used.
 
 ---
 
@@ -86,7 +91,7 @@ Evidence hierarchy used:
 
 1. Git history (commits)
 2. Source code behavior
-3. Automated test results (python -m pytest -q = 159 passed, 7 skipped)
+3. Automated test results (python -m pytest -q = 172 passed, 7 skipped)
 4. Documentation (lowest priority; docs may be stale)
 
 ## VERIFIED
@@ -109,6 +114,7 @@ Code exists, is committed, and is covered by passing deterministic tests.
 | Verification (VerificationExecutor, CommandRunner, VerificationResult, VerificationEvidence) | Committed; verification_executor_test.py |
 | Worker Action Pipeline (WorkerActionPipeline, ApplyVerifyPipeline) | Committed; worker_action_pipeline_test.py, apply_verify_pipeline_test.py, worker_runtime_integration_test.py |
 | Bounded Recovery (BoundedRecoveryEngine, RecoveryAttempt, RecoveryResult, RecoveryAssembly) | Committed (90400c9); recovery_engine_test.py (~2100 lines, attempt cap, duplicate-fingerprint prevention, fail-closed behavior, runtime assembly test) |
+| Worker Decision Trace Evidence (WorkerEvidenceRecorder, worker_events factory, State.worker_trace, reducer replay) | Committed; tests/worker_evidence_test.py (13 tests: stage event ordering, payload safety, hash-chain integrity after pipeline run, replay reconstruction, recovery attempt/outcome events) |
 | Path Security (PathPolicy: traversal, scope, symlink/junction policy) | Committed; path_security_test.py, worker_read_scope_test.py |
 
 ## IMPLEMENTED BUT UNVERIFIED
@@ -116,14 +122,12 @@ Code exists, is committed, and is covered by passing deterministic tests.
 Code exists but deterministic verification coverage is not complete.
 
 - **LLM-driven patch analysis (LLMCodeAnalyzer)** — implementation exists, but every deterministic automated test uses FakeWorkerAnalyzer. Live LLM provider behavior is covered only by the opt-in `live_llm` integration test (`RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provider_integration_test.py -q`), which passed on 2026-08-11 (2/2: in-memory proposal and Worker proposal-only chain).
-- **Recovery in the shipped runnable entry point** — the recovery assembly is tested in isolation (test_f2), but agent_run.py uses the default Agent(kernel) and does not enable the pipeline/recovery. End-to-end operation through the shipped entry point is not verified.
-- **Decision trace for the worker pipeline** — DecisionTrace exists and is tested for the LLM loop, but it is not integrated with the worker action pipeline (no trace record for validation/apply/verification/recovery steps).
+- **Recovery through the shipped entry point** — agent_run.py now exposes an opt-in `--recovery` mode that wires build_recovery_agent (apply + verify + bounded recovery). The assembly itself is covered by recovery_engine_test.py (test_f2) and worker_evidence_test.py, but an automated end-to-end CLI interaction (`python agent_run.py --recovery`) has no automated test; the default invocation stays proposal-only and unverified as a mutation path.
 
 ## NOT IMPLEMENTED
 
 Documented in ROADMAP.md but no implementation exists.
 
-- Worker event lifecycle persisted to the event store (WorkerTaskCreated, PatchProposed, PatchValidated, PatchApproved, PatchApplied, VerificationCompleted, VerificationFailed, RetryRequested...)
 - Structured worker AnalysisResult contract (diagnosis, evidence, confidence, risk, explanation) — current analyzer returns only diagnosis/old_text/new_text
 - Risk classification engine (LOW / MEDIUM / HIGH / CRITICAL)
 - Human-in-the-loop approval boundary
@@ -132,6 +136,7 @@ Documented in ROADMAP.md but no implementation exists.
 - Multi-agent / multi-worker concurrency testing
 - Full recovery scenario coverage (process restart, snapshot recovery, replay + hash-chain integrity after recovery)
 - External / compliance / commercial validation
+- Persistent decision trace (DecisionTrace remains in-memory; the hash-chained event log is the durable evidence)
 
 ## UNKNOWN
 
@@ -198,6 +203,8 @@ Cannot be classified from available evidence.
 - Verification Executor (compile + pytest, PASS/FAIL, evidence preserved)
 - Worker Action Pipeline (per-proposal gates, fail-closed)
 - Bounded Verification Recovery (max 3 attempts, append-only attempt history)
+- Worker Decision Trace Evidence (WorkerEvidenceRecorder: 13 hash-chained lifecycle events + DecisionTrace steps; secret-safe payloads, patch content stored only as fingerprint)
+- Opt-in `--recovery` mode in agent_run.py (apply + verification + bounded recovery wired to the shipped entry point; default stays proposal-only)
 - OpenRouter provider hardening (connect/read timeout, fail-closed ProviderError, secret-safe logging, no debug prints)
 - Gated real-LLM integration test (`live_llm` marker; opt-in only, proposal-only, no file mutation)
 
@@ -205,13 +212,13 @@ Cannot be classified from available evidence.
 
 # Verified Baseline
 
-Test suite: 159 passed, 7 skipped (python -m pytest -q, 2026-08-11). The 7 skipped tests are: 5 junction-dependent path-security tests and 2 opt-in `live_llm` integration tests that never run in the normal suite (no API cost, no provider call).
+Test suite: 172 passed, 7 skipped (python -m pytest -q, 2026-08-11). The 7 skipped tests are: 5 junction-dependent path-security tests and 2 opt-in `live_llm` integration tests that never run in the normal suite (no API cost, no provider call).
 
 Live LLM (opt-in): `RUN_LIVE_LLM=1 python -m pytest -m live_llm tests/llm_provider_integration_test.py -q` = 2 passed (2026-08-11): real provider produces an in-memory proposal; real Worker + real LLM chain produces a proposal without mutating the file.
 
 git diff --check: clean.
 
-Working tree: clean on worker-action-pipeline @ 18a1f6c.
+Working tree: clean on worker-action-pipeline @ (MISSION-004 commit).
 
 ---
 
@@ -219,12 +226,12 @@ Working tree: clean on worker-action-pipeline @ 18a1f6c.
 
 Unreleased. Candidate areas (see ROADMAP.md):
 
-- Worker event lifecycle as auditable events
 - Structured worker analysis contract
 - Risk classification
 - Human approval boundary
 - Secret scanning
-- Recovery wired into the shipped runtime entry point
+- Persistent decision trace / durable trace reconstruction
+- Recovery enabled in the default (flag-less) runtime — requires an explicit product decision (apply stays non-default by design)
 
 ---
 

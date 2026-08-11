@@ -69,7 +69,8 @@ class BoundedRecoveryEngine:
         self,
         worker,
         worker_pipeline,
-        max_attempts=DEFAULT_MAX_ATTEMPTS
+        max_attempts=DEFAULT_MAX_ATTEMPTS,
+        evidence_recorder=None
     ):
 
         self.worker = worker
@@ -79,6 +80,8 @@ class BoundedRecoveryEngine:
         self.max_attempts = self._bounded_max_attempts(
             max_attempts
         )
+
+        self.evidence_recorder = evidence_recorder
 
     def execute(
         self,
@@ -120,14 +123,16 @@ class BoundedRecoveryEngine:
 
                 except Exception as exc:
 
-                    attempts.append(
-                        self._error_attempt(
-                            attempt_number,
-                            "worker",
-                            str(exc),
-                            FAILURE_WORKER,
-                        )
+                    attempt = self._error_attempt(
+                        attempt_number,
+                        "worker",
+                        str(exc),
+                        FAILURE_WORKER,
                     )
+
+                    attempts.append(attempt)
+
+                    self._record_attempt_event(attempt)
 
                     return self._terminal(
                         attempts,
@@ -140,14 +145,16 @@ class BoundedRecoveryEngine:
 
             if not self._has_proposals(worker_result):
 
-                attempts.append(
-                    self._blocked_attempt(
-                        attempt_number,
-                        worker_result,
-                        "Worker produced no patch proposals.",
-                        FAILURE_WORKER,
-                    )
+                attempt = self._blocked_attempt(
+                    attempt_number,
+                    worker_result,
+                    "Worker produced no patch proposals.",
+                    FAILURE_WORKER,
                 )
+
+                attempts.append(attempt)
+
+                self._record_attempt_event(attempt)
 
                 return self._terminal(
                     attempts,
@@ -172,18 +179,20 @@ class BoundedRecoveryEngine:
 
             if duplicate is not None:
 
-                attempts.append(
-                    self._blocked_attempt(
-                        attempt_number,
-                        worker_result,
-                        (
-                            "Duplicate proposal fingerprint: "
-                            f"{duplicate}"
-                        ),
-                        FAILURE_WORKER,
-                        fingerprints,
-                    )
+                attempt = self._blocked_attempt(
+                    attempt_number,
+                    worker_result,
+                    (
+                        "Duplicate proposal fingerprint: "
+                        f"{duplicate}"
+                    ),
+                    FAILURE_WORKER,
+                    fingerprints,
                 )
+
+                attempts.append(attempt)
+
+                self._record_attempt_event(attempt)
 
                 return self._terminal(
                     attempts,
@@ -206,14 +215,16 @@ class BoundedRecoveryEngine:
 
             except Exception as exc:
 
-                attempts.append(
-                    self._error_attempt(
-                        attempt_number,
-                        "pipeline",
-                        str(exc),
-                        FAILURE_UNEXPECTED,
-                    )
+                attempt = self._error_attempt(
+                    attempt_number,
+                    "pipeline",
+                    str(exc),
+                    FAILURE_UNEXPECTED,
                 )
+
+                attempts.append(attempt)
+
+                self._record_attempt_event(attempt)
 
                 return self._terminal(
                     attempts,
@@ -224,14 +235,16 @@ class BoundedRecoveryEngine:
                     FAILURE_UNEXPECTED,
                 )
 
-            attempts.append(
-                self._record_attempt(
-                    attempt_number,
-                    worker_result,
-                    pipeline_result,
-                    fingerprints,
-                )
+            attempt = self._record_attempt(
+                attempt_number,
+                worker_result,
+                pipeline_result,
+                fingerprints,
             )
+
+            attempts.append(attempt)
+
+            self._record_attempt_event(attempt)
 
             if pipeline_result.success:
 
@@ -281,14 +294,16 @@ class BoundedRecoveryEngine:
 
         except Exception as exc:
 
-            attempts.append(
-                self._error_attempt(
-                    attempt_number,
-                    "fingerprint",
-                    str(exc),
-                    FAILURE_UNEXPECTED,
-                )
+            attempt = self._error_attempt(
+                attempt_number,
+                "fingerprint",
+                str(exc),
+                FAILURE_UNEXPECTED,
             )
+
+            attempts.append(attempt)
+
+            self._record_attempt_event(attempt)
 
             return None, self._terminal(
                 attempts,
@@ -376,12 +391,16 @@ class BoundedRecoveryEngine:
 
     def _success(self, attempts) -> RecoveryResult:
 
-        return RecoveryResult(
+        result = RecoveryResult(
             terminal_status=self.STATUS_SUCCESS,
             attempts_used=len(attempts),
             max_attempts=self.max_attempts,
             attempt_history=tuple(attempts),
         )
+
+        self._record_outcome_event(result)
+
+        return result
 
     def _terminal(
         self,
@@ -390,13 +409,37 @@ class BoundedRecoveryEngine:
         failure_stage=FAILURE_UNEXPECTED,
     ) -> RecoveryResult:
 
-        return RecoveryResult(
+        result = RecoveryResult(
             terminal_status=self.STATUS_TERMINAL_FAILURE,
             attempts_used=len(attempts),
             max_attempts=self.max_attempts,
             attempt_history=tuple(attempts),
             failure_reason=failure_reason,
             failure_stage=failure_stage,
+        )
+
+        self._record_outcome_event(result)
+
+        return result
+
+    def _record_attempt_event(self, attempt):
+
+        if self.evidence_recorder is None:
+
+            return
+
+        self.evidence_recorder.record_recovery_attempt(
+            attempt
+        )
+
+    def _record_outcome_event(self, result):
+
+        if self.evidence_recorder is None:
+
+            return
+
+        self.evidence_recorder.record_recovery_outcome(
+            result
         )
 
     def _bounded_max_attempts(self, value) -> int:
