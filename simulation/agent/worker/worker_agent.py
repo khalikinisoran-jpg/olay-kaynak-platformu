@@ -47,34 +47,34 @@ class WorkerAgent:
             else LLMCodeAnalyzer()
         )
 
+    REQUIRED_ACTIONS = (
+        "read",
+        "inspect",
+        "propose",
+    )
+
     def run(
         self,
         task: WorkerTask
     ) -> WorkerResult:
 
-        if not self.policy.allows("read"):
+        for action in self.REQUIRED_ACTIONS:
 
-            return WorkerResult(
-                task_id=task.task_id,
-                success=False,
-                summary="Worker policy denied read action."
-            )
+            if not self.policy.allows(action):
 
-        if not self.policy.allows("inspect"):
+                return WorkerResult(
+                    task_id=task.task_id,
+                    success=False,
+                    summary=f"Worker policy denied {action} action."
+                )
 
-            return WorkerResult(
-                task_id=task.task_id,
-                success=False,
-                summary="Worker policy denied inspect action."
-            )
+            if not self._task_allows(task, action):
 
-        if not self.policy.allows("propose"):
-
-            return WorkerResult(
-                task_id=task.task_id,
-                success=False,
-                summary="Worker policy denied propose action."
-            )
+                return WorkerResult(
+                    task_id=task.task_id,
+                    success=False,
+                    summary=f"Worker policy denied {action} action."
+                )
 
         if not task.allowed_paths:
 
@@ -239,6 +239,15 @@ class WorkerAgent:
             proposal=proposal_text,
             patches=tuple(patches)
         )
+
+    @staticmethod
+    def _task_allows(task, action) -> bool:
+
+        if not task.allowed_actions:
+
+            return True
+
+        return action in task.allowed_actions
 
     @staticmethod
     def _analysis_description(task) -> str:
