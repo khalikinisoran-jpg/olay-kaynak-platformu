@@ -6,25 +6,37 @@ from simulation.agent.worker.patch_proposal import (
     PatchProposal
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 
 class Controller:
 
     def approve(
         self,
         patch: PatchProposal,
-        validation_message: str
+        validation: ValidationResult
     ) -> ControllerDecision:
 
-        if not validation_message:
+        if validation is None:
 
             return ControllerDecision(
                 approved=False,
                 reason="Missing validator result."
             )
 
-        if validation_message != (
-            "Patch validation passed."
+        if not isinstance(
+            validation,
+            ValidationResult
         ):
+
+            return ControllerDecision(
+                approved=False,
+                reason="Malformed validator result."
+            )
+
+        if validation.valid is not True:
 
             return ControllerDecision(
                 approved=False,

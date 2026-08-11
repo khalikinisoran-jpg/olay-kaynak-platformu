@@ -26,6 +26,10 @@ from simulation.agent.worker.patch_validator import (
     PatchValidator
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 from simulation.agent.worker.worker_result import (
     WorkerResult
 )
@@ -253,7 +257,10 @@ class WorkerActionPipeline:
 
             decision = self.controller.approve(
                 patch,
-                message,
+                ValidationResult(
+                    valid=valid,
+                    message=message,
+                ),
             )
 
             if recorder is not None:

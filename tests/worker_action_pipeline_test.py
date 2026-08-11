@@ -445,7 +445,12 @@ def test_controller_rejection_skips_apply_and_verification(
     assert controller.calls[0]["patch"] is patch
 
     assert (
-        controller.calls[0]["validation_message"]
+        controller.calls[0]["validation_message"].valid
+        is True
+    )
+
+    assert (
+        controller.calls[0]["validation_message"].message
         == "Patch validation passed."
     )
 
@@ -806,7 +811,12 @@ def test_multiple_patches_apply_in_safe_order_with_approval_per_patch(
     assert controller.calls[1]["patch"] is patch_b
 
     assert all(
-        call["validation_message"]
+        call["validation_message"].valid is True
+        for call in controller.calls
+    )
+
+    assert all(
+        call["validation_message"].message
         == "Patch validation passed."
         for call in controller.calls
     )

@@ -29,6 +29,10 @@ from simulation.agent.worker.patch_proposal import (
     PatchProposal
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 
 def make_verification_result(
     status=PASS,
@@ -100,7 +104,10 @@ def approved_decision(patch):
 
     return controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
 
@@ -356,7 +363,10 @@ def test_apply_denial_skips_verification(
 
     decision = Controller().approve(
         approved_patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     different_patch = make_patch(

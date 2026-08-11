@@ -80,36 +80,35 @@ Severity: LOW (informational).
 
 ### C) Controller's fragile dependency on Validator message text
 
-**Classification: VERIFIED.**
+**Classification: VERIFIED (audit time) — RESOLVED in MISSION-007.**
 
-`simulation/agent/controller/controller.py:25` decides approval with a string
-equality test against a hard-coded literal:
+At audit time `simulation/agent/controller/controller.py:25` decided approval
+with a string equality test against a hard-coded literal:
 
 ```python
 if validation_message != ("Patch validation passed."):
     return ControllerDecision(approved=False, ...)
 ```
 
-The Controller's security decision therefore depends on a human-readable
-message string rather than a typed/structured validation result. Any caller
-that can produce the exact string "Patch validation passed." obtains an
-approved decision regardless of how validation was reached, and any future
-change to the validator message text silently breaks the approval gate.
+MISSION-007 replaces the string contract with a structured
+`simulation/agent/worker/validation_result.py::ValidationResult` (`valid: bool`,
+`message: str`). The Controller now:
 
-The failure mode is partially fail-closed (an unknown message is rejected) but
-the approved path is not anchored to structured state and is not resilient to
-message drift.
+- rejects `None` ("Missing validator result."),
+- rejects any non-ValidationResult input ("Malformed validator result."),
+- decides approval only on `validation.valid is True` (strict identity; `"yes"`,
+  `1`, `None` all fail closed),
+- still rejects unsupported actions independently.
 
-Existing tests: `tests/worker_contract_test.py` lines 513-607 (approve with the
-literal string, reject invalid string, reject unsupported action),
-`tests/worker_action_pipeline_test.py` line 447 (asserts the exact literal is
-passed through).
-Missing test: malformed/typed-contract tests (covered in MISSION-007).
+The message text is never consulted for the decision (covered by
+`test_controller_decision_message_text_is_not_the_decision_signal`).
 
-Severity: MEDIUM (contract fragility; approval gate not anchored to typed
-state).
-Fix: MISSION-007 replaces the string contract with a structured
-`ValidationResult` (`valid: bool`), decided on `valid is True`, not on text.
+Existing tests: `tests/worker_contract_test.py`, `tests/worker_action_pipeline_test.py`,
+`tests/apply_verify_pipeline_test.py` (updated to the typed contract).
+New tests: `tests/controller_decision_test.py` (13 tests: PASS, FAIL, missing,
+malformed string/dict, unknown status, truthy non-bool, unsupported action,
+message-not-signal, apply authorization exact-True/fingerprint, pipeline scope
+denial before controller).
 
 ---
 

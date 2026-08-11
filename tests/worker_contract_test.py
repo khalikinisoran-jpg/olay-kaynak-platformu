@@ -21,6 +21,10 @@ from simulation.agent.worker.patch_generator import (
     PatchGenerator
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 
 from simulation.agent.worker.worker_agent import (
     WorkerAgent
@@ -528,7 +532,10 @@ def test_controller_approves_validated_patch():
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     assert decision.approved is True
@@ -562,8 +569,13 @@ def test_controller_rejects_invalid_validation():
 
     decision = controller.approve(
         patch,
-        "Patch is stale: current file content "
-        "does not match old_content."
+        ValidationResult(
+            valid=False,
+            message=(
+                "Patch is stale: current file content "
+                "does not match old_content."
+            ),
+        )
     )
 
     assert decision.approved is False
@@ -594,7 +606,10 @@ def test_controller_rejects_unsupported_action():
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     assert decision.approved is False
@@ -651,7 +666,10 @@ def test_worker_validator_controller_pipeline():
 
     decision = controller.approve(
         patch,
-        message
+        ValidationResult(
+            valid=valid,
+            message=message,
+        )
     )
 
     assert decision.approved is True
@@ -917,7 +935,10 @@ def test_apply_executor_accepts_controller_approval(
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     executor = ApplyExecutor()
@@ -1273,7 +1294,10 @@ def test_apply_executor_denies_empty_scope_patch(
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     executor = ApplyExecutor()
@@ -1338,7 +1362,10 @@ def test_apply_executor_performs_approved_real_write(
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     executor = ApplyExecutor()
