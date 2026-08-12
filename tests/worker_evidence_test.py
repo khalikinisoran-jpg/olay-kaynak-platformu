@@ -966,6 +966,6 @@ def test_recovery_records_attempts_and_final_outcome(tmp_path):
         encoding="utf-8"
     )
 
-    assert "# recovery marker 1" in content
+    assert "# recovery marker 1" not in content
 
     assert "# recovery marker 2" in content

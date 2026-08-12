@@ -1424,4 +1424,127 @@ Uncommitted working-tree evidence on `worker-action-pipeline`
 
 ---
 
+# MISSION-016 — Chief Engineer Verified-Gap-Closure Sprint
+
+## Date
+
+2026-08-12 (branch `worker-action-pipeline`, base HEAD `d347f43`).
+
+## Summary
+
+Closed the verified gaps from the PROJECT OBSERVER / CHIEF ENGINEER REVIEW:
+the security stack is now reachable from a real opt-in runtime path, apply
+failures roll back, approval single-use state is durable, the event store and
+snapshots are hardened, the worker has a secret/prompt-injection boundary,
+verification is hardened, providers are lazy, the risk engine's obvious
+false positives are fixed, CI/packaging exist, and the adversarial corpus is
+extended to A30.
+
+## Implementation
+
+- **Real governed runtime path:** `agent_run.py --governed` wires the
+  bounded pipeline + `RiskEngine`/`RiskPolicy` + a ledger-backed,
+  store-backed approval boundary. Default runtime stays proposal-only.
+  (`agent_run.py`, `recovery_assembly.py` — `approval_ledger_path`.)
+- **Rollback on verification failure:** `ApplyExecutor.rollback` +
+  `FileApplier.restore` (atomic tempfile+replace, read-back verified);
+  `ApplyVerifyPipeline` rolls back on verify-FAIL and optionally re-verifies
+  the clean state; `FAILURE_ROLLBACK` is terminal (no retry on unknown
+  state); events `WorkerRollbackSucceeded`/`WorkerRollbackFailed`.
+  (`apply_verify_pipeline.py`, `apply_verify_result.py::RollbackResult`,
+  `file_applier.py`, `worker_action_pipeline.py`,
+  `worker_events.py`, `worker_evidence_recorder.py`.)
+- **Approval durability:** `ApprovalLedger` (hash-chained, fail-closed
+  reload) records grant/consumed/applied; `ApprovalStore` reloads
+  authorization state from the ledger. Consumed approvals survive restart.
+  Evidence events remain evidence-only (D-012 / test_m).
+  (`approval_ledger.py`, `approval_store.py`.)
+- **Event store hardening:** cached chain head (O(1) append), internal lock
+  (thread-safe same-store appends), fsync per append, store-authoritative
+  `next_sequence()`; snapshot `content_hash` + `last_sequence` consistency
+  (unverifiable snapshots fall back to full verified replay; chain
+  corruption still raises). (`event_store.py`, `kernel.py`,
+  `persistence/snapshot.py`, `recovery/recovery_engine.py`.)
+- **Atomic writes:** `FileApplier` writes via tempfile + fsync +
+  `os.replace`, preserving file permissions.
+  (`file_applier.py`.)
+- **Verification hardening:** default timeout (120s), pytest exit 5
+  ("no tests collected") is FAIL, `PYTHONPYCACHEPREFIX` redirects
+  `__pycache__` out of the tree. (`command_runner.py`, `verification_executor.py`.)
+- **Secret / prompt-injection boundary:** `secret_policy.py` — secret files
+  (`.env`, PEM keys, credential files) are skipped by the worker; obvious
+  inline secret values are redacted before the analyzer; the analyzer prompt
+  marks content as UNTRUSTED DATA; proposals referencing `[REDACTED]` are
+  rejected. (`secret_policy.py`, `worker_agent.py`, `llm_code_analyzer.py`.)
+- **Lazy provider:** `Agent`/`LLMExecutor`/`LLMCodeAnalyzer` resolve the
+  provider only on a real LLM call; non-LLM strategies run without an API
+  key. (`agent.py`, `llm_executor.py`, `llm_code_analyzer.py`.)
+- **Risk refinement:** `auth`/`token`/`secret` use token-boundary matching
+  (kills `authentication.py`/`tokenizer.py`/`secretary.py` false
+  positives); a deterministic 18-case regression corpus was added.
+  (`risk_engine.py`, `tests/risk_regression_test.py`.)
+- **Hygiene:** removed unroutable `weather` planner branch + planner↔
+  dispatcher contract test; cleaned `.gitignore`; removed 9 stray empty
+  directories; staged tracked junk (`git`, `kernel.txt`, `.pyc`) for
+  removal.
+- **CI / packaging:** `.github/workflows/ci.yml` (ubuntu + windows; pytest +
+  compileall + corpus + diff-check) and `pyproject.toml`.
+- **Live-LLM E2E harness:** `tests/live_llm_e2e_test.py` (gated) drives the
+  real LLM through proposal → validation → risk → controller → apply →
+  real compile+pytest verification → evidence; passed once with a real
+  provider.
+
+## Tests
+
+- Full suite: `python -m pytest -q` = **465 passed / 10 skipped**
+  (MISSION-014 baseline 390/9; +75).
+- Adversarial corpus: `python -m pytest tests/security/adversarial_corpus_test.py -q`
+  = **34 passed / 1 skipped** (A01-A30).
+- Gated live run: `$env:RUN_LIVE_LLM="1"; python -m pytest -m live_llm
+  tests/live_llm_e2e_test.py -q` = **1 passed** (real provider).
+- `python -m compileall -q simulation tests` = exit 0.
+- `git diff --check` = clean (LF/CRLF warnings only).
+- Benchmark: `python benchmarks/event_store_benchmark.py` = ~800-815
+  appends/s at 1k/10k/100k (linear; fsync-bound, not algorithmically
+  O(n^2)).
+
+## Security Invariants Preserved / Added
+
+- Default runtime proposal-only; governed apply stays explicit opt-in.
+- No fail-open added; HIGH/CRITICAL/UNKNOWN fail closed without a valid
+  approval.
+- Evidence events remain evidence-only (D-012); authorization state is
+  separate (`ApprovalLedger`).
+- Rollback failure is terminal; retries never build on a corrupted state.
+- Verification empty-test target is never PASS.
+- Secret file content never reaches the analyzer; inline secrets are
+  redacted.
+
+## Known Limitations
+
+- No interactive human-approval UX; `ApprovalStore.grant` is programmatic.
+- Ledger durability requires wiring `ApprovalLedger` (governed CLI does).
+- Object-identity approval binding is in-memory and re-bound per
+  `find_valid`.
+- Secret redaction and prompt-injection resistance are mitigations, not
+  guarantees.
+- Multi-process writers on one store file are unsupported (same-store
+  threads are safe).
+- CI exists but has not been exercised on a hosted runner.
+
+## Remaining Work
+
+- Interactive human-approval UX (last piece before default-on decision).
+- Commit/push this sprint; run CI on Linux/macOS.
+- MISSION-015 Productization Readiness Assessment.
+- Hygiene: legacy `persistence/recovery.py`, `event_store_backup.py`,
+  duplicate snapshot implementations, `services/` overlap.
+
+## Commit Hash
+
+Uncommitted working-tree evidence on `worker-action-pipeline`
+(no commit, no push per sprint rules). Base `d347f43`.
+
+---
+
 # End of Mission Log

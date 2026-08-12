@@ -1,10 +1,10 @@
 # SECURITY_MODEL.md
 
 Canonical security model of the implemented worker action pipeline and
-event-sourcing core, branch `worker-action-pipeline` @ `f94c82b`
-(2026-08-11; risk-layer status refreshed by the MISSION-011 close-out on
-2026-08-12, the MISSION-012/013 close-out on 2026-08-12, and the
-MISSION-014 authorization-boundary hardening on 2026-08-12). Every claim
+event-sourcing core, branch `worker-action-pipeline` @ `d347f43`
+(2026-08-12; risk-layer status refreshed by the MISSION-011 close-out on
+2026-08-12, MISSION-012/013/014 close-outs on 2026-08-12, and the
+MISSION-016 gap-closure hardening on 2026-08-12). Every claim
 is classified VERIFIED (code + passing test), INFERRED (reasoned from
 code, no direct test), or UNKNOWN (cannot be determined). Complements
 docs/SECURITY_BASELINE.md (MISSION-005 audit).
@@ -299,15 +299,115 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
   the shipped default path (ProviderFactory.create raises ValueError if
   OPENROUTER_API_KEY missing; no graceful degradation test).
 
-## 11. Adversarial Tests
+## 12. Rollback / Recovery Integrity (MISSION-016)
+
+- Verification FAIL after a successful apply triggers a rollback to the
+  exact pre-apply content via `ApplyExecutor.rollback` ->
+  `FileApplier.restore` (canonical path, atomic tempfile+replace,
+  read-back verified). **VERIFIED** — `tests/rollback_test.py`,
+  `tests/apply_verify_pipeline_test.py`, corpus A21.
+- A rollback failure is terminal (`FAILURE_ROLLBACK`); the bounded recovery
+  loop never retries on an unknown/corrupted state. **VERIFIED** —
+  `tests/rollback_test.py`, corpus A22.
+- Retry after a rollback works from the clean pre-apply state: no
+  cumulative modifications across attempts. **VERIFIED** —
+  `tests/rollback_test.py`, `tests/runtime_governed_integration_test.py`,
+  updated `tests/worker_evidence_test.py`.
+- Rollback outcomes are recorded as `WorkerRollbackSucceeded` /
+  `WorkerRollbackFailed` evidence events (secret-safe payloads).
+  **VERIFIED** — `tests/rollback_test.py`.
+- `WorkerActionPipeline` classifies a failed rollback as `FAILURE_ROLLBACK`
+  (new stage) so callers can distinguish it from a plain verification
+  failure. **VERIFIED** — `tests/rollback_test.py`.
+
+## 13. Approval Durability (MISSION-016)
+
+- `ApprovalLedger` appends hash-chained grant/consumed/applied records;
+  `ApprovalStore` reloads authorization state from it on construction.
+  **VERIFIED** — `tests/approval_durability_test.py`.
+- A consumed or applied approval stays consumed/applied after a process
+  restart (single-use survives restart). **VERIFIED** —
+  `tests/approval_durability_test.py`, corpus A23.
+- Corrupted, malformed or hash-broken ledger state raises `RuntimeError`
+  (fail-closed; the store refuses to operate on corruption).
+  **VERIFIED** — `tests/approval_durability_test.py`, corpus A24.
+- Evidence events remain evidence-only (D-012 / MISSION-014 test_m); the
+  ledger is a separate authorization-state file, not the evidence stream.
+  **VERIFIED** — `tests/approval_boundary_test.py::test_m_*`.
+- Object-identity approval binding is in-memory by nature and is re-bound
+  on the next `find_valid(patch=...)` after a reload. **INFERRED**
+  (documented limitation).
+
+## 14. Event Store & Snapshot Integrity (MISSION-016)
+
+- Appends are O(1) (cached chain head), serialized by a per-instance lock
+  (thread-safe same-store appends) and fsynced; the store is the sequence
+  authority (`next_sequence`). **VERIFIED** —
+  `tests/event_store_concurrency_test.py`, corpus A28.
+- Snapshot `content_hash` is verified on recovery; an unverifiable or
+  inconsistent snapshot (e.g. `last_sequence` exceeding the event count) is
+  not trusted — recovery falls back to a full replay from the
+  chain-verified event log. **VERIFIED** — `tests/snapshot_integrity_test.py`,
+  corpus A29.
+- Event-chain corruption still raises `RuntimeError` (fail-closed; state
+  cannot be rebuilt from unverifiable events). **VERIFIED** —
+  `tests/snapshot_integrity_test.py`, corpus A11.
+- Writes are atomic (tempfile + fsync + `os.replace`, permissions
+  preserved); a crash leaves either the old or the fully-written new file,
+  never a truncated mix. **VERIFIED** — `tests/patch_integrity_test.py`,
+  corpus A08b/A21. Multi-process writers on one store file remain
+  unsupported. **VERIFIED** (documented).
+
+## 15. Verification Hardening (MISSION-016)
+
+- A default timeout (120s) applies so a hanging verification cannot block
+  the runtime; an explicit `timeout` still wins. **VERIFIED** —
+  `tests/verification_executor_test.py`.
+- pytest exit code 5 ("no tests collected") is FAIL, never PASS: a
+  neutered or empty test target cannot be reported as verification
+  success. **VERIFIED** — `tests/verification_executor_test.py`, corpus A27.
+- `PYTHONPYCACHEPREFIX` redirects the verification subprocess bytecode
+  cache out of the tree so compileall/pytest do not mutate the repository.
+  **VERIFIED** — `tests/verification_executor_test.py`.
+
+## 16. Secret / Prompt-Injection Boundary (MISSION-016)
+
+- Secret files (`.env`, PEM keys, credential files) are never read into the
+  LLM analyzer; the worker marks them `skipped_secret`.
+  **VERIFIED** — `tests/secret_boundary_test.py`, corpus A25.
+- Obvious inline secret values are redacted before content reaches the
+  analyzer; proposals referencing the `[REDACTED]` marker are rejected.
+  **VERIFIED** — `tests/secret_boundary_test.py`, corpus A26.
+- The analyzer prompt marks file content and evidence text as UNTRUSTED
+  DATA (never instructions). **VERIFIED** —
+  `tests/secret_boundary_test.py`.
+- Mitigation boundary: secret redaction and prompt-injection resistance are
+  heuristics, not proofs; a missed pattern could still leak or steer.
+  **VERIFIED** (documented) — not a completeness claim.
+
+## 17. Runtime Governance Path (MISSION-016)
+
+- `agent_run.py --governed` is the first shipped path that reaches the full
+  risk/approval/authorization boundary. HIGH/CRITICAL/UNKNOWN fail closed
+  without a valid approval; LOW/MEDIUM auto-apply with rollback on
+  verification failure. **VERIFIED** — `tests/runtime_governed_integration_test.py`
+  (11 tests: default proposal-only, DENY without approval, HIGH/CRITICAL
+  ALLOW, wrong patch/path/risk DENY, single-use across runs, rollback,
+  evidence, restart durability).
+- The default runtime remains proposal-only and ungoverned; no security
+  boundary was loosened. **VERIFIED** — `tests/worker_runtime_test.py`.
+
+## 18. Adversarial Tests
 
 `tests/security/adversarial_corpus_test.py` (MISSION-008, extended by
-MISSION-013): 25 test functions / 23 records (A01-A20 + sub-cases),
-summary-gated — the final summary test fails the suite if any recorded
-entry failed. **VERIFIED** — all PASS on 2026-08-12 (24 passed, 1
-symlink-dependent skip in the normal suite). The MISSION-014
-authorization-boundary hardening adds 17 deterministic boundary tests
-(A–O) in `tests/approval_boundary_test.py` (48 tests total).
+MISSION-013 to A13-A20 and by MISSION-016 to A21-A30): summary-gated — the
+final summary test fails the suite if any recorded entry failed.
+**VERIFIED** — all PASS on 2026-08-12 (34 passed, 1 symlink-dependent skip
+in the normal suite). MISSION-016 records: A21 rollback success, A22
+rollback failure terminal, A23 restart replay denial, A24 corrupted ledger
+fail-closed, A25 secret-file skip, A26 redaction, A27 empty-test-not-pass,
+A28 concurrent append consistency, A29 snapshot tampering not trusted,
+A30 direct FileApplier scope enforcement (documented residual).
 
 | ID | Attack | Boundary measured | Result |
 |----|--------|-------------------|--------|

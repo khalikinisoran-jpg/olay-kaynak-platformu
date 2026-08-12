@@ -264,11 +264,15 @@ def test_apply_success_verification_failure_is_pipeline_failure(
         in result.failure_reason
     )
 
+    assert result.rollback is not None
+
+    assert result.rollback.success is True
+
     assert (
         target.read_text(
             encoding="utf-8"
         )
-        == updated
+        == original
     )
 
 

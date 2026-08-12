@@ -245,6 +245,43 @@ class WorkerEvidenceRecorder:
             ),
         )
 
+    def record_rollback_result(
+        self,
+        task_id,
+        patch,
+        rollback_result
+    ):
+
+        payload = {
+            "task_id": task_id,
+            "patch_fingerprint": patch.fingerprint(),
+            "path": rollback_result.path,
+            "success": bool(rollback_result.success),
+            "restore_verified": bool(
+                rollback_result.restore_verified
+            ),
+            "clean_verified": bool(
+                rollback_result.clean_verified
+            ),
+            "message": rollback_result.message,
+        }
+
+        event_type = (
+            WorkerEventType.ROLLBACK_SUCCEEDED
+            if rollback_result.success
+            else WorkerEventType.ROLLBACK_FAILED
+        )
+
+        self._emit(
+            event_type,
+            payload,
+            trace_message=(
+                "Rollback succeeded."
+                if rollback_result.success
+                else "Rollback failed."
+            ),
+        )
+
     def record_recovery_attempt(self, attempt):
 
         task_id = ""

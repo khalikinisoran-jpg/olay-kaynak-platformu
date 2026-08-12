@@ -35,21 +35,27 @@ canonical docs (Section 4) rather than duplicating their full content.
 |-------|-------|-------|
 | CURRENT DATE | 2026-08-12 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `f94c82b8d4fadf14d987f493a79240e739321713` (`f94c82b`, "Close MISSION-011 and synchronize project knowledge") | VERIFIED (`git rev-parse HEAD`) |
-| WORKTREE STATE | MISSION-012/013/014 close-out changes **uncommitted**: `simulation/agent/approval/` (new), `tests/approval_boundary_test.py` (new), plus modified apply-authorization / controller / pipeline / recovery / risk-test files and docs | VERIFIED (`git status --short`) |
-| CURRENT MISSION | none active — MISSION-014 **VERIFIED / CLOSED**; MISSION-015 PLANNED | VERIFIED (docs/MISSION_STATUS.md) |
-| LAST VERIFIED TEST RESULT | full suite **390 passed / 9 skipped**; focused approval boundary **48 passed**; approval + adversarial **72 passed / 1 skipped**; `compileall` exit 0; `git diff --check` clean (LF/CRLF warnings only) | VERIFIED (2026-08-12 run) |
-| COMPLETED MISSIONS | 8 historic + 3 doc-sync + MISSION-003,004,005,006,007,008,009,010,011,012,013,014 | VERIFIED (Section 18) |
+| CURRENT HEAD | `d347f43902c4f0e7ee7183100f996a8b0464014e` (`d347f43`, "Close authorization boundary and add project master") | VERIFIED (`git rev-parse HEAD`) |
+| WORKTREE STATE | MISSION-016 (Chief Engineer Verified-Gap-Closure Sprint) changes **uncommitted**: governed runtime wiring, apply/verify/rollback, approval ledger, event-store/snapshot hardening, verification hardening, secret/prompt-injection boundary, lazy provider, risk refinement, adversarial corpus A21-A30, CI/packaging, new tests | VERIFIED (`git status --short`) |
+| CURRENT MISSION | MISSION-016 **IMPLEMENTED / VERIFIED-by-suite** (uncommitted working tree); MISSION-014 VERIFIED / CLOSED; MISSION-015 PLANNED | VERIFIED (docs/MISSION_STATUS.md) |
+| LAST VERIFIED TEST RESULT | full suite **465 passed / 10 skipped**; adversarial corpus **34 passed / 1 skipped**; `compileall` exit 0; `git diff --check` clean (LF/CRLF warnings only); gated live-LLM E2E **1 passed** (real provider, run once) | VERIFIED (2026-08-12 run) |
+| COMPLETED MISSIONS | 8 historic + 3 doc-sync + MISSION-003..014 + MISSION-016 (working tree) | VERIFIED (Section 18) |
 | ACTIVE MISSIONS | none open; MISSION-015 (Productization Readiness Assessment) PLANNED | VERIFIED |
-| OPEN SECURITY RISKS | no interactive human-approval UX; live-LLM end-to-end untested; concurrency/multi-agent untested; symlink behavior beyond Windows junction coverage untested; risk gate intentionally DEFAULT OFF | VERIFIED (Section 20) |
+| OPEN SECURITY RISKS | no interactive human-approval UX; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; recovery of a failed-verification patch requires rollback support (real executor has it) | VERIFIED (Section 20) |
 | UNKNOWN ITEMS | see Section 21 | — |
-| NEXT 3-5 PRIORITIES | 1) human-approval UX, 2) sync stale docs, 3) fix `weather` routing gap, 4) repo hygiene, 5) MISSION-015 productization readiness | INFERRED (Section 22) |
+| NEXT 3-5 PRIORITIES | 1) interactive human-approval UX, 2) doc-sync + hygiene commit, 3) MISSION-015 productization readiness, 4) benchmark/CI hardening on Linux/macOS, 5) default-on gate decision | INFERRED (Section 22) |
 
 Quick orientation: the repository is an **event-sourced AI runtime
 prototype**. A worker (optionally LLM-driven) proposes file modifications;
 deterministic gates (validator -> controller -> apply -> verify) decide;
-every decision becomes a hash-chained event. Apply/recovery are **opt-in
-only**; the default runtime is proposal-only.
+every decision becomes a hash-chained event. The MISSION-016 sprint wired
+the risk/approval/authorization stack into a **real opt-in runtime path**
+(`agent_run.py --governed`), added **rollback on verification failure**,
+made approval single-use state **durable via an approval ledger**, hardened
+the event store / snapshot integrity, added a **secret/prompt-injection
+boundary** on the worker read path, and extended the adversarial corpus
+(A01-A30). Apply/recovery/governed mode remain **opt-in only**; the default
+runtime is proposal-only.
 
 ---
 
@@ -76,25 +82,37 @@ What actually exists (all **VERIFIED** from code/tests):
 - An append-only, SHA-256 hash-chained event store with deterministic
   replay and snapshot recovery (`simulation/persistence/event_store.py`,
   `simulation/recovery/recovery_engine.py`, `simulation/replay/replay_engine.py`).
+  Appends are O(1) (cached chain head), serialized by an internal lock, and
+  fsynced; snapshots carry a content hash and are only trusted when it
+  verifies (unverifiable snapshots fall back to full replay).
 - A CLI chat runtime (`agent_run.py`) routing input through a Planner and a
   StrategyDispatcher of executors (calculator, memory store/recall, LLM,
-  worker).
+  worker). Providers are created lazily: non-LLM strategies run without an
+  API key.
 - A worker agent that reads in-scope files and produces **patch proposals**
-  only; it never applies (optionally via real LLM OpenRouter/DeepSeek,
-  gated tests).
-- A deterministic apply/verify pipeline with bounded recovery — active
-  only when explicitly assembled (`build_recovery_agent()` or
-  `agent_run.py --recovery`).
+  only; it never applies. Secret files (`.env`, PEM keys, credential files)
+  are skipped and secret-like values are redacted before any content reaches
+  the LLM analyzer (optionally via real LLM OpenRouter/DeepSeek, gated tests).
+- A deterministic apply/verify pipeline with bounded recovery and
+  **rollback on verification failure** — active only when explicitly
+  assembled (`build_recovery_agent()` or `agent_run.py --recovery`).
+- A **governed runtime path** (`agent_run.py --governed`): the pipeline PLUS
+  deterministic risk classification and a store-backed, single-use
+  human-approval boundary with a **durable approval ledger**
+  (single-use survives restarts). Default runtime stays proposal-only.
 - A documented security model with executable adversarial tests
-  (`tests/security/adversarial_corpus_test.py`, A01-A20).
-- A system-derived risk layer (`RiskEngine`/`RiskPolicy`/`RiskLevel`) and a
-  fingerprint-bound, single-use human-approval boundary
-  (`Approval`/`ApprovalStore`) hardened at the apply authorization boundary
-  (MISSION-011/012/014).
+  (`tests/security/adversarial_corpus_test.py`, A01-A30).
+- A system-derived risk layer (`RiskEngine`/`RiskPolicy`/`RiskLevel`) with
+  targeted boundary matching (kills `auth`/`token`/`secret`-in-word false
+  positives) and a small deterministic regression corpus.
+- A fingerprint-bound, single-use human-approval boundary
+  (`Approval`/`ApprovalStore`/`ApprovalLedger`) hardened at the apply
+  authorization boundary (MISSION-011/012/014/016).
 
 What it is **not** (VERIFIED): a productized, packaged, deployed or
-externally validated platform. No production configuration, CI, packaging,
-API service, multi-user story, benchmarks or concurrency tests exist.
+externally validated platform. No production configuration, API service,
+multi-user story, or production benchmarks exist. CI and packaging metadata
+were added in MISSION-016 (`.github/workflows/ci.yml`, `pyproject.toml`).
 
 Unproven product/marketing claims (differentiators like "enterprise-grade",
 "provider-agnostic beyond OpenRouter", "faster/safer than existing agent
@@ -130,14 +148,15 @@ simulation/
   replay/        ReplayEngine
   recovery/      RecoveryEngine (snapshot + hash-integrity + replay)
   snapshot/      snapshot manager (duplicate of persistence/snapshot_manager.py)
-  security/      PathPolicy, HashChain, HashVerifier, RiskLevel, RiskEngine, RiskPolicy
+  security/      PathPolicy, HashChain, HashVerifier, RiskLevel, RiskEngine,
+                 RiskPolicy, SecretPolicy (read-side secret boundary)
   decision/      DecisionTrace (in-memory)
   loop/          LoopEngine
   planner/       Planner
   context/       ContextBuilder
   memory/        MemoryService + MemoryEvents
   tools/         BaseTool, Registry, Calculator
-  llm/           BaseProvider, OpenRouterProvider, ProviderFactory
+  llm/           BaseProvider, OpenRouterProvider, ProviderFactory (lazy)
   agent/
     agent.py            Agent runtime (chat, dispatches worker/recovery/pipeline)
     strategy_dispatcher.py
@@ -146,15 +165,19 @@ simulation/
                         PatchValidator, PatchGenerator, LLMCodeAnalyzer,
                         AnalysisResult, ValidationResult, WorkerPolicy
     controller/         Controller, ControllerDecision
-    approval/           Approval, ApprovalStore  (MISSION-012/014)
+    approval/           Approval, ApprovalStore, ApprovalLedger  (MISSION-012/014/016)
     apply/              ApplyAuthorization, ApplyExecutor, FileApplier, ApplyResult
     verify/             VerificationExecutor, CommandRunner, VerificationResult
-    pipeline/           WorkerActionPipeline, ApplyVerifyPipeline, ApplyVerifyResult
+    pipeline/           WorkerActionPipeline, ApplyVerifyPipeline, ApplyVerifyResult,
+                        RollbackResult
     recovery/           BoundedRecoveryEngine, RecoveryAttempt, RecoveryResult, recovery_assembly
     evidence/           WorkerEventType, build_worker_event, WorkerEvidenceRecorder
   domain/               legacy domain models (worker.py, task.py, enums.py)
   services/             legacy tool_executor/runtime_service (overlap with agent/executors/)
-agent_run.py            CLI entry point (default proposal-only; --recovery opt-in)
+agent_run.py            CLI entry point (default proposal-only; --recovery; --governed)
+benchmarks/             event_store_benchmark.py (standalone append benchmark)
+.github/workflows/      ci.yml (ubuntu + windows)
+pyproject.toml          packaging metadata
 ```
 
 `Kernel.dispatch` is the single write path for all events, including worker
@@ -875,21 +898,29 @@ git history and the passing suites. "LAST VERIFIED" is the state at
 | MISSION-011 | Risk / Policy Engine | VERIFIED / CLOSED | RiskLevel/RiskEngine/RiskPolicy + fail-closed action bug fix + opt-in gate | 83 risk tests (risk_level/engine/policy/pipeline) | 96ed72d (impl), f94c82b (close-out) | gate default-on decision (D-021/D-022) |
 | MISSION-012 | Human Approval Boundary | VERIFIED / CLOSED | Approval/ApprovalStore + STAGE_APPROVAL + evidence event | approval_boundary_test.py (started at 31) | working tree | human-approval UX |
 | MISSION-013 | Advanced Adversarial Benchmark | VERIFIED / CLOSED | corpus extended A13-A20 | adversarial_corpus_test.py (25 fns) | working tree | concurrency/live-LLM threat categories |
-| MISSION-014 | Authorization Boundary Hardening | **VERIFIED / CLOSED** | store-backed ApplyAuthorization; approval_id binding; object-identity binding; authorize_apply single-use; context-fail-closed find_valid | approval_boundary_test.py (48, incl. A-O); full suite 390 passed / 9 skipped | working tree (f94c82b base) | interactive human-approval UX; default-on gate decision |
+| MISSION-014 | Authorization Boundary Hardening | **VERIFIED / CLOSED** | store-backed ApplyAuthorization; approval_id binding; object-identity binding; authorize_apply single-use; context-fail-closed find_valid | approval_boundary_test.py (48, incl. A-O); full suite 390 passed / 9 skipped | `d347f43` | interactive human-approval UX; default-on gate decision |
+| MISSION-016 | Chief Engineer Verified-Gap-Closure Sprint | **IMPLEMENTED / VERIFIED-by-suite** (uncommitted working tree) | `--governed` runtime; rollback on verify-FAIL; ApprovalLedger durability; O(1)/locked/fsynced EventStore; snapshot content-hash; verification hardening (timeout/no-tests/pycache-redirect); secret/prompt-injection boundary; lazy provider; risk boundary-matching; corpus A21-A30; CI + pyproject | 465 passed / 10 skipped; corpus 34/1; live-LLM E2E 1 passed (real provider) | working tree (base `d347f43`) | commit/push; interactive approval UX; Linux/macOS CI run; MISSION-015 |
 | MISSION-015 | Productization Readiness Assessment | PLANNED | — | — | — | — |
 
 ---
 
 # 19. CURRENT LIVE STATE
 
-- Branch `worker-action-pipeline` @ `f94c82b`; 14 commits ahead of `main`.
-- Working tree: MISSION-012/013/014 close-out uncommitted (approval module,
-  apply-authorization hardening, pipeline wiring, tests, docs).
-- Test suite: **390 passed / 9 skipped** (2026-08-12); `compileall` exit 0;
-  `git diff --check` clean (LF/CRLF warnings only).
-- Untracked: `simulation/agent/approval/`, `tests/approval_boundary_test.py`.
+- Branch `worker-action-pipeline` @ `d347f43`; 16 commits ahead of `main`
+  (VERIFIED `git log main..HEAD`).
+- Working tree: MISSION-016 sprint changes uncommitted (governed CLI, rollback,
+  approval ledger, event-store/snapshot hardening, verification hardening,
+  secret boundary, lazy provider, risk refinement, corpus A21-A30, CI,
+  pyproject, new tests; tracked junk `git`/`kernel.txt`/`.pyc` staged for
+  removal).
+- Test suite: **465 passed / 10 skipped** (2026-08-12); adversarial corpus
+  **34 passed / 1 skipped**; `compileall` exit 0; `git diff --check` clean
+  (LF/CRLF warnings only); gated live-LLM E2E **1 passed** (real provider).
+- Untracked: `simulation/agent/approval/approval_ledger.py`,
+  `simulation/security/secret_policy.py`, `benchmarks/`, new test modules.
 - `.env` present locally (OPENROUTER_API_KEY, untracked/gitignored).
-- No CI workflows; empty `tests/{chaos,integration,property,unit}`.
+- CI workflow added (`.github/workflows/ci.yml`, ubuntu + windows, pytest +
+  compileall + corpus + diff-check); `pyproject.toml` packaging metadata added.
 
 ---
 
@@ -899,29 +930,40 @@ VERIFIED where not marked:
 
 1. No interactive human-approval UX: `ApprovalStore.grant` is called
    programmatically; HIGH/CRITICAL otherwise fails closed at the approval
-   stage (safe, not end-to-end usable).
-2. Risk gate and approval/apply hardening are explicit opt-in; the shipped
-   assembly stays gate-off (D-021/D-022). Default runtime is proposal-only.
-3. No production/deployment story: no CI, packaging, config, metrics.
-4. Single-process, single-user CLI only.
-5. No concurrency/multi-agent tests; no benchmarks.
-6. `weather` planner strategy is unroutable (no registered executor) —
-   `planner.py` produces it, `strategy_dispatcher.py` cannot dispatch it.
-7. Live-LLM end-to-end (apply/verify/recovery) untested; only proposal-only
-   live path covered by gated tests.
+   stage (safe, not end-to-end interactive).
+2. Governed apply / recovery / risk gate are explicit opt-in
+   (`--governed`, `--recovery`); the shipped default runtime stays
+   proposal-only (D-021/D-022/D-015).
+3. No production/deployment story: no hosted service, no multi-user model,
+   no production metrics. CI and packaging metadata exist but no CI run has
+   been exercised externally.
+4. Single-process, single-user CLI only. EventStore append is serialized
+   per-instance; multi-process writers on one store file are unsupported.
+5. Approval durability requires a wired `ApprovalLedger`; without a ledger
+   the store is in-memory (tests use both modes). Object-identity binding is
+   in-memory by nature and re-bound on the next `find_valid`.
+6. Rollback on verification failure is provided by the real `ApplyExecutor`;
+   a custom executor without a `rollback` method leaves the failed state in
+   place (documented in `ApplyVerifyPipeline`).
+7. Live-LLM end-to-end (apply/verify/recovery) is covered by a gated test
+   (`tests/live_llm_e2e_test.py`) that passed once with a real provider; it
+   never runs in the normal suite.
 8. Symlink behavior untested on OSes without symlink privileges (junction
-   variants cover Windows).
-9. Write integrity restore is best-effort; no atomicity against adversarial
-   concurrent writer.
-10. Approval consumption state is in-memory per store instance; durable
-    evidence is the `WorkerHumanApprovalGranted` event log.
-11. Docs drift: README.md, CHANGELOG.md, docs/PROJECT_CONTEXT.md,
-    docs/ROADMAP.md, docs/SESSION_NOTES.md, docs/MILESTONE-2.md describe
-    older versions/sprints (README still says v0.1.0-alpha).
-12. Repository hygiene: tracked `.pyc` artifacts, junk files (`git`,
-    `kernel.txt`), stray Turkish-named empty directories under simulation/.
+   variants cover Windows); CI now runs the suite on Linux/Windows.
+9. Write is atomic via tempfile+replace, but not protected against a
+   concurrent adversarial writer of the same file; restore on read-back
+   mismatch is best-effort.
+10. Secret redaction is a heuristic defense-in-depth, not a guarantee; the
+    analyzer is never shown whole secret files but a missed pattern could
+    still leak. Prompt-injection resistance is a mitigation, not a proof.
+11. `weather` planner branch removed (was unroutable); "hava" prompts route
+    to the LLM strategy.
+12. Repository hygiene: tracked junk staged for removal (`git` 0 bytes,
+    `kernel.txt`, tracked `.pyc`); docs drift in README/CHANGELOG/
+    PROJECT_CONTEXT remains.
 13. Duplicate snapshot implementations and legacy
-    `persistence/recovery.py`/`event_store_backup.py` overlap.
+    `persistence/recovery.py`/`event_store_backup.py` overlap remain
+    (not removed without proof of dead code).
 14. `WorkerExecutor` hardcodes `task_id="worker-task"` and
     `allowed_actions=("read","inspect","propose")`.
 
@@ -931,38 +973,39 @@ VERIFIED where not marked:
 
 Keep these unresolved — do not write them as solved:
 
-- Live-LLM end-to-end apply/verify/recovery behavior (only proposal-only
-  live path tested).
-- Concurrency / multi-agent behavior; concurrent event writes.
+- Live-LLM end-to-end apply/verify/recovery behavior across providers and
+  environments (one gated run passed; not a guarantee).
+- Concurrency / multi-agent behavior; multi-process writes to one store file.
 - Whether the risk gate becomes default-on in a productized assembly
   (productization decision, D-021/D-022).
 - Interactive human-approval UX shape (CLI prompt, approval file, API).
 - Symlink-dependent security behavior outside this Windows environment.
-- Production/deployment behavior, performance (no benchmarks).
+- Production/deployment behavior, real load/IO performance (the benchmark
+  is a local sanity number, not a production measurement).
 - Market/external validation of product claims; competitor comparison.
 - Intended scope of MISSION-015.
-- Whether the `weather` planner strategy is intended to work.
 - Whether DecisionTrace should become persistent (currently in-memory).
 
 ---
 
 # 22. NEXT 3-5 ACTIONS
 
-Ranked by risk reduction vs effort (INFERRED recommendation; current
-missions MISSION-011..014 are closed and not re-listed):
+Ranked by risk reduction vs effort (INFERRED recommendation; MISSION-016
+is implemented but uncommitted):
 
-1. **Build the human-approval UX** — the boundary exists and is hardened
-   (MISSION-012/014); add the interaction that routes a HIGH/CRITICAL
-   request to a human and back into `ApprovalStore.grant`. Last piece
-   before re-evaluating default-on (D-022).
-2. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
+1. **Build the human-approval UX** — the boundary + ledger now exist; add
+   the interaction that routes a HIGH/CRITICAL request to a human and back
+   into `ApprovalStore.grant`. Last piece before re-evaluating default-on
+   (D-022).
+2. **Commit / push the MISSION-016 sprint** (this working tree is uncommitted
+   by sprint rule), then run the new CI on Linux/macOS to close the symlink
+   coverage gap.
+3. **Synchronize remaining stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
-3. **Fix the `weather` routing gap** (Planner produces a strategy the
-   dispatcher cannot dispatch) or remove the branch; add a
-   planner/dispatcher contract test.
-4. **Clean repository hygiene** (tracked `.pyc`, junk files, stray
-   directories).
-5. **MISSION-015 Productization Readiness Assessment** (planned).
+4. **MISSION-015 Productization Readiness Assessment** (planned).
+5. **Finish repository hygiene** (legacy `persistence/recovery.py`,
+   `event_store_backup.py`, duplicate snapshots, `services/` overlap) with
+   dead-code evidence per component.
 
 ---
 

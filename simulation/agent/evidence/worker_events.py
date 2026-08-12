@@ -31,6 +31,10 @@ class WorkerEventType:
 
     VERIFICATION_FAILED = "WorkerVerificationFailed"
 
+    ROLLBACK_SUCCEEDED = "WorkerRollbackSucceeded"
+
+    ROLLBACK_FAILED = "WorkerRollbackFailed"
+
     RECOVERY_ATTEMPTED = "WorkerRecoveryAttempted"
 
     RECOVERY_SUCCEEDED = "WorkerRecoverySucceeded"
@@ -50,6 +54,8 @@ class WorkerEventType:
         PATCH_APPLY_FAILED,
         VERIFICATION_COMPLETED,
         VERIFICATION_FAILED,
+        ROLLBACK_SUCCEEDED,
+        ROLLBACK_FAILED,
         RECOVERY_ATTEMPTED,
         RECOVERY_SUCCEEDED,
         RECOVERY_FAILED,

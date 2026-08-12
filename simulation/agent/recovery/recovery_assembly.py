@@ -1,5 +1,9 @@
 from simulation.agent.agent import Agent
 
+from simulation.agent.approval.approval_ledger import (
+    ApprovalLedger
+)
+
 from simulation.agent.approval.approval_store import (
     ApprovalStore
 )
@@ -61,6 +65,7 @@ def build_recovery_agent(
     risk_engine=None,
     risk_policy=None,
     approval_store=None,
+    approval_ledger_path=None,
 ) -> Agent:
 
     """Explicit production assembly for bounded recovery.
@@ -98,8 +103,17 @@ def build_recovery_agent(
         and risk_policy is not None
     ):
 
+        ledger = None
+
+        if approval_ledger_path is not None:
+
+            ledger = ApprovalLedger(
+                path=approval_ledger_path
+            )
+
         store = ApprovalStore(
-            evidence_recorder=recorder
+            evidence_recorder=recorder,
+            ledger=ledger,
         )
 
     action_pipeline = WorkerActionPipeline(

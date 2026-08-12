@@ -1,10 +1,9 @@
 # PRODUCT_POSITIONING.md
 
 Product positioning derived strictly from the current technical reality
-(branch `worker-action-pipeline` @ `96ed72d`, 2026-08-11; limitation #1/#2
-refreshed by the MISSION-011 close-out on 2026-08-12 and the
-MISSION-012/013 close-out on 2026-08-12). Marketing claims that cannot be
-proven from code/tests are explicitly marked UNVERIFIED.
+(branch `worker-action-pipeline` @ `d347f43`, 2026-08-12; refreshed by the
+MISSION-016 Chief-Engineer Gap-Closure sprint). Marketing claims that
+cannot be proven from code/tests are explicitly marked UNVERIFIED.
 
 ---
 
@@ -19,15 +18,22 @@ An event-sourced AI runtime prototype with:
   and a dispatcher of executors (calculator, memory store/recall, LLM,
   worker);
 - a worker agent that reads in-scope files and produces patch proposals,
-  optionally through a real LLM (OpenRouter/DeepSeek);
-- a deterministic apply/verify pipeline with bounded recovery — active
-  only when explicitly enabled (`--recovery`);
+  optionally through a real LLM (OpenRouter/DeepSeek); secret files are
+  skipped and inline secrets redacted before any content reaches the LLM;
+- a deterministic apply/verify pipeline with bounded recovery and rollback
+  on verification failure — active only when explicitly enabled
+  (`--recovery` / `--governed`);
+- a governed runtime path (`--governed`) with deterministic risk
+  classification, a store-backed single-use human-approval boundary and a
+  durable approval ledger;
 - a documented security model with executable adversarial tests
-  (docs/SECURITY_MODEL.md, tests/security/adversarial_corpus_test.py).
+  (docs/SECURITY_MODEL.md, tests/security/adversarial_corpus_test.py,
+  A01-A30).
 
 **What it is not (VERIFIED):** a productized, packaged, deployed, or
-externally validated platform. There is no production configuration, no CI
-pipeline, no packaging, no API service, no multi-user story.
+externally validated platform. There is no production configuration, no
+hosted API service, no multi-user story. CI and packaging metadata exist
+but have not been exercised on a hosted runner.
 
 ---
 
@@ -74,29 +80,29 @@ customer interviews, or external validation exists in the repository
 
 ## 4. Limitations (VERIFIED from code)
 
-1. **Risk engine (MISSION-011) is tested but opt-in:** deterministic
-   RiskEngine/RiskPolicy/RiskLevel (83 tests) but the gate activates only
-   when explicitly wired; the shipped assembly stays gate-off until a
-   human-approval UX exists (MISSION-012, D-021/D-022).
+1. **The risk gate / governed apply are explicit opt-in:** `--governed`
+   activates deterministic risk + store-backed approval + apply; the
+   shipped default runtime stays proposal-only (D-021/D-022/D-015).
 2. **Human approval boundary is implemented but has no interactive UX:**
-   `Approval`/`ApprovalStore` (MISSION-012, 31 tests) enforce
-   fingerprint/path/action/risk/attempt/expiry-bound single-use approval
-   for HIGH/CRITICAL, but a human must grant approvals programmatically —
-   there is no CLI/UI approval flow yet.
-3. **No production/deployment story:** no CI, packaging, config system,
-   logging/metrics, or deployment profiles (docs/ROADMAP.md Phase 2/3 are
-   future).
+   `Approval`/`ApprovalStore`/`ApprovalLedger` (MISSION-012/014/016)
+   enforce fingerprint/path/action/risk/attempt/expiry-bound single-use
+   approval for HIGH/CRITICAL with durable consumption, but a human must
+   grant approvals programmatically — there is no CLI/UI approval flow yet.
+3. **No production/deployment story:** no hosted service, no multi-user
+   model, no production metrics; CI/packaging are added but not exercised
+   on a hosted runner.
 4. **Single-process, single-user CLI only.**
-5. **No concurrency/multi-agent testing; no benchmarks.**
-6. **`weather` strategy is planned but unroutable** (no registered
-   executor).
-7. **Live-LLM end-to-end (apply/verify/recovery) untested.**
+5. **No multi-agent testing; no production benchmarks** (a local append
+   benchmark exists).
+6. **Live-LLM end-to-end** is covered by a gated harness (passed once with
+   a real provider); not a guarantee across providers/environments.
+7. **Secret redaction and prompt-injection resistance are mitigations, not
+   guarantees.**
 8. **Symlink behavior untested on OSes without symlink privileges**
-   (junction variants cover Windows).
+   (junction variants cover Windows); CI now runs the suite on Linux.
 9. **Docs drift:** README/CHANGELOG/PROJECT_CONTEXT describe older versions.
-10. **Repository hygiene:** tracked `.pyc` artifacts, junk files
-    (`git`, `kernel.txt`), stray Turkish-named empty directories under
-    simulation/.
+10. **Approval durability requires a wired `ApprovalLedger`** (the governed
+    CLI wires it).
 
 ---
 

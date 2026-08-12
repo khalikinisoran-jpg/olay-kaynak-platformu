@@ -3,7 +3,8 @@
 Canonical status of every identifiable development mission, derived from
 Git history, code, tests and docs/MISSION_LOG.md (2026-08-11 audit at HEAD
 `96ed72d`; MISSION-011 close-out status refreshed 2026-08-12; MISSION-012,
-MISSION-013 and MISSION-014 closed 2026-08-12).
+MISSION-013 and MISSION-014 closed 2026-08-12; MISSION-016 status added
+2026-08-12).
 
 Status vocabulary (from docs/MISSION_LOG.md):
 - **VERIFIED** — committed + passing deterministic tests / audit evidence.
@@ -232,6 +233,25 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
 
 ### MISSION-015 — Productization Readiness Assessment
 - **STATUS:** PLANNED (referenced; no code)
+
+### MISSION-016 — Chief Engineer Verified-Gap-Closure Sprint
+- **STATUS:** IMPLEMENTED / VERIFIED-by-suite (working tree, no commit/push)
+- **EVIDENCE:** full suite **465 passed / 10 skipped**; adversarial corpus
+  **34 passed / 1 skipped** (A01-A30); gated live-LLM E2E **1 passed**
+  (real provider); `compileall` exit 0; `git diff --check` clean.
+- **IMPLEMENTATION:** `agent_run.py --governed` (real risk+approval+apply
+  runtime path); rollback on verification failure (`FAILURE_ROLLBACK`
+  terminal); `ApprovalLedger` durability; O(1)/locked/fsynced `EventStore`;
+  snapshot content-hash + consistency; atomic `FileApplier` writes;
+  verification hardening (timeout, no-tests=FAIL, pycache redirect);
+  `secret_policy.py` (skip secret files + redaction + prompt provenance);
+  lazy provider; risk token-boundary matching + 18-case regression corpus;
+  `weather` branch removed + planner/dispatcher contract test; CI workflow +
+  `pyproject.toml`; corpus A21-A30; repo hygiene (stray dirs removed,
+  `.gitignore` cleaned, tracked junk staged for removal).
+- **REMAINING WORK:** interactive human-approval UX; commit/push; CI run on
+  Linux/macOS; MISSION-015 productization assessment; legacy dead-code
+  removal with per-component evidence.
 
 ---
 

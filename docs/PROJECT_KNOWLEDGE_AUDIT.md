@@ -5,13 +5,17 @@ Knowledge audit of the Event-Sourced AI Runtime repository, produced
 MISSION-011 findings were refreshed by the MISSION-011 close-out on
 2026-08-12, MISSION-012/013 findings were added by the MISSION-012/013
 close-out on 2026-08-12 (human approval boundary + adversarial corpus
-extension), and MISSION-014 findings were added by the MISSION-014
+extension), MISSION-014 findings were added by the MISSION-014
 close-out on 2026-08-12 (authorization boundary hardening; see sections
-3/5/6/7).
+3/5/6/7), and MISSION-016 findings were added by the Chief-Engineer
+Gap-Closure sprint on 2026-08-12 (base HEAD `d347f43`; governed runtime,
+rollback, approval ledger, event-store/snapshot hardening, verification
+hardening, secret/prompt-injection boundary, lazy provider, risk
+refinement, corpus A21-A30, CI/packaging).
 
 Method: full repository inspection (README, ROADMAP, VISION, CHANGELOG,
 docs/*, docs/MISSION_LOG.md, docs/SECURITY_BASELINE.md, all simulation/
-source, all tests/, adversarial corpus, Git history: 71 commits, 4 tags).
+source, all tests/, adversarial corpus, Git history: 72 commits, 4 tags).
 Evidence hierarchy: Git history > code behavior > test results >
 documentation. Classification vocabulary: VERIFIED / INFERRED / UNKNOWN.
 
@@ -19,19 +23,21 @@ documentation. Classification vocabulary: VERIFIED / INFERRED / UNKNOWN.
 
 ## 1. Repository Maturity Level
 
-**INFERRED: Proof-of-concept (pre-alpha engineering prototype).**
+**INFERRED: proof-of-concept with a hardened, reachable governed path.**
 
 Evidence:
 - Working, tested event-sourcing + worker action pipeline with a strong
-  executable security model (VERIFIED: MISSION-011 close-out suite
-  `334 passed / 9 skipped`, adversarial corpus A01-A12).
-- But: no production configuration, no CI pipeline, no packaging, no
-  deployment story, no external validation (VERIFIED: `.github/workflows/`
-  empty; ROADMAP.md Phase 2/3/14 all "Planned").
+  executable security model (VERIFIED: MISSION-016 close-out suite
+  `465 passed / 10 skipped`, adversarial corpus A01-A30).
+- The risk/approval/authorization boundary is now reachable from a real
+  opt-in runtime path (`agent_run.py --governed`) and single-use approval
+  state is durable via an approval ledger (MISSION-016).
+- But: no production configuration, no hosted deployment, no multi-user
+  story, no externally exercised CI run, no external validation
+  (VERIFIED: `.github/workflows/ci.yml` added but not run on a hosted
+  runner).
 - Latest release tag v0.5.0 predates the worker-action-pipeline work;
   everything since is unreleased (VERIFIED: `git tag`).
-- The docs themselves describe the project as "experimental"
-  (VERIFIED: README.md).
 
 ---
 
@@ -45,7 +51,12 @@ From docs/MISSION_LOG.md + commit evidence (see docs/MISSION_STATUS.md):
 | Documentation/sync missions (DONE) | 3 | 3966e18, 19c6e85/3966e18, 9b5c21e (MISSION-009) |
 | Numbered missions VERIFIED | 6 | MISSION-003, 004, 005, 006, 007, 008 |
 | Numbered missions VERIFIED (post-009) | 5 | MISSION-010, MISSION-011, MISSION-012, MISSION-013, MISSION-014 |
-| **Total completed/verified** | **22** | 8 + 3 + 11 |
+| MISSION-016 (working tree, no commit) | 1 | Chief-Engineer Gap-Closure Sprint |
+| **Total completed/verified** | **23** | 8 + 3 + 11 + 1 |
+
+Notes (VERIFIED): MISSION-016 closed 2026-08-12 in the working tree with
+**465 passed / 10 skipped**, corpus A01-A30 (**34 passed / 1 skipped**),
+and a gated live-LLM E2E pass (real provider).
 
 Notes (VERIFIED): MISSION-005..008, MISSION-010..014 each carry dedicated
 test files that pass today; MISSION-003 additionally executed a live
@@ -87,11 +98,12 @@ Remaining open missions:
 | Mission | Status | Evidence |
 |---------|--------|----------|
 | MISSION-015 Productization readiness assessment | **PLANNED** | MISSION_LOG.md (MISSION-014 remaining work) |
+| MISSION-016 Chief Engineer Gap-Closure Sprint | **IMPLEMENTED / VERIFIED-by-suite** (working tree, no commit/push) | full suite 465/10; corpus A01-A30; live-LLM E2E 1 passed; MISSION_LOG.md |
 
 Also OPEN (ROADMAP.md phases, no code): event query engine, runtime
-console, secret scanning, benchmarks, multi-agent/concurrency tests, full
-recovery scenario suite, external/commercial validation, CI, plugin
-architecture, persistent decision trace.
+console, secret scanning, multi-agent/concurrency tests, full recovery
+scenario suite, external/commercial validation, plugin architecture,
+persistent decision trace.
 
 ---
 
@@ -118,47 +130,40 @@ architecture, persistent decision trace.
 ## 5. Critical Gaps
 
 ### Technical
-1. **No interactive human-approval UX (MISSION-012 implemented):** the
-   `Approval`/`ApprovalStore` boundary is implemented and tested, but
-   granting an approval still requires a programmatic call; the flow that
-   routes a HIGH/CRITICAL request to a human and back is missing. **MEDIUM**
-2. **Verification `compile`-only depth is tested but never policy-selected**
-   (every non-deny policy level uses `compile+tests`). **LOW**
-3. **`weather` strategy unroutable** — ValueError at runtime.
-   **LOW-MEDIUM**
-4. **Duplicate snapshot implementations** (`persistence/snapshot.py` vs
+1. **No interactive human-approval UX (MISSION-012/014/016 implemented):**
+   the `Approval`/`ApprovalStore`/`ApprovalLedger` boundary is implemented,
+   tested and durable, but granting an approval still requires a
+   programmatic call. **MEDIUM**
+2. **No production benchmarks:** the local append benchmark exists
+   (`benchmarks/event_store_benchmark.py`, linear ~800-815 appends/s) but is
+   not a production measurement. **LOW-MEDIUM**
+3. **Duplicate snapshot implementations** (`persistence/snapshot.py` vs
    `snapshot/snapshot_manager.py` vs `persistence/snapshot_manager.py`),
    legacy `persistence/recovery.py`/`event_store_backup.py`, and
-   `simulation/services/` overlap with `agent/executors/`.
-   **LOW-MEDIUM**
-5. **No benchmarks / no concurrency tests / no full recovery scenario
-   suite** (restart, snapshot+replay+hash after recovery). **MEDIUM**
+   `simulation/services/` overlap with `agent/executors/`. **LOW-MEDIUM**
+4. **No concurrency/multi-agent tests beyond same-store threads** (the
+   event store is lock-safe for threads; multi-process writers unsupported).
+   **MEDIUM**
 
 ### Security
-6. **Human-approval UX missing** (MISSION-012/014 implemented and hardened
-   the boundary; there is no interactive grant flow yet). Without a grant,
-   HIGH/CRITICAL still fails closed — safe, but not usable end-to-end.
-   **MEDIUM**
-7. **Risk policy fail-closed behavior now proven by tests**
-   (UNKNOWN->DENY, HIGH/CRITICAL->human approval, per-level max_attempts,
-   depth propagation) — `tests/risk_policy_test.py` + `tests/risk_pipeline_test.py`
-   (MISSION-011). **CLOSED**
-8. **Authorization boundary now proven fail-closed by tests**
-   (MISSION-014): typed `ControllerDecision`, store-verified single-use
-   approval binding at the apply boundary, object-identity patch binding,
-   replay/expiry/forgery/evidence-only/metadata-injection denial —
-   `tests/approval_boundary_test.py` (48 tests) + corpus A01-A20. **CLOSED**
-9. **No secret scanning / supply-chain protection** (ROADMAP Phase 7).
-   **MEDIUM** (mitigated: .env gitignored, ProviderError secret-safe).
-10. **Repository hygiene:** tracked `.pyc` files
-    (`simulation/domain/__pycache__/`, `simulation/security/__pycache__/`),
-    junk files (`git` 0 bytes, `kernel.txt`), stray Turkish-named empty
-    directories under simulation/. **LOW**
+5. **Human-approval UX missing** (safe, not interactive). **MEDIUM**
+6. **Secret redaction / prompt-injection are heuristics, not guarantees**
+   (documented; secret files skipped wholesale, inline redaction
+   best-effort). **MEDIUM** (mitigated)
+7. **Approval durability requires a wired `ApprovalLedger`.** Without a
+   ledger the store is in-memory. **LOW-MEDIUM** (governed CLI wires it)
+8. **No secret scanning / supply-chain protection** (ROADMAP Phase 7).
+   **MEDIUM** (mitigated: .env gitignored, ProviderError secret-safe,
+   secret files skipped on the read path)
+9. **Repository hygiene:** tracked junk staged for removal (`git`,
+   `kernel.txt`, `.pyc`); stray dirs removed; docs drift in README/
+   CHANGELOG/PROJECT_CONTEXT. **LOW**
 
 ### Product
-11. **No external validation** — no market research, no competitor
+10. **No external validation** — no market research, no competitor
     comparison, no compliance work (ROADMAP Phase 14). **HIGH** for any
     product claim.
+11. **CI exists but not exercised on a hosted runner.** **LOW-MEDIUM**
 12. **Docs drift** — README.md, CHANGELOG.md, docs/PROJECT_CONTEXT.md,
     docs/ROADMAP.md, docs/SESSION_NOTES.md, docs/MILESTONE-2.md describe
     older versions/sprints. **LOW-MEDIUM**
@@ -167,42 +172,44 @@ architecture, persistent decision trace.
 
 ## 6. Recommended Next 5 Actions
 
-Ranked by risk reduction vs. effort (MISSION-011, MISSION-012,
-MISSION-013 and MISSION-014 are closed and NOT re-listed):
+Ranked by risk reduction vs. effort (MISSION-016 is implemented but
+uncommitted; MISSION-011..014 are closed and NOT re-listed):
 
-1. **Build the human-approval UX:** the `ApprovalStore` boundary is
-   implemented, tested and hardened at the apply boundary (MISSION-012/
-   014); add the interaction that routes a HIGH/CRITICAL request to a
-   human and back into `grant` (CLI prompt or approval-file intake). This
-   is the last piece before default-on can be re-evaluated as a product
-   decision (D-022).
-2. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
+1. **Build the human-approval UX:** the boundary + ledger are implemented,
+   tested and durable (MISSION-012/014/016); add the interaction that
+   routes a HIGH/CRITICAL request to a human and back into `grant` (CLI
+   prompt or approval-file intake). Last piece before default-on can be
+   re-evaluated (D-022).
+2. **Commit / push the MISSION-016 sprint**, then run the new CI on
+   Linux/macOS to close the symlink coverage gap.
+3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
-3. **Fix the `weather` routing gap or remove the branch** (Planner produces
-   "weather" that StrategyDispatcher cannot dispatch); add a planner/dispatcher
-   contract test.
-4. **Clean repository hygiene** (tracked `.pyc`, junk files, stray
-   directories) in a docs/hygiene commit.
-5. **Close MISSION-009 documentation** (referenced as a sync task but with no
-   dedicated MISSION_LOG entry).
+4. **MISSION-015 Productization Readiness Assessment.**
+5. **Finish repository hygiene** (legacy `persistence/recovery.py`,
+   `event_store_backup.py`, duplicate snapshots, `services/` overlap) with
+   dead-code evidence per component.
 
 ---
 
-## 7. Repository Facts Summary (all VERIFIED; refreshed at MISSION-014 close-out 2026-08-12)
+## 7. Repository Facts Summary (all VERIFIED; refreshed at MISSION-016 close-out 2026-08-12)
 
-- Branch `worker-action-pipeline` @ `f94c82b`; 14 commits ahead of `main`.
-- Working tree: MISSION-012/013/014 close-out changes uncommitted
-  (approval module, apply-authorization hardening, pipeline wiring,
-  tests, corpus extension, docs).
-- Test suite: MISSION-014 close-out **390 passed, 9 skipped**
-  (MISSION-012/013 close-out baseline: 373 passed / 9 skipped; +17
-  MISSION-014 authorization-boundary tests).
-- 23 test modules (MISSION-011 close-out baseline: 22).
+- Branch `worker-action-pipeline` @ `d347f43`; 16 commits ahead of `main`.
+- Working tree: MISSION-016 sprint changes uncommitted (governed CLI,
+  rollback, approval ledger, event-store/snapshot hardening, verification
+  hardening, secret boundary, lazy provider, risk refinement, corpus
+  A21-A30, CI, pyproject, new tests; tracked junk staged for removal).
+- Test suite: MISSION-016 close-out **465 passed, 10 skipped** (MISSION-014
+  baseline: 390/9; +75).
+- Adversarial corpus: **34 passed / 1 skipped** (A01-A30).
+- Gated live-LLM E2E: **1 passed** (real provider, run on 2026-08-12).
 - 4 tags: v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0.
 - Remote: github.com/khalikinisoran-jpg/olay-kaynak-platformu.git.
-- requirements.txt: pytest==9.1.1, requests, python-dotenv.
+- requirements.txt: pytest==9.1.1, requests, python-dotenv; pyproject.toml
+  added (setuptools packaging metadata).
 - .env present locally (OPENROUTER_API_KEY, untracked/gitignored).
-- No CI workflows; empty tests/{chaos,integration,property,unit} dirs.
+- CI workflow added: `.github/workflows/ci.yml` (ubuntu + windows; pytest +
+  compileall + corpus + diff-check). Empty `tests/{chaos,integration,
+  property,unit}` dirs remain.
 
 ---
 

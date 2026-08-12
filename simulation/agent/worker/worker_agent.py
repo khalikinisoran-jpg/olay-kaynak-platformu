@@ -28,6 +28,12 @@ from simulation.security.path_policy import (
     PathPolicy
 )
 
+from simulation.security.secret_policy import (
+    REDACTED_MARKER,
+    is_secret_file,
+    redact_content,
+)
+
 
 class WorkerAgent:
 
@@ -145,24 +151,42 @@ class WorkerAgent:
 
                 continue
 
+            if is_secret_file(path_value):
+
+                evidence.append({
+                    "path": path_value,
+                    "action": "inspect",
+                    "status": "skipped_secret",
+                    "error": (
+                        "Secret file skipped; content is "
+                        "never sent to the analyzer."
+                    )
+                })
+
+                continue
+
             try:
 
-                content = path.read_text(
+                raw_content = path.read_text(
                     encoding="utf-8"
+                )
+
+                analysis_content, _ = redact_content(
+                    raw_content
                 )
 
                 evidence.append({
                     "path": path_value,
                     "action": "read",
                     "status": "success",
-                    "characters": len(content)
+                    "characters": len(raw_content)
                 })
 
                 (
                     analysis
                 ) = self.llm_analyzer.analyze(
                     path=path_value,
-                    content=content,
+                    content=analysis_content,
                     description=self._analysis_description(
                         task
                     )
@@ -184,14 +208,21 @@ class WorkerAgent:
 
                 new_text = analysis.new_text
 
-                if content.count(old_text) != 1:
+                if raw_content.count(old_text) != 1:
 
                     raise ValueError(
                         "LLM old_text must occur exactly "
                         "once in the current file."
                     )
 
-                new_content = content.replace(
+                if REDACTED_MARKER in new_text:
+
+                    raise ValueError(
+                        "Proposal references redacted "
+                        "secret content; rejected."
+                    )
+
+                new_content = raw_content.replace(
                     old_text,
                     new_text,
                     1
@@ -201,7 +232,7 @@ class WorkerAgent:
                     path=path_value,
                     action="modify",
                     reason=diagnosis,
-                    old_content=content,
+                    old_content=raw_content,
                     new_content=new_content,
                     allowed_paths=task.allowed_paths
                 )

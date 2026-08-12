@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, worker-action-pipeline]
+  pull_request:
+
+jobs:
+  test:
+    name: pytest (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile all packages
+        run: python -m compileall -q simulation tests
+
+      - name: Run the full test suite
+        run: python -m pytest -q
+
+      - name: Run the adversarial corpus
+        run: python -m pytest tests/security/adversarial_corpus_test.py -q
+
+      - name: Whitespace check
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.event.after }}"
+          fi
+          if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ] \
+             || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No meaningful base/head pair; skipping whitespace check."
+          elif [ "$BASE_SHA" = "$HEAD_SHA" ]; then
+            echo "Base and head are identical; nothing to check."
+          else
+            git diff --check "$BASE_SHA...$HEAD_SHA"
+          fi

@@ -65,3 +65,19 @@ class ApplyExecutor:
             path=patch.path,
             message=message
         )
+
+    def rollback(
+        self,
+        patch: PatchProposal
+    ) -> tuple[bool, str]:
+
+        """Restore the patch target to its exact pre-apply content.
+
+        Used by the apply/verify pipeline to roll a failed patch back
+        before any recovery retry so retries never build on top of a
+        corrupted or failed-verification state.
+        """
+
+        return self.file_applier.restore(
+            patch
+        )

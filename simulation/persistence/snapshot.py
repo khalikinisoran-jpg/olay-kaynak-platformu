@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -17,7 +18,6 @@ class SnapshotStore:
             exist_ok=True
         )
 
-
     def save(
         self,
         state,
@@ -32,6 +32,13 @@ class SnapshotStore:
 
             state_data = state
 
+        content_hash = hashlib.sha256(
+            json.dumps(
+                state_data,
+                sort_keys=True,
+                ensure_ascii=False,
+            ).encode("utf-8")
+        ).hexdigest()
 
         snapshot = {
 
@@ -43,10 +50,11 @@ class SnapshotStore:
                 timezone.utc
             ).isoformat(),
 
+            "content_hash": content_hash,
+
             "state": state_data
 
         }
-
 
         with open(
             self.path,
@@ -61,13 +69,11 @@ class SnapshotStore:
                 indent=4
             )
 
-
     def load(self):
 
         if not self.path.exists():
 
             return None
-
 
         with open(
             self.path,

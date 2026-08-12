@@ -1,12 +1,12 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `f94c82b` (2026-08-11; risk-layer section
-> refreshed by the MISSION-011 close-out on 2026-08-12, the
-> MISSION-012/013 close-out on 2026-08-12, and the MISSION-014
-> authorization-boundary hardening on 2026-08-12). This document describes
-> verified code only. Roadmap/future ideas are not presented as current
-> reality; see ROADMAP.md for the future.
+> `worker-action-pipeline` @ `d347f43` (2026-08-12; MISSION-016
+> Chief-Engineer-Gap-Closure additions: governed runtime path, rollback,
+> approval ledger, event-store/snapshot hardening, verification hardening,
+> secret/prompt-injection boundary, lazy provider, risk refinement).
+> This document describes verified code only. Roadmap/future ideas are not
+> presented as current reality; see ROADMAP.md for the future.
 
 ---
 
@@ -308,33 +308,72 @@ approval metadata is never authority. Grants are recorded as
 
 # 14. Shipped Entry Point (agent_run.py)
 
-- `--recovery` flag: uses `build_recovery_agent`.
+- `--governed` flag: uses `build_recovery_agent` with
+  `RiskEngine`/`RiskPolicy` + a durable ledger-backed `ApprovalStore`.
+  Requires `--allowed-path`. LOW/MEDIUM auto-apply (with rollback on
+  verification failure); HIGH/CRITICAL fail closed without a valid approval
+  (MISSION-016).
+- `--recovery` flag: uses `build_recovery_agent` (no risk gate).
 - `--allowed-path` (repeatable): worker read/propose/apply scope;
   empty by default (fail-closed, no mutations).
+- `--approval-ledger <path>`: durable approval ledger for `--governed`.
 - Default: `Agent(kernel)` proposal-only chat loop.
 - REPL prompts in Turkish; on "exit"/"quit" exits.
+
+# 14a. MISSION-016 Hardening (verified code)
+
+- **Rollback:** `ApplyExecutor.rollback` -> `FileApplier.restore` (atomic
+  tempfile+replace + read-back). `ApplyVerifyPipeline` rolls a
+  failed-verification patch back to its exact pre-apply content and (when
+  the verification executor supports it) re-verifies the clean state with a
+  compile-only check. Rollback failure is classified `FAILURE_ROLLBACK`
+  (terminal; recovery never retries on an unknown state). Events:
+  `WorkerRollbackSucceeded` / `WorkerRollbackFailed`.
+- **Approval ledger:** `ApprovalLedger` is an append-only, hash-chained
+  file (grant/consumed/applied). `ApprovalStore` reloads authorization state
+  from it; consumed/applied approvals stay so after restart; corrupt or
+  hash-broken ledger state raises `RuntimeError` (fail-closed). Evidence
+  events remain evidence-only (D-012).
+- **Event store:** cached chain head (O(1) append), per-instance lock,
+  per-append fsync, store-authoritative `next_sequence()`. Snapshot carries
+  a `content_hash` and a `last_sequence`; unverifiable/inconsistent
+  snapshots fall back to a full replay from the chain-verified event log;
+  event-chain corruption still raises.
+- **Verification:** default 120s timeout; pytest exit code 5 ("no tests
+  collected") is FAIL; `PYTHONPYCACHEPREFIX` redirects bytecode cache out of
+  the tree.
+- **Secret boundary:** `secret_policy.py` classifies secret files
+  (`.env`, PEM keys, credential files) and redacts obvious inline secret
+  values; the worker skips secret files and sends only redacted content to
+  the analyzer; the analyzer prompt marks content as UNTRUSTED DATA;
+  proposals referencing `[REDACTED]` are rejected.
+- **Lazy provider:** `Agent`/`LLMExecutor`/`LLMCodeAnalyzer` resolve the
+  provider only on a real LLM call.
 
 ---
 
 # 15. Known Architectural Gaps (code-verified)
 
-- `weather` strategy planned but no executor registered -> ValueError at
-  runtime (planner.py:55, strategy_dispatcher.py).
-- Human approval boundary implemented and hardened (MISSION-012/014) but
-  there is no interactive human-approval UX yet: `ApprovalStore.grant` is
-  invoked programmatically; without a grant, HIGH/CRITICAL fails closed at
+- Human approval boundary implemented and hardened (MISSION-012/014/016)
+  but there is no interactive human-approval UX yet: `ApprovalStore.grant`
+  is invoked programmatically; without a grant, HIGH/CRITICAL fails closed at
   the approval stage.
-- Risk gate tested but DEFAULT OFF: it activates only when both
-  `risk_engine` and `risk_policy` are explicitly wired
-  (`build_recovery_agent`/`WorkerActionPipeline`); the shipped assembly
-  stays gate-off by design (D-021/D-022, explicit opt-in).
-- DecisionTrace in-memory only.
+- Risk gate / governed apply DEFAULT OFF: `--governed`/`--recovery` are the
+  explicit opt-ins; the shipped default runtime stays proposal-only
+  (D-021/D-022/D-015).
+- Rollback on verification failure is provided by the real `ApplyExecutor`;
+  a custom executor without `rollback` leaves the failed state (documented).
+- `DecisionTrace` in-memory only.
 - `simulation/domain/`, `simulation/services/`,
   `persistence/event_store_backup.py`, `persistence/recovery.py`,
   `snapshot/snapshot_manager.py` duplicate/overlap with
   `simulation/snapshot/` (multiple snapshot implementations exist:
   `persistence/snapshot.py`, `snapshot/snapshot_manager.py`).
 - Empty test subpackages `tests/chaos|integration|property|unit/`.
-- The simulation/ tree contains stray empty Turkish-named directories
-  (e.g., `(sadece/`, `Bırak/`, `Boş/`, `için)/`, `klasörü/`, `paketi/`,
-  `Python/`, `yapmak/`) — likely agent-created junk (VERIFIED by listing).
+- Multi-process writers on one `EventStore` file are unsupported (same-store
+  threads are safe via the internal lock).
+- The `weather` planner branch was removed (was unroutable); the
+  planner/dispatcher contract test now locks the invariant that every
+  emitted strategy is registered.
+- Secret redaction and prompt-injection resistance are mitigations, not
+  guarantees (see SECURITY_MODEL.md).

@@ -1,5 +1,9 @@
 from simulation.agent.approval.approval import Approval
 
+from simulation.agent.approval.approval_ledger import (
+    ApprovalLedger,
+)
+
 
 class ApprovalStore:
 
@@ -21,15 +25,25 @@ class ApprovalStore:
     - Every granted approval is single-use: ``find_valid`` consumes it
       once, so the same approval can never authorize two executions.
 
-    Every grant is recorded as evidence through the existing
-    evidence/event mechanism (the ``WorkerEvidenceRecorder``), never
-    through a parallel store. No new evidence architecture is
-    introduced (MISSION-012, principle E).
+    Durability: when an ``ApprovalLedger`` is supplied, every grant /
+    consume / apply transition is appended to the ledger and the store
+    reloads its authorization state from the ledger on construction, so
+    a consumed or applied approval stays consumed after a process
+    restart. The ledger is fail-closed: corrupted or hash-broken state
+    raises ``RuntimeError``. The worker evidence events stay evidence
+    only (D-012 / MISSION-014 test_m) and are never authorization
+    input.
     """
 
-    def __init__(self, evidence_recorder=None):
+    def __init__(
+        self,
+        evidence_recorder=None,
+        ledger=None
+    ):
 
         self.evidence_recorder = evidence_recorder
+
+        self.ledger = ledger
 
         self._approvals = {}
 
@@ -40,6 +54,71 @@ class ApprovalStore:
         self._bindings = {}
 
         self._applied = set()
+
+        if ledger is not None:
+
+            self._reload_from_ledger()
+
+    def _reload_from_ledger(self):
+
+        records = self.ledger.load()
+
+        for record in records:
+
+            record_type = record.get(
+                "record_type"
+            )
+
+            if record_type == ApprovalLedger.TYPE_GRANT:
+
+                approval = Approval(
+                    approval_id=record["approval_id"],
+                    patch_fingerprint=record[
+                        "patch_fingerprint"
+                    ],
+                    path=record["path"],
+                    action=record["action"],
+                    risk_level=record["risk_level"],
+                    attempt=record["attempt"],
+                    authorizer=record["authorizer"],
+                    created_at=record["created_at"],
+                    expires_at=record.get(
+                        "expires_at",
+                        "",
+                    ),
+                )
+
+                self._approvals[
+                    approval.approval_id
+                ] = approval
+
+                self._by_fingerprint.setdefault(
+                    approval.patch_fingerprint,
+                    [],
+                ).append(approval.approval_id)
+
+            elif record_type == (
+                ApprovalLedger.TYPE_CONSUMED
+            ):
+
+                self._consumed.add(
+                    record["approval_id"]
+                )
+
+            elif record_type == (
+                ApprovalLedger.TYPE_APPLIED
+            ):
+
+                self._applied.add(
+                    record["approval_id"]
+                )
+
+            else:
+
+                raise RuntimeError(
+                    "Approval ledger contains an unknown "
+                    f"record type: {record_type!r}"
+                )
 
     def grant(
         self,
@@ -91,6 +170,10 @@ class ApprovalStore:
             self.evidence_recorder.record_approval_granted(
                 approval
             )
+
+        if self.ledger is not None:
+
+            self.ledger.append_grant(approval)
 
         return approval
 
@@ -170,6 +253,13 @@ class ApprovalStore:
 
                 self._bindings[approval_id] = patch
 
+            if self.ledger is not None:
+
+                self.ledger.append_consumed(
+                    approval_id,
+                    fingerprint,
+                )
+
             return approval
 
         return None
@@ -234,6 +324,13 @@ class ApprovalStore:
             return False
 
         self._applied.add(approval_id)
+
+        if self.ledger is not None:
+
+            self.ledger.append_applied(
+                approval_id,
+                patch.fingerprint(),
+            )
 
         return True
 

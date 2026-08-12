@@ -40,27 +40,6 @@ class Planner:
             }
 
         # -----------------------------------
-        # Weather
-        # -----------------------------------
-
-        if any(
-            word in text
-            for word in [
-                "hava",
-                "weather",
-                "sıcaklık",
-                "yağmur"
-            ]
-        ):
-
-            return {
-                "strategy": "weather",
-                "steps": [
-                    "execute_weather"
-                ]
-            }
-
-        # -----------------------------------
         # Memory Recall
         # -----------------------------------
 

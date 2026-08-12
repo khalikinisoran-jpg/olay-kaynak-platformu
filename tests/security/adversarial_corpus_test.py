@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import subprocess
+import threading
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,6 +19,10 @@ from simulation.agent.apply.file_applier import (
 
 from simulation.agent.approval.approval import (
     Approval
+)
+
+from simulation.agent.approval.approval_ledger import (
+    ApprovalLedger
 )
 
 from simulation.agent.approval.approval_store import (
@@ -62,6 +67,10 @@ from simulation.agent.worker.patch_validator import (
     PatchValidator
 )
 
+from simulation.agent.worker.analysis_result import (
+    AnalysisResult
+)
+
 from simulation.agent.worker.worker_agent import (
     WorkerAgent
 )
@@ -80,16 +89,24 @@ from simulation.agent.worker.validation_result import (
 
 from simulation.core.kernel import Kernel
 
+from simulation.core.reducer import Reducer
+
 from simulation.persistence.event_store import EventStore
 
 from simulation.persistence.snapshot import SnapshotStore
 
 from simulation.persistence.snapshot_manager import SnapshotManager
 
+from simulation.recovery.recovery_engine import RecoveryEngine
+
 from simulation.security.hash_verifier import HashVerifier
 
 from simulation.security.path_policy import (
     PathPolicy
+)
+
+from simulation.security.secret_policy import (
+    REDACTED_MARKER
 )
 
 from simulation.security.risk_engine import (
@@ -835,20 +852,23 @@ def test_a08b_fake_write_detected_by_read_back(corpus, tmp_path, monkeypatch):
         (str(target),),
     )
 
-    real_write = Path.write_text
+    real_replace = FileApplier._replace
 
     calls = {"n": 0}
 
-    def corrupting_write(self, content, *args, **kwargs):
+    def corrupting_replace(self, tmp, target):
         calls["n"] += 1
         if calls["n"] == 1:
-            content = "FORGED WRITE\n"
-        return real_write(self, content, *args, **kwargs)
+            Path(tmp).write_text(
+                "FORGED WRITE\n",
+                encoding="utf-8",
+            )
+        return real_replace(self, tmp, target)
 
     monkeypatch.setattr(
-        Path,
-        "write_text",
-        corrupting_write,
+        FileApplier,
+        "_replace",
+        corrupting_replace,
     )
 
     ok, message = FileApplier().apply(patch)
@@ -1765,6 +1785,637 @@ def test_a20_approval_gate_without_authority_is_denied(corpus, tmp_path):
         "proposal-contained approval claims with no authority store",
         "DENY (fail-closed; proposal metadata is never authority)",
         actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A21 Rollback After Verification Failure
+# ---------------------------------------------------------------------------
+
+def test_a21_verification_failure_rolls_back_patch(corpus, tmp_path):
+
+    target = tmp_path / "sample.py"
+
+    original = "value = 1\n"
+
+    updated = "value = 2\n"
+
+    target.write_text(original, encoding="utf-8")
+
+    patch = make_patch(
+        target,
+        original,
+        updated,
+        (str(target),),
+    )
+
+    decision = ControllerDecision(
+        approved=True,
+        reason="corpus approval",
+        patch_fingerprint=patch.fingerprint(),
+    )
+
+    pipeline = ApplyVerifyPipeline(
+        verification_executor=FakeVerificationExecutor(
+            [
+                make_verification_result(
+                    status=FAIL,
+                    exit_code=2,
+                    stdout="1 failed",
+                    failure_reason="corpus verify fail",
+                ),
+            ]
+        ),
+    )
+
+    result = pipeline.execute(
+        patch,
+        decision,
+    )
+
+    content = target.read_text(encoding="utf-8")
+
+    passed = (
+        result.success is False
+        and result.apply_success is True
+        and result.rollback is not None
+        and result.rollback.success is True
+        and content == original
+    )
+
+    corpus.record(
+        "A21",
+        "verification FAIL after a successful apply",
+        "rollback to exact pre-apply state; no mutation remains",
+        (
+            f"rollback={result.rollback.success if result.rollback else None} "
+            f"content_restored={content == original}"
+        ),
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A22 Rollback Failure Is Terminal (no retry on unknown state)
+# ---------------------------------------------------------------------------
+
+def test_a22_rollback_failure_is_terminal(corpus, tmp_path):
+
+    target = tmp_path / "sample.py"
+
+    original = "value = 1\n"
+
+    updated = "value = 2\n"
+
+    target.write_text(original, encoding="utf-8")
+
+    patch = make_patch(
+        target,
+        original,
+        updated,
+        (str(target),),
+    )
+
+    class FailingRollbackExecutor(ApplyExecutor):
+
+        def rollback(self, patch):
+
+            return (
+                False,
+                "rollback failed: cannot restore target",
+            )
+
+    pipeline = WorkerActionPipeline(
+        apply_verify_pipeline=ApplyVerifyPipeline(
+            apply_executor=FailingRollbackExecutor(),
+            verification_executor=FakeVerificationExecutor(
+                [
+                    make_verification_result(
+                        status=FAIL,
+                        exit_code=2,
+                        failure_reason="corpus verify fail",
+                    ),
+                ]
+            ),
+        ),
+    )
+
+    result = pipeline.execute(
+        make_worker_result(patch)
+    )
+
+    passed = (
+        result.success is False
+        and result.failure_stage == "rollback"
+    )
+
+    corpus.record(
+        "A22",
+        "rollback itself fails after verification FAIL",
+        "terminal FAILURE_ROLLBACK; no retry on unknown state",
+        f"failure_stage={result.failure_stage}",
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A23 Consumed Approval Not Reusable After Restart
+# ---------------------------------------------------------------------------
+
+def test_a23_consumed_approval_not_reusable_after_restart(
+    corpus, tmp_path
+):
+
+    ledger = ApprovalLedger(
+        path=tmp_path / "ledger.jsonl"
+    )
+
+    store = ApprovalStore(ledger=ledger)
+
+    fp = "a1" * 32
+
+    store.grant(
+        patch_fingerprint=fp,
+        path="/repo/app.py",
+        action="modify",
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-1",
+        expires_at=3600,
+    )
+
+    released = store.find_valid(
+        fp,
+        path="/repo/app.py",
+        action="modify",
+        risk_level="HIGH",
+        attempt=1,
+    )
+
+    restarted = ApprovalStore(
+        ledger=ApprovalLedger(
+            path=tmp_path / "ledger.jsonl"
+        )
+    )
+
+    again = restarted.find_valid(
+        fp,
+        path="/repo/app.py",
+        action="modify",
+        risk_level="HIGH",
+        attempt=1,
+    )
+
+    passed = (
+        released is not None
+        and again is None
+    )
+
+    corpus.record(
+        "A23",
+        "reuse a consumed approval after a process restart",
+        "consumed state survives restart via the ledger; DENY",
+        f"first={released is not None} after_restart={again is None}",
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A24 Corrupted Approval Ledger Fails Closed
+# ---------------------------------------------------------------------------
+
+def test_a24_corrupted_ledger_fails_closed(corpus, tmp_path):
+
+    ledger_path = tmp_path / "ledger.jsonl"
+
+    ledger_path.write_text(
+        "NOT JSON\n",
+        encoding="utf-8",
+    )
+
+    try:
+
+        ApprovalStore(
+            ledger=ApprovalLedger(path=ledger_path)
+        )
+
+        raised = False
+
+    except RuntimeError:
+
+        raised = True
+
+    passed = raised is True
+
+    corpus.record(
+        "A24",
+        "approval ledger is corrupted on disk",
+        "store construction raises RuntimeError (fail-closed)",
+        f"raised={raised}",
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A25 Secret File Content Never Sent To Analyzer
+# ---------------------------------------------------------------------------
+
+def test_a25_secret_file_content_never_sent(corpus, tmp_path):
+
+    target = tmp_path / ".env"
+
+    target.write_text(
+        "SECRET_KEY=super-secret-value-123\n",
+        encoding="utf-8",
+    )
+
+    class CapturingAnalyzer:
+
+        def __init__(self):
+
+            self.captured = []
+
+        def analyze(self, path, content, description):
+
+            self.captured.append(content)
+
+            return AnalysisResult(
+                diagnosis="captured",
+                old_text=content,
+                new_text=content + "\n# marker\n",
+                risk="LOW",
+            )
+
+    analyzer = CapturingAnalyzer()
+
+    worker = WorkerAgent(analyzer=analyzer)
+
+    task = WorkerTask(
+        task_id="a25",
+        description="inspect",
+        allowed_paths=(str(target),),
+        allowed_actions=("read", "inspect", "propose"),
+        expected_output="patch proposal",
+    )
+
+    result = worker.run(task)
+
+    passed = (
+        result.success is False
+        and analyzer.captured == []
+        and any(
+            record.get("status") == "skipped_secret"
+            for record in result.evidence
+        )
+    )
+
+    corpus.record(
+        "A25",
+        "secret file (.env) is in scope and read",
+        "content is never sent to the analyzer; skipped",
+        f"captured={len(analyzer.captured)}",
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A26 Secret Values Redacted Before Analyzer
+# ---------------------------------------------------------------------------
+
+def test_a26_secret_values_redacted(corpus, tmp_path):
+
+    target = tmp_path / "config.py"
+
+    secret = "sk-abcdef0123456789abcdef"
+
+    target.write_text(
+        "host = 'localhost'\n"
+        f"api_key = '{secret}'\n",
+        encoding="utf-8",
+    )
+
+    class CapturingAnalyzer:
+
+        def __init__(self):
+
+            self.captured = []
+
+        def analyze(self, path, content, description):
+
+            self.captured.append(content)
+
+            return AnalysisResult(
+                diagnosis="captured",
+                old_text=content,
+                new_text=content + "\n# marker\n",
+                risk="LOW",
+            )
+
+    analyzer = CapturingAnalyzer()
+
+    worker = WorkerAgent(analyzer=analyzer)
+
+    task = WorkerTask(
+        task_id="a26",
+        description="inspect",
+        allowed_paths=(str(target),),
+        allowed_actions=("read", "inspect", "propose"),
+        expected_output="patch proposal",
+    )
+
+    worker.run(task)
+
+    sent = analyzer.captured[0] if analyzer.captured else ""
+
+    passed = (
+        secret not in sent
+        and REDACTED_MARKER in sent
+    )
+
+    corpus.record(
+        "A26",
+        "source file contains a secret assignment",
+        "value is redacted before the analyzer sees the content",
+        f"redacted={REDACTED_MARKER in sent}",
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A27 Empty Test Target Is Never Verification PASS
+# ---------------------------------------------------------------------------
+
+def test_a27_no_tests_collected_is_not_pass(corpus, tmp_path):
+
+    from simulation.agent.verify.command_runner import (
+        CommandResult,
+        CommandRunner,
+    )
+
+    class NoTestsRunner:
+
+        def __init__(self):
+
+            self.calls = []
+
+        def run(
+            self,
+            command,
+            timeout=None,
+            cwd=None,
+            env=None
+        ):
+
+            self.calls.append(command)
+
+            return CommandResult(
+                exit_code=5,
+                stdout="no tests ran",
+                stderr="",
+            )
+
+    from simulation.agent.verify.verification_executor import (
+        VerificationExecutor
+    )
+
+    executor = VerificationExecutor(
+        runner=NoTestsRunner()
+    )
+
+    result = executor.verify(
+        ["simulation/sample.py"],
+        ["tests/empty_target.py"],
+    )
+
+    passed = (
+        result.status == "FAIL"
+        and result.passed is False
+        and "no tests" in result.failure_reason.lower()
+    )
+
+    corpus.record(
+        "A27",
+        "verification target collects zero tests",
+        "pytest exit 5 is FAIL, never PASS",
+        f"status={result.status}",
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A28 Concurrent Appends Keep The Chain Consistent
+# ---------------------------------------------------------------------------
+
+def test_a28_concurrent_appends_stay_consistent(corpus, tmp_path):
+
+    from simulation.core.event import Event
+
+    store = EventStore(
+        path=tmp_path / "events.jsonl"
+    )
+
+    threads = []
+
+    for worker_id in range(8):
+
+        def append_loop(worker_id=worker_id):
+
+            for index in range(40):
+
+                store.append(
+                    Event(
+                        event_type="CorpusConcurrent",
+                        payload={
+                            "worker": worker_id,
+                            "index": index,
+                        },
+                    )
+                )
+
+        threads.append(
+            threading.Thread(
+                target=append_loop
+            )
+        )
+
+    for thread in threads:
+
+        thread.start()
+
+    for thread in threads:
+
+        thread.join()
+
+    records = [
+        json.loads(line)
+        for line in store.path.read_text(
+            encoding="utf-8"
+        ).splitlines()
+        if line.strip()
+    ]
+
+    chain_ok = HashVerifier().verify(records) is True
+
+    sequences = [
+        record["sequence"]
+        for record in records
+    ]
+
+    passed = (
+        len(records) == 8 * 40
+        and chain_ok
+        and sorted(sequences) == list(
+            range(1, len(records) + 1)
+        )
+    )
+
+    corpus.record(
+        "A28",
+        "concurrent writers share one store instance",
+        "serialized appends; chain verifies; sequences contiguous",
+        (
+            f"records={len(records)} "
+            f"chain_ok={chain_ok}"
+        ),
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A29 Snapshot Tampering Is Detected / Not Trusted
+# ---------------------------------------------------------------------------
+
+def test_a29_snapshot_tampering_not_trusted(corpus, tmp_path):
+
+    from simulation.core.event import Event
+
+    store = EventStore(
+        path=tmp_path / "events.jsonl"
+    )
+
+    snapshot_manager = SnapshotManager(
+        snapshot_store=SnapshotStore(
+            path=tmp_path / "snapshot.json"
+        )
+    )
+
+    kernel = Kernel(
+        store,
+        snapshot_manager=snapshot_manager,
+    )
+
+    for index in range(6):
+
+        kernel.dispatch(
+            Event(
+                event_type="UserQuestionReceived",
+                payload={"prompt": f"q{index}"},
+            )
+        )
+
+    snapshot_path = tmp_path / "snapshot.json"
+
+    snapshot = json.loads(
+        snapshot_path.read_text(encoding="utf-8")
+    )
+
+    snapshot["state"]["memory"] = {
+        "forged": "tampered",
+    }
+
+    snapshot_path.write_text(
+        json.dumps(snapshot),
+        encoding="utf-8",
+    )
+
+    recovered = RecoveryEngine(
+        event_store=EventStore(
+            path=tmp_path / "events.jsonl"
+        ),
+        snapshot_store=SnapshotStore(
+            path=tmp_path / "snapshot.json"
+        ),
+        reducer=Reducer(),
+    ).recover()
+
+    passed = (
+        recovered.event_counter == 6
+        and "forged" not in recovered.memory
+    )
+
+    corpus.record(
+        "A29",
+        "snapshot.json state is tampered after write",
+        "tampered snapshot is not trusted; state rebuilt from the "
+        "chain-verified event log",
+        (
+            f"event_counter={recovered.event_counter} "
+            f"forged_absent={'forged' not in recovered.memory}"
+        ),
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A30 Direct FileApplier Access (documented residual)
+# ---------------------------------------------------------------------------
+
+def test_a30_direct_file_applier_scope_still_enforced(
+    corpus, tmp_path
+):
+
+    scope = tmp_path / "scope"
+
+    scope.mkdir()
+
+    outside = tmp_path / "outside.txt"
+
+    original = "outside\n"
+
+    outside.write_text(original, encoding="utf-8")
+
+    patch = make_patch(
+        outside,
+        original,
+        "tampered\n",
+        (str(scope),),
+    )
+
+    ok, message = FileApplier().apply(patch)
+
+    passed = (
+        ok is False
+        and outside.read_text(encoding="utf-8") == original
+    )
+
+    corpus.record(
+        "A30",
+        "direct FileApplier access bypassing ApplyExecutor "
+        "(documented in-process residual)",
+        "scope + staleness still enforced at the primitive; "
+        "authorization is the ApplyExecutor boundary",
+        f"denied={ok is False} file_unchanged={outside.read_text() == original}",
         passed,
     )
 

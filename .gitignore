@@ -1,35 +1,27 @@
-# Gereksiz dosyalar
+# Logs and temp files
 *.log
 *.tmp
 *.swp
-*.pyc
-__pycache__/
 
-# Token ve şifre içeren dosyalar
+# Token / secret files
 ghp_*
-Password
-Username
-entication
-info
+.env
 
-# IDE ve editör dosyaları
+# Python cache
+__pycache__/
+*.pyc
+**/__pycache__/
+
+# IDE and editor files
 .vscode/
 .idea/
 
-# İşletim sistemi dosyaları
+# OS files
 Thumbs.db
 .DS_Store
-# Environment
-.env
 
 # Virtual environment
 .venv/
 
-# Python cache
-*.pyc
-__pycache__/
 # Runtime data
 data/
-
-# Python cache
-**/__pycache__/

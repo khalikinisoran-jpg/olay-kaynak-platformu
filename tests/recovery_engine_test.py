@@ -1850,6 +1850,10 @@ def test_m4_multi_patch_b_verification_fail_retries_bounded(
 
     def multi_fresh(content):
 
+        calls[0] += 1
+
+        marker = f"\n# recovery marker {calls[0]}\n"
+
         patches = []
 
         for path_value in (
@@ -1867,7 +1871,7 @@ def test_m4_multi_patch_b_verification_fail_retries_bounded(
                 make_patch(
                     path_value,
                     current,
-                    current + "\n# recovery marker\n",
+                    current + marker,
                     (path_value,),
                 )
             )
@@ -1876,6 +1880,8 @@ def test_m4_multi_patch_b_verification_fail_retries_bounded(
             patches[0],
             patches[1],
         )
+
+    calls = [0]
 
     worker = FakeRecoveryWorker(
         target_a,

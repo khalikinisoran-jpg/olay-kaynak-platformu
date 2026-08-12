@@ -63,6 +63,8 @@ FAILURE_RISK = "risk"
 
 FAILURE_APPROVAL = "approval"
 
+FAILURE_ROLLBACK = "rollback"
+
 FAILURE_UNEXPECTED = "unexpected"
 
 
@@ -503,6 +505,14 @@ class WorkerActionPipeline:
                         pipeline_result.verification,
                     )
 
+                if pipeline_result.rollback is not None:
+
+                    recorder.record_rollback_result(
+                        worker_result.task_id,
+                        patch,
+                        pipeline_result.rollback,
+                    )
+
             if pipeline_result.verification_ran:
 
                 verification_ran = True
@@ -658,12 +668,20 @@ class WorkerActionPipeline:
 
         if final.stage == WorkerActionPipeline.STAGE_APPLY_VERIFY:
 
-            if (
-                final.pipeline_result is not None
-                and final.pipeline_result.apply_success
-            ):
+            if final.pipeline_result is not None:
 
-                return FAILURE_VERIFICATION
+                rollback = final.pipeline_result.rollback
+
+                if (
+                    rollback is not None
+                    and not rollback.success
+                ):
+
+                    return FAILURE_ROLLBACK
+
+                if final.pipeline_result.apply_success:
+
+                    return FAILURE_VERIFICATION
 
             return FAILURE_APPLY
 

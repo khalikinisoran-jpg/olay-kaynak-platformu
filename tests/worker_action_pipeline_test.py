@@ -611,10 +611,19 @@ def test_apply_success_verification_failure_is_overall_failure(
     )
 
     assert (
+        stage.pipeline_result.rollback is not None
+    )
+
+    assert (
+        stage.pipeline_result.rollback.success
+        is True
+    )
+
+    assert (
         target.read_text(
             encoding="utf-8"
         )
-        == updated
+        == original
     )
 
 

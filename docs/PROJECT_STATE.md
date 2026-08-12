@@ -16,9 +16,9 @@ results > documentation.
 | Status | Active Development | VERIFIED (git activity) |
 | Last Updated | 2026-08-12 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch`) |
-| Branch HEAD | `f94c82b` (Close MISSION-011 and synchronize project knowledge); MISSION-012/013 close-out is uncommitted working-tree evidence | VERIFIED (`git rev-parse HEAD`) |
+| Branch HEAD | `d347f43` ("Close authorization boundary and add project master"); MISSION-016 sprint changes uncommitted | VERIFIED (`git rev-parse HEAD`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 14 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is 16 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
 | Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`) |
@@ -51,13 +51,31 @@ What is actually implemented and verifiable today:
 - An opt-in mutation path: `python agent_run.py --recovery` wires
   `build_recovery_agent()` which enables apply + verification + bounded
   recovery for in-scope files (`agent_run.py:52`, `simulation/agent/recovery/recovery_assembly.py`).
+- A **governed apply path**: `python agent_run.py --governed` adds the
+  deterministic risk gate and a store-backed, single-use human-approval
+  boundary with a durable approval ledger (MISSION-016). HIGH/CRITICAL fail
+  closed without a valid approval; LOW/MEDIUM auto-apply with rollback on
+  verification failure.
+- **Rollback on verification failure** (MISSION-016): a patch whose
+  verification fails is rolled back to its exact pre-apply content before
+  any recovery retry; a rollback failure is terminal (`FAILURE_ROLLBACK`),
+  and rollback outcomes are recorded as `WorkerRollbackSucceeded` /
+  `WorkerRollbackFailed` events.
+- **Durable approval state** (MISSION-016): `ApprovalLedger` persists
+  grant/consume/apply transitions; consumed approvals stay consumed after a
+  restart; a corrupted ledger fails closed.
 - A real-LLM code analyzer (OpenRouter, DeepSeek) behind a hardened
   provider layer; only proposal generation, never file mutation
-  (MISSION-003, gated `live_llm` tests).
+  (MISSION-003, gated `live_llm` tests). **Secret files are skipped and
+  secret-like values are redacted before content reaches the analyzer**
+  (MISSION-016); providers are created lazily so non-LLM strategies run
+  without an API key.
 - A risk/verification pipeline (RiskEngine/RiskPolicy/RiskLevel) that is
   deterministic, tested (MISSION-011: 83 tests) and correctly integrated as
   an explicit opt-in gate at the pipeline and assembly level; it is NOT
-  active in the default runtime (see Known Limitations).
+  active in the default runtime (see Known Limitations). Risk path matching
+  was refined (MISSION-016) to use token boundaries for `auth`/`token`/
+  `secret` and a deterministic regression corpus was added.
 - A human approval boundary (MISSION-012): fingerprint-bound, single-use,
   evidence-recorded `Approval` / `ApprovalStore`; HIGH/CRITICAL fail closed
   without a valid approval; granted approvals are recorded as
@@ -201,12 +219,26 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-12 (MISSION-014 close-out):
+Authoritative run on 2026-08-12 (MISSION-016 close-out):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
-390 passed, 9 skipped in ~10s
+465 passed, 10 skipped in ~8s
 ```
+
+- 33 collected test modules (tests/ + tests/security/ + root
+  recovery_test.py).
+- 10 skipped: 3 opt-in `live_llm` integration tests (never run in the
+  normal suite) + 7 symlink-dependent tests that skip where the OS denies
+  symlink creation (junction variants pass on this Windows environment).
+- The 465-passed count is +75 over the MISSION-014 checkpoint (390):
+  MISSION-016 added governed-runtime integration tests (11), approval
+  durability (7), verification hardening (4), snapshot integrity (5),
+  event-store concurrency (2), lazy provider (3), secret boundary (10),
+  risk regression corpus (18+1), rollback (5), live-LLM E2E harness (1) and
+  extended the adversarial corpus A21-A30 (+10).
+- Gated live run (real provider): `RUN_LIVE_LLM=1 python -m pytest -m
+  live_llm tests/live_llm_e2e_test.py -q` → **1 passed** (2026-08-12).
 
 - 23 collected test modules (22 under tests/, including tests/security/
   sub-package, plus root recovery_test.py).
@@ -263,16 +295,20 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              f94c82b (2026-08-11, "Close MISSION-011 and synchronize project knowledge")
-Working tree:      MISSION-012/013 close-out changes uncommitted
-                   (approval module + pipeline wiring + tests + docs)
-Untracked files:   simulation/agent/approval/ (new package),
-                   tests/approval_boundary_test.py (new)
-.gitignore:        excludes .env, .venv/, data/, __pycache__/, *.pyc
-Tracked junk:      `git` (0 bytes), `kernel.txt` (stale Kernel draft),
-                   simulation/domain/__pycache__/*.pyc,
-                   simulation/security/__pycache__/*.pyc (tracked pyc artifacts)
+HEAD:              d347f43 (2026-08-12, "Close authorization boundary and add project master")
+Working tree:      MISSION-016 sprint changes uncommitted
+                   (governed CLI, rollback, approval ledger, event-store/snapshot
+                   hardening, verification hardening, secret boundary, lazy provider,
+                   risk refinement, corpus A21-A30, CI, pyproject, new tests)
+Staged for removal: tracked junk (git, kernel.txt, tracked .pyc) via git rm
+Untracked files:   simulation/agent/approval/approval_ledger.py,
+                   simulation/security/secret_policy.py,
+                   benchmarks/, new test modules
+.gitignore:        cleaned (junk entries removed), still excludes .env, .venv/,
+                   data/, __pycache__/, *.pyc
 Local env:         .env present with OPENROUTER_API_KEY (untracked; len 73)
+CI:                .github/workflows/ci.yml added (ubuntu + windows)
+Packaging:         pyproject.toml added
 ```
 
 `main` is 14 commits behind `worker-action-pipeline`. No release tag exists
@@ -284,43 +320,40 @@ after v0.5.0 for the worker-action-pipeline work.
 
 VERIFIED where not marked:
 
-1. **Risk engine (MISSION-011), human approval boundary (MISSION-012) and
-   authorization boundary hardening (MISSION-014) are verified and closed;
-   the gate stays DEFAULT OFF / explicit opt-in by design (D-021/D-022).**
-   `RiskEngine`/`RiskPolicy`/`RiskLevel` have 83 passing tests;
-   `Approval`/`ApprovalStore` and the store-backed apply authorization
-   have 48 passing tests (`tests/approval_boundary_test.py`) plus corpus
-   A01-A20. The gate is OFF unless both `risk_engine` and `risk_policy`
-   are passed to `WorkerActionPipeline` or `build_recovery_agent`. The
-   shipped assembly does not enable it by default; default-on is
-   re-evaluated only as a productization decision (see D-022).
+1. **The risk gate and governed apply stay DEFAULT OFF / explicit opt-in by
+   design (D-021/D-022).** The default runtime is proposal-only; `--governed`
+   activates risk + approval + store-backed authorization. The gate is not
+   default-on in the shipped assembly (productization decision).
 2. **Human approval boundary is implemented but has no interactive
    UX.** `ApprovalStore.grant` must be invoked programmatically; there is
    no UI/CLI flow yet that routes a HIGH/CRITICAL request to a human and
    back. Without a grant, HIGH/CRITICAL still fails closed at the approval
    stage.
-3. **Verification `compile`-only depth is tested but never policy-selected.**
-   The MISSION-011 `verification_depth` switch exists in
-   `apply_verify_pipeline.py:76`; the `compile` path is covered by tests
-   (MISSION-011) but every non-deny policy level currently selects
-   `compile+tests`.
-4. **Recovery is not active in the default runtime** (opt-in `--recovery`).
+3. **Approval durability requires a wired `ApprovalLedger`** (MISSION-016).
+   Without a ledger the store is in-memory (tests cover both modes).
+4. **Recovery is not active in the default runtime** (opt-in `--recovery` /
+   `--governed`).
 5. **DecisionTrace is in-memory**; durable evidence is only the event log.
 6. **Event store has no dedup**; re-running a task appends fresh events
    (recovery-level duplicate fingerprints are rejected by
-   `BoundedRecoveryEngine`).
+   `BoundedRecoveryEngine`). Appends are O(1), lock-serialized and fsynced
+   (MISSION-016); multi-process writers on one store file are unsupported.
 7. **`WorkerExecutor` hardcodes `task_id="worker-task"`** and
    `allowed_actions=("read","inspect","propose")`.
-8. **Live LLM end-to-end behavior** is covered only by opt-in gated tests;
-   full pipeline (apply/verify/recovery) with a real LLM is UNTESTED live.
-9. **Docs drift:** README.md, CHANGELOG.md, docs/PROJECT_CONTEXT.md,
-   docs/ROADMAP.md, docs/SESSION_NOTES.md, docs/MILESTONE-2.md still describe
-   older versions/sprints.
-10. **MISSION_LOG encoding corruption (mojibake)** in older entries, kept
+8. **Live LLM end-to-end** is covered by a gated harness
+   (`tests/live_llm_e2e_test.py`) that passed once with a real provider; it
+   never runs in the normal suite and is not a guarantee across providers.
+9. **Secret redaction is heuristic, not a guarantee**; secret files are
+   skipped wholesale but a missed inline pattern could still leak. Prompt
+   injection resistance is a mitigation, not a proof.
+10. **Docs drift:** README.md, CHANGELOG.md, docs/PROJECT_CONTEXT.md,
+    docs/ROADMAP.md, docs/SESSION_NOTES.md, docs/MILESTONE-2.md still describe
+    older versions/sprints.
+11. **MISSION_LOG encoding corruption (mojibake)** in older entries, kept
     unchanged by policy.
-11. **No CI**: `.github/workflows/` exists but is empty.
-12. **No benchmarks, no concurrency/multi-agent tests**, no production
-    configuration.
+12. **CI exists but has not been exercised externally** (no hosted run yet).
+13. **No production benchmarks**; the append benchmark
+    (`benchmarks/event_store_benchmark.py`) is a local sanity number.
 
 ---
 
@@ -341,17 +374,20 @@ VERIFIED where not marked:
 
 # Immediate Next Work
 
-Recommended (from audit findings, not a committed plan). MISSION-011 and
-MISSION-012 are closed and are NOT re-listed here:
+Recommended (from audit findings, not a committed plan):
 
 1. **Human-approval UX:** define how a HIGH/CRITICAL request flows to a
    human and back into `ApprovalStore.grant` (CLI prompt, approval file,
    or API); this is the remaining piece before default-on can be
    re-evaluated as a product decision (D-022).
-2. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
+2. **Commit / push the MISSION-016 sprint** and run the new CI on
+   Linux/macOS to close the symlink coverage gap.
+3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
-3. Close MISSION-009 documentation.
-4. Repository hygiene (tracked `.pyc`, junk files, stray directories).
+4. **MISSION-015 Productization Readiness Assessment.**
+5. **Repository hygiene** (legacy `persistence/recovery.py`,
+   `event_store_backup.py`, duplicate snapshot implementations,
+   `services/` overlap) with dead-code evidence per component.
 
 ---
 

@@ -57,7 +57,7 @@ SECRET_FILE_SUFFIXES = (
     ".pwd",
 )
 
-EXECUTABLE_SOURCE_SUFFIXES = (
+_EXECUTABLE_SOURCE_SUFFIXES = (
     ".py",
     ".js",
     ".ts",
@@ -78,6 +78,14 @@ EXECUTABLE_SOURCE_SUFFIXES = (
     ".php",
     ".pl",
 )
+
+_TOKEN_SPLIT = re.compile(r"[^a-z0-9_]+")
+
+_TOKEN_BOUNDARY_FRAGMENTS = frozenset({
+    "auth",
+    "token",
+    "secret",
+})
 
 DESTRUCTIVE_ACTIONS = frozenset({
     "delete",
@@ -180,10 +188,7 @@ class RiskEngine:
 
         if path_text:
 
-            if any(
-                fragment in path_text
-                for fragment in SECURITY_SENSITIVE_FRAGMENTS
-            ):
+            if self._has_sensitive_fragment(path_text):
 
                 signals.append(
                     ("security_sensitive_path", path_text)
@@ -238,7 +243,7 @@ class RiskEngine:
                     RiskLevel.CRITICAL,
                 )
 
-            elif suffix in EXECUTABLE_SOURCE_SUFFIXES:
+            elif suffix in _EXECUTABLE_SOURCE_SUFFIXES:
 
                 signals.append(
                     ("executable_source", suffix)
@@ -339,6 +344,48 @@ class RiskEngine:
             ),
             reason=self._reason(level, signals),
         )
+
+    @staticmethod
+    def _has_sensitive_fragment(path_text):
+
+        """Sensitive-path detection with targeted boundary matching.
+
+        The short, ambiguous fragments (``auth``, ``token``,
+        ``secret``) only raise risk when they appear as delimited path
+        tokens, so ordinary words that merely contain them
+        (``authentication.py``, ``tokenizer.py``, ``secretary.py``)
+        are not over-classified. Longer fragments (``credential``,
+        ``password``, ``.env``, ...) keep substring matching so
+        ``credentials.py`` and ``config.env`` stay sensitive.
+        """
+
+        for fragment in SECURITY_SENSITIVE_FRAGMENTS:
+
+            if fragment in _TOKEN_BOUNDARY_FRAGMENTS:
+
+                if RiskEngine._boundary_search(
+                    path_text,
+                    fragment,
+                ):
+
+                    return True
+
+            elif fragment in path_text:
+
+                return True
+
+        return False
+
+    @staticmethod
+    def _boundary_search(path_text, fragment):
+
+        pattern = re.compile(
+            r"(?:^|[^a-z0-9])"
+            + re.escape(fragment)
+            + r"(?:$|[^a-z0-9])"
+        )
+
+        return pattern.search(path_text) is not None
 
     @staticmethod
     def _reason(level, signals):

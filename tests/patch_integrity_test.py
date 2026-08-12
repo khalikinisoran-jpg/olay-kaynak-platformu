@@ -249,20 +249,23 @@ def test_file_applier_detects_corrupted_write_and_restores(
         (str(target),)
     )
 
-    real_write = Path.write_text
+    real_replace = FileApplier._replace
 
     calls = {"n": 0}
 
-    def corrupting_write(self, content, *args, **kwargs):
+    def corrupting_replace(self, tmp, target):
         calls["n"] += 1
         if calls["n"] == 1:
-            content = "CORRUPTED WRITE\n"
-        return real_write(self, content, *args, **kwargs)
+            Path(tmp).write_text(
+                "CORRUPTED WRITE\n",
+                encoding="utf-8",
+            )
+        return real_replace(self, tmp, target)
 
     monkeypatch.setattr(
-        Path,
-        "write_text",
-        corrupting_write,
+        FileApplier,
+        "_replace",
+        corrupting_replace,
     )
 
     applier = FileApplier()

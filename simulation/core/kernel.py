@@ -39,15 +39,7 @@ class Kernel:
 
     def dispatch(self, event):
 
-        sequence = len(self.events) + 1
-
-        self.decision_trace.record(
-            stage="Dispatch",
-            message=event.event_type,
-            metadata={
-                "sequence": sequence
-            }
-        )
+        sequence = self.event_store.append(event)
 
         stored_event = Event(
             event_type=event.event_type,
@@ -56,12 +48,16 @@ class Kernel:
             event_id=event.event_id
         )
 
-        self.state = self.reducer.apply(
-            self.state,
-            stored_event
+        self.decision_trace.record(
+            stage="Dispatch",
+            message=stored_event.event_type,
+            metadata={
+                "sequence": sequence
+            }
         )
 
-        self.event_store.append(
+        self.state = self.reducer.apply(
+            self.state,
             stored_event
         )
 

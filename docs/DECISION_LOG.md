@@ -195,6 +195,50 @@ from behavior, not explicitly recorded), or UNKNOWN.
 
 ---
 
+## D-024 — Verification FAIL rolls the patch back to the pre-apply state
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-016 (2026-08-12).
+- **Decision:** `ApplyVerifyPipeline` restores the exact pre-apply content
+  via `ApplyExecutor.rollback` -> `FileApplier.restore` when verification
+  fails after a successful apply, and (when supported) re-verifies the clean
+  state with a compile-only check. A rollback failure is a terminal
+  `FAILURE_ROLLBACK`; the bounded recovery loop never retries on an unknown
+  or corrupted state, so recovery works from clean state with no cumulative
+  modifications.
+- **Evidence:** `tests/rollback_test.py`, `tests/apply_verify_pipeline_test.py`,
+  corpus A21/A22, updated recovery/evidence tests.
+
+## D-025 — Approval single-use state is durable via a dedicated ledger
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-016 (2026-08-12).
+- **Decision:** `ApprovalLedger` (append-only, hash-chained) records
+  grant/consumed/applied transitions; `ApprovalStore` reloads authorization
+  state from it so a consumed/applied approval stays so after a restart.
+  Corrupt state raises `RuntimeError` (fail-closed). The ledger is separate
+  from the evidence event stream so D-012 / test_m ("evidence is never an
+  authorization input") is preserved.
+- **Evidence:** `tests/approval_durability_test.py`, corpus A23/A24,
+  `tests/approval_boundary_test.py::test_m_*`.
+
+## D-026 — Event store: O(1) append, sequence authority, atomic snapshots
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-016 (2026-08-12).
+- **Decision:** `EventStore` caches the chain head (O(1) append), serializes
+  appends with a per-instance lock, fsyncs, and is the sequence authority
+  (`next_sequence`). Snapshots carry a `content_hash` and are only trusted
+  when it verifies and `last_sequence` is consistent with the store;
+  otherwise recovery falls back to a full replay from the chain-verified
+  event log. Event-chain corruption still raises.
+- **Evidence:** `tests/event_store_concurrency_test.py`,
+  `tests/snapshot_integrity_test.py`, corpus A28/A29, benchmark
+  `benchmarks/event_store_benchmark.py` (linear append rate).
+
+## D-027 — Secret files are skipped and inline secrets redacted pre-analyzer
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-016 (2026-08-12).
+- **Decision:** The worker never sends whole secret files
+  (`.env`, PEM keys, credential files) to the LLM analyzer and redacts
+  obvious inline secret values; proposals referencing `[REDACTED]` are
+  rejected; the analyzer prompt marks content as UNTRUSTED DATA. This is a
+  heuristic mitigation, not a guarantee.
+- **Evidence:** `tests/secret_boundary_test.py`, corpus A25/A26.
+
 ## Open Decisions
 
 - **Recovery by default?** Making `--recovery` the default in

@@ -11,12 +11,34 @@ from simulation.agent.verify.verification_result import (
 
 
 @dataclass(frozen=True)
+class RollbackResult:
+
+    """Outcome of a bounded rollback after a failed verification.
+
+    ``success`` is True only when the pre-apply content was restored
+    and the read-back confirmed it. ``restore_verified`` records that
+    the read-back check passed. ``clean_verified`` records whether the
+    restored (pre-apply) state itself passed a deterministic
+    compile-only verification, when one was run. ``clean_verification``
+    carries the optional clean-state verification result.
+    """
+
+    success: bool
+    path: str
+    message: str
+    restore_verified: bool = False
+    clean_verified: bool = False
+    clean_verification: VerificationResult | None = None
+
+
+@dataclass(frozen=True)
 class ApplyVerifyResult:
 
     apply_result: ApplyResult
     verification: VerificationResult | None
     success: bool
     verification_ran: bool
+    rollback: RollbackResult | None = None
 
     @property
     def apply_success(self) -> bool:

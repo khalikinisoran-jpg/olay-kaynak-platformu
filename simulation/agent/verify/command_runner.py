@@ -25,7 +25,8 @@ class CommandRunner:
         self,
         command,
         timeout=None,
-        cwd=None
+        cwd=None,
+        env=None
     ) -> CommandResult:
 
         args = tuple(
@@ -41,7 +42,8 @@ class CommandRunner:
                 text=True,
                 timeout=timeout,
                 cwd=cwd,
-                shell=False
+                shell=False,
+                env=env
             )
 
             return CommandResult(

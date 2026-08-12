@@ -331,14 +331,16 @@ def test_agent_chat_reports_verification_failure_with_evidence(
         in result.failure_reason
     )
 
+    assert (
+        result.patch_results[0].pipeline_result.rollback
+        is not None
+    )
+
     content = target.read_text(
         encoding="utf-8"
     )
 
-    assert (
-        "Fake worker proposal marker"
-        in content
-    )
+    assert content == original
 
 
 def test_agent_chat_multiple_proposals_apply_in_worker_order(
