@@ -1,5 +1,11 @@
 from dataclasses import dataclass, field
 
+from simulation.agent.apply.apply_authorization import (
+    ApplyAuthorization
+)
+
+from simulation.agent.approval.approval import Approval
+
 from simulation.agent.controller.controller import Controller
 
 from simulation.agent.controller.controller_decision import (
@@ -215,11 +221,59 @@ class WorkerActionPipeline:
             and risk_policy is not None
         )
 
+        self._bind_approval_authority()
+
+    def _bind_approval_authority(self):
+
+        """Bind the apply boundary to the approval authority.
+
+        When the risk gate is enabled and an approval store backs the
+        pipeline, the apply executor's authorization must verify the
+        approval binding itself (not merely trust the pipeline). Only
+        a store-backed authorization can fail closed on forged
+        decisions, agent-claimed approval ids and replayed approvals
+        at the apply boundary.
+        """
+
+        if not self.risk_gate_enabled:
+
+            return
+
+        if self.approval_store is None:
+
+            return
+
+        executor = getattr(
+            self.apply_verify_pipeline,
+            "apply_executor",
+            None,
+        )
+
+        authorization = getattr(
+            executor,
+            "authorization",
+            None,
+        )
+
+        if (
+            isinstance(
+                authorization,
+                ApplyAuthorization,
+            )
+            and authorization.approval_store is None
+        ):
+
+            executor.authorization = ApplyAuthorization(
+                approval_store=self.approval_store,
+                risk_engine=self.risk_engine,
+            )
+
     def execute(
         self,
         worker_result: WorkerResult,
         verify_paths=None,
-        test_targets=()
+        test_targets=(),
+        attempt=None
     ) -> WorkerPipelineResult:
 
         patches = tuple(
@@ -227,6 +281,16 @@ class WorkerActionPipeline:
         )
 
         recorder = self.evidence_recorder
+
+        attempt_context = (
+            attempt
+            if (
+                isinstance(attempt, int)
+                and not isinstance(attempt, bool)
+                and attempt >= 1
+            )
+            else 1
+        )
 
         if recorder is not None:
 
@@ -259,6 +323,8 @@ class WorkerActionPipeline:
         )
 
         for patch in patches:
+
+            approval = None
 
             if recorder is not None:
 
@@ -326,11 +392,27 @@ class WorkerActionPipeline:
 
                         approval = (
                             self.approval_store.find_valid(
-                                patch.fingerprint()
+                                patch.fingerprint(),
+                                path=patch.path,
+                                action=patch.action,
+                                risk_level=(
+                                    risk_decision.risk_level.value
+                                ),
+                                attempt=attempt_context,
+                                patch=patch,
                             )
                         )
 
-                    if approval is None:
+                    valid, approval_reason = (
+                        self._approval_is_valid(
+                            approval,
+                            patch,
+                            risk_decision.risk_level.value,
+                            attempt_context,
+                        )
+                    )
+
+                    if not valid:
 
                         stages.append(
                             PatchStageResult(
@@ -338,8 +420,12 @@ class WorkerActionPipeline:
                                 success=False,
                                 stage=self.STAGE_APPROVAL,
                                 message=(
-                                    "High-risk patch requires "
-                                    "human approval."
+                                    approval_reason
+                                    if approval_reason
+                                    else (
+                                        "High-risk patch requires "
+                                        "human approval."
+                                    )
                                 ),
                             )
                         )
@@ -350,13 +436,26 @@ class WorkerActionPipeline:
                     risk_decision.verification_depth
                 )
 
-            decision = self.controller.approve(
-                patch,
-                ValidationResult(
-                    valid=valid,
-                    message=message,
-                ),
-            )
+            if approval is not None:
+
+                decision = self.controller.approve(
+                    patch,
+                    ValidationResult(
+                        valid=valid,
+                        message=message,
+                    ),
+                    approval=approval,
+                )
+
+            else:
+
+                decision = self.controller.approve(
+                    patch,
+                    ValidationResult(
+                        valid=valid,
+                        message=message,
+                    ),
+                )
 
             if recorder is not None:
 
@@ -465,6 +564,74 @@ class WorkerActionPipeline:
             evidence=evidence,
             verification_ran=verification_ran,
         )
+
+    @staticmethod
+    def _approval_is_valid(
+        approval,
+        patch: PatchProposal,
+        risk_level: str,
+        attempt: int
+    ):
+
+        """Fail-closed validation of a returned approval.
+
+        The pipeline never trusts whatever the approval store hands
+        back. A usable approval must be a typed ``Approval`` bound to
+        this exact patch fingerprint, path, action, risk context and
+        attempt, and it must not be expired. Anything else (a missing
+        record, a forged object, a substituted or downgraded context)
+        is a denial. This keeps approval authority agent-independent:
+        proposal-contained or store-injected approval metadata is
+        never sufficient on its own.
+        """
+
+        if approval is None:
+
+            return False, ""
+
+        if not isinstance(approval, Approval):
+
+            return False, (
+                "Malformed approval: expected an Approval "
+                "authorization record."
+            )
+
+        if approval.patch_fingerprint != patch.fingerprint():
+
+            return False, (
+                "Approval is bound to a different patch "
+                "fingerprint."
+            )
+
+        if approval.path != patch.path:
+
+            return False, (
+                "Approval is bound to a different path."
+            )
+
+        if approval.action != patch.action:
+
+            return False, (
+                "Approval is bound to a different action."
+            )
+
+        if approval.risk_level != risk_level:
+
+            return False, (
+                "Approval is bound to a different risk context."
+            )
+
+        if approval.attempt != attempt:
+
+            return False, (
+                "Approval is bound to a different attempt."
+            )
+
+        if approval.is_expired():
+
+            return False, "Approval has expired."
+
+        return True, ""
 
     @staticmethod
     def _classify_failure(final: PatchStageResult) -> str:

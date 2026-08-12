@@ -16,7 +16,7 @@ results > documentation.
 | Status | Active Development | VERIFIED (git activity) |
 | Last Updated | 2026-08-12 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch`) |
-| Branch HEAD | `96ed72d` (Integrate risk-aware worker action pipeline) | VERIFIED (`git rev-parse HEAD`) |
+| Branch HEAD | `f94c82b` (Close MISSION-011 and synchronize project knowledge); MISSION-012/013 close-out is uncommitted working-tree evidence | VERIFIED (`git rev-parse HEAD`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
 | Branch relationship | `worker-action-pipeline` is 14 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") | VERIFIED (`git tag`) |
@@ -58,6 +58,18 @@ What is actually implemented and verifiable today:
   deterministic, tested (MISSION-011: 83 tests) and correctly integrated as
   an explicit opt-in gate at the pipeline and assembly level; it is NOT
   active in the default runtime (see Known Limitations).
+- A human approval boundary (MISSION-012): fingerprint-bound, single-use,
+  evidence-recorded `Approval` / `ApprovalStore`; HIGH/CRITICAL fail closed
+  without a valid approval; granted approvals are recorded as
+  `WorkerHumanApprovalGranted` events. Also an explicit opt-in, never in
+  the default runtime.
+- A hardened authorization boundary (MISSION-014): the apply boundary
+  requires a typed `ControllerDecision` (`approved is True` + exact
+  fingerprint) and, for HIGH/CRITICAL/UNKNOWN applies, a store-verified,
+  single-use approval binding consumed at the apply boundary. Risk is
+  recomputed deterministically at the boundary, so forged decisions,
+  agent-claimed approval ids, replayed approvals, evidence-only metadata
+  and approval objects bound to a different patch cannot reach apply.
 
 ---
 
@@ -87,7 +99,12 @@ Described in detail in docs/ARCHITECTURE.md. Summary of what exists in code:
    classification; advisory LLM risk can only raise; policy maps UNKNOWN->
    DENY, HIGH/CRITICAL->human approval, LOW/MEDIUM->auto. Integrated as an
    explicit opt-in gate in `WorkerActionPipeline` and `build_recovery_agent`.
-8. Security: `PathPolicy` (canonical containment, traversal/symlink/junction
+8. Human approval boundary (VERIFIED, MISSION-012): `Approval`,
+   `ApprovalStore` (simulation/agent/approval/). Single-use,
+   fingerprint/path/action/risk/attempt/expiry-bound; pipeline validates
+   the returned approval itself (`_approval_is_valid`); grants recorded as
+   `WorkerHumanApprovalGranted` evidence events.
+9. Security: `PathPolicy` (canonical containment, traversal/symlink/junction
    rejection), `HashVerifier`, fail-closed validation contracts.
 
 ---
@@ -103,7 +120,13 @@ where noted):
 - Patch validation requires exact full-file `old_content` match, in-scope
   target, `modify` action only, non-empty change.
 - Apply requires a `ControllerDecision` with `approved is True` and a
-  fingerprint that exactly matches the patch (ApplyAuthorization).
+  fingerprint that exactly matches the patch. When the risk gate is
+  enabled, the apply boundary is store-backed: HIGH/CRITICAL/UNKNOWN
+  applies additionally require a store-verified, single-use approval
+  binding (approval identity + exact patch object), so forged decisions,
+  fake objects, agent-claimed approval ids, replayed/expired approvals,
+  evidence-only metadata and approval-to-apply substitution fail closed
+  (MISSION-014, ApplyAuthorization).
 - Post-write read-back: written bytes are compared to approved
   `new_content`; mismatch triggers bounded restore + FAIL.
 - Verification is deterministic (compileall + pytest via non-shell arg
@@ -113,9 +136,13 @@ where noted):
 - Risk gate is an explicit opt-in (requires both `risk_engine` and
   `risk_policy` on `WorkerActionPipeline` or `build_recovery_agent`). When
   active: RiskEngine -> RiskPolicy -> Controller -> ApplyVerifyPipeline,
-  UNKNOWN/DENY stops before apply, HIGH/CRITICAL require human approval
-  (blocked until MISSION-012 provides an approval store). **VERIFIED** —
-  tests/risk_*.py (MISSION-011).
+  UNKNOWN/DENY stops before apply, HIGH/CRITICAL require a valid human
+  approval from the `ApprovalStore` (fingerprint/path/action/risk/attempt/
+  expiry-bound, single-use, fail-closed on missing/malformed/expired/
+  wrong/replayed approval) and the apply boundary itself re-verifies the
+  consumed approval binding (MISSION-014). **VERIFIED** — tests/risk_*.py
+  (MISSION-011), tests/approval_boundary_test.py (48 tests) + corpus
+  A01-A20 (MISSION-012/013/014).
 
 ---
 
@@ -159,10 +186,14 @@ Recovery is NOT active by default in the shipped runtime
 - Every `kernel.dispatch()` writes a normal Event into the append-only
   EventStore with `previous_hash`/`current_hash` (SHA-256 chain);
   `HashVerifier.verify` recomputes from GENESIS.
-- `WorkerEvidenceRecorder` (MISSION-004) records 13 worker lifecycle event
+- `WorkerEvidenceRecorder` (MISSION-004) records worker lifecycle event
   types plus DecisionTrace steps. Payloads are secret-safe: only patch
   fingerprints (SHA-256) and status/exit-code/failure-reason, never
   old/new content, stdout/stderr, or API keys.
+- Human approval grants (MISSION-012) are recorded as
+  `WorkerHumanApprovalGranted` events through the same Kernel/event store;
+  payloads carry the approval binding fields (fingerprint, path, action,
+  risk level, attempt, authorizer, timestamps) and never patch content.
 - DecisionTrace is in-memory only; the hash-chained event log is the
   durable evidence (documented design decision, ADR-001 / MISSION-004).
 
@@ -170,21 +201,23 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-12 (MISSION-011 close-out):
+Authoritative run on 2026-08-12 (MISSION-014 close-out):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
-334 passed, 9 skipped in ~5s
+390 passed, 9 skipped in ~10s
 ```
 
-- 22 collected test modules (20 under tests/, including tests/security/
+- 23 collected test modules (22 under tests/, including tests/security/
   sub-package, plus root recovery_test.py).
 - 9 skipped: 2 opt-in `live_llm` integration tests (never run in the
   normal suite; no API cost) + 7 symlink-dependent tests that skip where
   the OS denies symlink creation (junction variants pass on this Windows
   environment).
-- The 334-passed count is +83 over the MISSION-010 baseline (251) because
-  MISSION-011 added four risk test modules (83 tests).
+- The 390-passed count is +17 over the MISSION-012/013 close-out (373):
+  MISSION-014 added 17 authorization-boundary tests (A–O) to
+  `tests/approval_boundary_test.py` (31 → 48 tests) and hardened the
+  apply authorization boundary.
 
 Coverage by module (test counts, VERIFIED by `Select-String` + full run):
 
@@ -192,12 +225,13 @@ Coverage by module (test counts, VERIFIED by `Select-String` + full run):
 |-------------|-------|
 | tests/structured_analysis_test.py | 41 |
 | tests/worker_contract_test.py | 31 |
+| tests/approval_boundary_test.py | 48 |
 | tests/risk_engine_test.py | 30 |
 | tests/recovery_engine_test.py | 29 |
 | tests/security/path_security_test.py | 27 |
+| tests/security/adversarial_corpus_test.py | 25 (A01-A20) |
 | tests/risk_level_test.py | 20 |
 | tests/risk_policy_test.py | 18 |
-| tests/security/adversarial_corpus_test.py | 17 |
 | tests/security/worker_read_scope_test.py | 16 |
 | tests/verification_executor_test.py | 15 |
 | tests/risk_pipeline_test.py | 15 |
@@ -229,10 +263,11 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              96ed72d (2026-08-11, "Integrate risk-aware worker action pipeline")
-Working tree:      MISSION-011 close-out changes uncommitted (risk tests + recovery_assembly opt-in + docs)
-Untracked files:   canonical audit docs (DECISION_LOG, MISSION_STATUS, PRODUCT_POSITIONING,
-                   PROJECT_KNOWLEDGE_AUDIT, SECURITY_MODEL) — part of the 2026-08-11 audit
+HEAD:              f94c82b (2026-08-11, "Close MISSION-011 and synchronize project knowledge")
+Working tree:      MISSION-012/013 close-out changes uncommitted
+                   (approval module + pipeline wiring + tests + docs)
+Untracked files:   simulation/agent/approval/ (new package),
+                   tests/approval_boundary_test.py (new)
 .gitignore:        excludes .env, .venv/, data/, __pycache__/, *.pyc
 Tracked junk:      `git` (0 bytes), `kernel.txt` (stale Kernel draft),
                    simulation/domain/__pycache__/*.pyc,
@@ -249,18 +284,21 @@ after v0.5.0 for the worker-action-pipeline work.
 
 VERIFIED where not marked:
 
-1. **Risk engine (MISSION-011) is verified and closed; the gate stays
-   DEFAULT OFF / explicit opt-in by design.** `RiskEngine`/`RiskPolicy`/
-   `RiskLevel` have 83 passing tests; the gate is OFF unless both
-   `risk_engine` and `risk_policy` are passed to `WorkerActionPipeline` or
-   `build_recovery_agent` (D-021). The shipped assembly does not enable it
-   because HIGH/CRITICAL would then require human approval, which is
-   unimplemented (MISSION-012). Default-on is re-evaluated in MISSION-012.
-2. **Human approval boundary is only a scaffold.** The pipeline consumes an
-   `approval_store` with a `find_valid(fingerprint)` contract
-   (`worker_action_pipeline.py:325`), but no `ApprovalStore` implementation
-   exists anywhere in the codebase (VERIFIED by grep). HIGH/CRITICAL risk
-   therefore fails closed at the approval stage until MISSION-012.
+1. **Risk engine (MISSION-011), human approval boundary (MISSION-012) and
+   authorization boundary hardening (MISSION-014) are verified and closed;
+   the gate stays DEFAULT OFF / explicit opt-in by design (D-021/D-022).**
+   `RiskEngine`/`RiskPolicy`/`RiskLevel` have 83 passing tests;
+   `Approval`/`ApprovalStore` and the store-backed apply authorization
+   have 48 passing tests (`tests/approval_boundary_test.py`) plus corpus
+   A01-A20. The gate is OFF unless both `risk_engine` and `risk_policy`
+   are passed to `WorkerActionPipeline` or `build_recovery_agent`. The
+   shipped assembly does not enable it by default; default-on is
+   re-evaluated only as a productization decision (see D-022).
+2. **Human approval boundary is implemented but has no interactive
+   UX.** `ApprovalStore.grant` must be invoked programmatically; there is
+   no UI/CLI flow yet that routes a HIGH/CRITICAL request to a human and
+   back. Without a grant, HIGH/CRITICAL still fails closed at the approval
+   stage.
 3. **Verification `compile`-only depth is tested but never policy-selected.**
    The MISSION-011 `verification_depth` switch exists in
    `apply_verify_pipeline.py:76`; the `compile` path is covered by tests
@@ -288,9 +326,10 @@ VERIFIED where not marked:
 
 # Unresolved Issues
 
-- MISSION-011 (Risk/Policy Engine) is now CLOSED/VERIFIED as a tested opt-in
-  capability; whether the gate becomes default-on in the shipped assembly is
-  deferred to MISSION-012 (depends on the approval store) — **UNKNOWN.**
+- MISSION-011 (Risk/Policy Engine) and MISSION-012 (Human Approval
+  Boundary) are CLOSED/VERIFIED as tested opt-in capabilities; whether the
+  gate becomes default-on in the shipped assembly is deferred to a
+  productization decision (D-021/D-022) — **UNKNOWN.**
 - Whether recovery should become default (non-flag) behavior — explicitly a
   product decision (apply stays non-default by design).
 - MISSION-009 was referenced as "state/documentation synchronization" but
@@ -302,15 +341,14 @@ VERIFIED where not marked:
 
 # Immediate Next Work
 
-Recommended (from audit findings, not a committed plan). MISSION-011 is
-closed and is NOT re-listed here:
+Recommended (from audit findings, not a committed plan). MISSION-011 and
+MISSION-012 are closed and are NOT re-listed here:
 
-1. **Implement MISSION-012 Human Approval Boundary:** build a minimal
-   `ApprovalStore` (persisted authorization events, fingerprint-keyed) with
-   `find_valid(fingerprint)`, wire it to the pipeline's STAGE_APPROVAL, and
-   decide how HIGH/CRITICAL risk flows to a human. This unblocks
-   re-evaluating default-on risk gate (D-021).
-2. Synchronize stale docs (README, CHANGELOG, PROJECT_CONTEXT,
+1. **Human-approval UX:** define how a HIGH/CRITICAL request flows to a
+   human and back into `ApprovalStore.grant` (CLI prompt, approval file,
+   or API); this is the remaining piece before default-on can be
+   re-evaluated as a product decision (D-022).
+2. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 3. Close MISSION-009 documentation.
 4. Repository hygiene (tracked `.pyc`, junk files, stray directories).
@@ -320,5 +358,5 @@ closed and is NOT re-listed here:
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-12 test run (334 passed, 9 skipped). Stale documentation must not
+2026-08-12 test run (390 passed, 9 skipped). Stale documentation must not
 be trusted over code and git history.

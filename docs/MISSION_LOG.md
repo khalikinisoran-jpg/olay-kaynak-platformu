@@ -1056,4 +1056,372 @@ risk test modules). `python -m compileall -q simulation tests` = exit 0.
 
 ---
 
+## MISSION-012 — Human Approval Boundary
+
+**Status:** VERIFIED / CLOSED
+**Date:** 2026-08-12
+**Branch:** worker-action-pipeline
+
+### Objective
+
+Create a safe, deterministic, fingerprint-bound human approval boundary
+for HIGH / CRITICAL risk levels: an approval must be bound to patch
+fingerprint, path, action, risk context, attempt context, authorization
+identity and expiry; any missing, malformed, expired, wrong or replayed
+approval must fail closed; agent-produced or proposal-contained approval
+metadata must never become authority by itself; and the approval decision
+must be represented through the existing evidence/event mechanism.
+
+### Changed Files
+
+- `simulation/agent/approval/approval.py` (new) — frozen `Approval`
+  dataclass: `approval_id`, `patch_fingerprint`, `path`, `action`,
+  `risk_level`, `attempt`, `authorizer`, `created_at`, `expires_at`.
+  Fail-closed `__post_init__`: 64-char lowercase SHA-256 fingerprint,
+  non-empty path/action/authorizer, HIGH/CRITICAL risk label, positive
+  int attempt, ISO-8601 UTC timestamps. `create()` factory, `is_expired()`,
+  `now_iso()`/`iso_in_future()`/`iso_in_past()` helpers.
+- `simulation/agent/approval/approval_store.py` (new) — fingerprint-keyed
+  `ApprovalStore`: `grant(...)` persists + records evidence, `find_valid(
+  fingerprint, path=None, action=None, risk_level=None, attempt=None)`
+  returns the first unexpired, unconsumed approval matching the full
+  provided context and consumes it (single-use; replay impossible).
+- `simulation/agent/evidence/worker_events.py` — added
+  `WorkerEventType.APPROVAL_GRANTED = "WorkerHumanApprovalGranted"`.
+- `simulation/agent/evidence/worker_evidence_recorder.py` — added
+  `record_approval_granted(approval)`; payload is secret-safe (approval
+  id/fingerprint/path/action/risk/attempt/authorizer/timestamps, never
+  patch content).
+- `simulation/agent/pipeline/worker_action_pipeline.py` — STAGE_APPROVAL
+  now queries `approval_store.find_valid(fingerprint, path=..., action=...,
+  risk_level=..., attempt=...)` and then validates the returned object with
+  `_approval_is_valid`: typed `Approval` + exact fingerprint/path/action/
+  risk/attempt binding + non-expiry. Any failure => DENY at the approval
+  stage. `execute(...)` gained an optional `attempt` context (default 1).
+- `simulation/agent/recovery/bounded_recovery_engine.py` — passes
+  `attempt=attempt_number` into the pipeline so recovery retries carry the
+  correct attempt context.
+- `simulation/agent/recovery/recovery_assembly.py` — `build_recovery_agent`
+  accepts optional `approval_store`; when the risk gate is enabled and no
+  store is supplied, a default `ApprovalStore` backed by the existing
+  evidence recorder is created.
+- `tests/risk_pipeline_test.py` — `StubApprovalStore` updated to the
+  extended `find_valid` contract and the two HIGH-risk tests now use real,
+  bound `Approval` objects instead of bare `object()` (the pipeline now
+  correctly rejects non-authority values).
+- `tests/approval_boundary_test.py` (new) — 31 tests.
+
+### Approval Model
+
+- Single-use: `find_valid` consumes an approval on success; a replayed
+  approval is `None` (DENY).
+- Full binding: fingerprint + path + action + risk level + attempt are
+  compared at both the store and the pipeline (defense in depth).
+- Expiry: an approval with `expires_at` in the past is unusable; empty
+  expiry means "never".
+- Agent independence: the pipeline never consults proposal-contained or
+  store-fabricated approval metadata; only a typed `Approval` returned by
+  the approval store, validated field-by-field by the pipeline, can
+  authorize a HIGH/CRITICAL patch.
+- Evidence: every grant is recorded as a `WorkerHumanApprovalGranted`
+  event dispatched through the Kernel (hash chain, sequence, snapshot,
+  replay all apply). No parallel evidence store was introduced.
+
+### Security Impact
+
+- HIGH/CRITICAL without an approval => DENY (`failure_stage="approval"`),
+  no apply, no verification.
+- Malformed (non-`Approval`) returned value => DENY.
+- Expired approval => DENY.
+- Wrong patch fingerprint / path / action / risk context / attempt =>
+  DENY (replay and substitution impossible).
+- Proposal-contained approval claims (forged `human_approved` /
+  `approval_token` fields) are ignored => DENY when no authority exists.
+- The global risk gate stays DEFAULT OFF / explicit opt-in (D-021
+  preserved; see D-022). No security boundary was loosened; the shipped
+  default runtime is unchanged (proposal-only).
+
+### Tests
+
+`python -m pytest tests/approval_boundary_test.py -q` = **31 passed**.
+
+Coverage maps to the MISSION-012 requirement list: valid approval -> allow
+(store + HIGH/CRITICAL pipeline), missing -> deny, malformed -> deny,
+expired -> deny, wrong fingerprint/path/action/risk/attempt -> deny,
+replayed approval -> deny, HIGH/CRITICAL without approval -> deny,
+HIGH/CRITICAL with valid approval -> allow, agent-generated fake approval
+-> deny, bypass attempt at pipeline boundary -> deny; plus model
+construction fail-closed, expiry, single-use consumption, evidence-event
+recording, real-Kernel hash-chain integration and recovery attempt-context
+propagation.
+
+Full suite (MISSION-012 close-out): `python -m pytest -q` =
+**365 passed / 9 skipped**. `python -m compileall -q simulation tests` =
+exit 0. `git diff --check` = clean (only LF/CRLF line-ending warnings).
+
+### Design Decisions
+
+- D-022 — approval model: single-use, fully bound, evidence-recorded.
+- The risk gate remains DEFAULT OFF. The approval store now exists, but
+  making the gate default-on in the shipped assembly is a productization
+  decision that the repository's current evidence base does not require;
+  it stays an explicit opt-in (see docs/DECISION_LOG.md).
+
+### Known Limitations
+
+- The `ApprovalStore` grants approvals programmatically; there is no
+  interactive human-approval UX yet (a caller must invoke `grant`).
+- Approval consumption state is in-memory per store instance; the durable
+  evidence is the `WorkerHumanApprovalGranted` event log (consistent with
+  the documented in-memory DecisionTrace design decision).
+- HIGH/CRITICAL policy keeps `max_attempts=1`, so the single-use approval
+  model does not conflict with recovery retries.
+
+### Remaining Work
+
+- Human-approval UX (how HIGH/CRITICAL risk flows to a human and back).
+- Decide whether the gate becomes default-on in a productized assembly.
+
+### Commit Hash
+
+Implementation and close-out are uncommitted working-tree evidence on
+`worker-action-pipeline` (per sprint rules: no commit, no push).
+
+---
+
+## MISSION-013 — Advanced Adversarial Benchmark
+
+**Status:** VERIFIED / CLOSED
+**Date:** 2026-08-12
+**Branch:** worker-action-pipeline
+
+### Objective
+
+Extend the existing adversarial corpus (MISSION-008, A01-A12) with
+approval-boundary and policy-substitution threat scenarios instead of
+duplicating it, keeping every scenario deterministic and executable with
+the established ATTACK / EXPECTED / ACTUAL / PASS / EVIDENCE record format.
+
+### Changed Files
+
+- `tests/security/adversarial_corpus_test.py` — extended from 17 to 25
+  test functions; added records A13-A20.
+
+### Corpus Additions
+
+| ID | Attack | Result |
+|----|--------|--------|
+| A13 | Approval replay (same approval used twice) | DENY (single-use) |
+| A14 | Approval substitution (approve patch A, replay for patch B) | DENY (fingerprint-bound) |
+| A15 | Risk-context substitution (HIGH approval used to authorize CRITICAL) | DENY (risk context bound) |
+| A16 | Forged approval metadata (agent-controlled store returns a dict) | DENY (must be a typed, bound Approval) |
+| A17 | Stale / expired approval replay | DENY (expiry bound) |
+| A18 | Attempt substitution (attempt-1 approval replayed at attempt 2) | DENY (attempt bound) |
+| A19 | Path substitution (typed Approval bound to a different path via hostile store) | DENY (pipeline validates binding itself) |
+| A20 | Approval-gate bypass with no authority store + proposal-contained claims | DENY (fail-closed; proposal metadata never authority) |
+
+### Security Impact
+
+- The corpus is fail-closed by construction: the summary test fails the
+  suite if any recorded entry regresses, so the new approval/policy
+  boundaries are now regression-protected alongside A01-A12.
+
+### Tests
+
+`python -m pytest tests/security/adversarial_corpus_test.py -q` =
+**24 passed, 1 skipped** (the skip is a symlink-dependent test that skips
+where the OS denies symlink creation).
+
+Full suite (MISSION-013 close-out): `python -m pytest -q` =
+**373 passed / 9 skipped** (baseline 334; +31 approval boundary +8 corpus
+records = +39). `python -m compileall -q simulation tests` = exit 0.
+`git diff --check` = clean (only LF/CRLF line-ending warnings).
+
+### Known Limitations
+
+- The corpus measures the current deterministic boundaries; live-LLM
+  end-to-end apply/verify/recovery and concurrency remain uncovered.
+- Symlink variants beyond junction coverage skip on this environment.
+
+### Remaining Work
+
+- Further threat categories: concurrency/multi-agent, crash-restore,
+  live-LLM end-to-end, supply-chain.
+
+### Commit Hash
+
+Uncommitted working-tree evidence on `worker-action-pipeline`
+(no commit, no push per sprint rules).
+
+---
+
+## MISSION-014 — Authorization Boundary Hardening
+
+**Status:** VERIFIED / CLOSED
+**Date:** 2026-08-12
+**Branch:** worker-action-pipeline
+
+### Objective
+
+Make the apply authorization boundary structurally fail-closed. MISSION-012
+created the approval boundary, but the MISSION-014 audit found a real
+authorization bypass: `ApplyAuthorization.authorize` accepted any
+duck-typed object with `approved=True` and a matching `patch_fingerprint`
+(a Python type annotation is not runtime authority), and the boundary did
+not verify the `ApprovalStore` / human-approval authority at all. An
+agent-controlled object carrying those two fields could reach apply. The
+mission traced the complete runtime path
+(worker result → risk decision → approval lookup/consumption → controller
+authorization → apply authorization → actual apply) and hardened the
+narrowest trusted boundary — the store-backed apply authorization.
+
+### Changed Files
+
+- `simulation/agent/apply/apply_authorization.py` — rewritten as a
+  fail-closed boundary: (1) `decision` must be a real `ControllerDecision`
+  (fake objects denied), `approved is True` exactly, `patch_fingerprint`
+  must equal `patch.fingerprint()`; (2) when bound to an approval
+  authority (`approval_store`), the patch risk is recomputed
+  deterministically at the boundary (never read from the forgeable
+  decision), and HIGH/CRITICAL/UNKNOWN applies require
+  `decision.approval_id` verified by `ApprovalStore.authorize_apply`.
+- `simulation/agent/controller/controller_decision.py` — added
+  `approval_id: str = ""` (explicit approval-identity binding carried by
+  the trusted controller boundary; default keeps positional/keyword
+  compatibility).
+- `simulation/agent/controller/controller.py` — `approve(...)` accepts an
+  optional consumed `Approval`; rejects a non-`Approval` or a
+  wrong-fingerprint approval, and binds `approval.approval_id` into the
+  decision. The controller never invents an approval id itself.
+- `simulation/agent/approval/approval_store.py` — `find_valid(...)` now
+  requires the complete authorization context (missing path/action/risk/
+  attempt fails closed) and, when the exact patch object is supplied,
+  binds the approval to that object; added `authorize_apply(approval_id,
+  patch)` — the single-use apply-boundary consumption that verifies the
+  approval was granted by THIS store, was actually released by
+  `find_valid`, is bound to THIS exact patch object, is not expired, is
+  not already applied, and matches fingerprint/path/action. Also added
+  `is_applied(...)`.
+- `simulation/agent/apply/apply_executor.py` — `ApplyExecutor` accepts
+  `approval_store` and builds a store-backed `ApplyAuthorization`.
+- `simulation/agent/pipeline/worker_action_pipeline.py` — passes the exact
+  patch object into `find_valid` (object-level binding), binds the consumed
+  approval into `Controller.approve`, and `_bind_approval_authority` wires
+  the pipeline's approval store + risk engine into the apply executor's
+  authorization whenever the risk gate is enabled.
+- `simulation/agent/recovery/recovery_assembly.py` — the default
+  `ApplyExecutor` is built with `approval_store=store` so the production
+  assembly is store-backed by construction when the gate is enabled.
+- `tests/approval_boundary_test.py` — 48 tests (was 31): fixed
+  `test_approval_store_accepts_fingerprint_only_query` to fail closed
+  (incomplete context → `None`), updated stub stores to the extended
+  `find_valid(..., patch=None)` contract, and added the MISSION-014
+  boundary tests A–O.
+- `tests/risk_pipeline_test.py` — `StubApprovalStore` updated with
+  `patch=None` and `authorize_apply`.
+- `tests/security/adversarial_corpus_test.py` — stub `find_valid`
+  signatures updated to accept `patch=None`.
+
+### Trusted Authorization Boundary
+
+The narrowest enforcement point is the store-backed `ApplyAuthorization`
+(inside `ApplyExecutor`), with the `ApprovalStore` as the durable human-
+approval authority and `WorkerActionPipeline` as the trusted orchestrator.
+The decision is produced only by the trusted controller (which embeds the
+consumed approval identity); the apply boundary then re-derives the risk
+from the actual patch and re-verifies the approval binding against the
+store — so a forged decision, a stolen-but-unconsumed grant id, a replayed
+approval, evidence-only metadata or an approval bound to a different patch
+object all fail closed.
+
+### Approval Binding Model
+
+The approval token reaching the apply boundary is `decision.approval_id`
+plus the actual `PatchProposal` object. `ApprovalStore.authorize_apply`
+binds it explicitly to: patch fingerprint, path, action, approval identity
+(the id must be a grant of THIS store that was released by `find_valid`),
+expiry, the exact patch object (object identity, so a different
+`PatchProposal` with identical-looking metadata cannot bypass the binding)
+and single-use-at-apply (consumed exactly once). Risk level and attempt are
+bound at consumption (`find_valid` requires the full context) and
+re-checked by the pipeline's `_approval_is_valid`. None of these values is
+copied from the worker proposal.
+
+### Bypass Attacks Tested (MISSION-014 A–O)
+
+| ID | Attack | Result |
+|----|--------|--------|
+| A | Fake `ControllerDecision` object (duck-typed) with `approved=True` + matching fingerprint | DENY (typed decision required) |
+| B | Forged `ControllerDecision` instance, no approval binding | DENY |
+| C | Agent-claimed approval id / fabricated approval metadata | DENY |
+| D | Valid `ApprovalStore` approval (HIGH) | ALLOW |
+| D2 | Valid `ApprovalStore` approval (CRITICAL) | ALLOW |
+| E | Approval for a different patch | DENY |
+| F | Approval for a different path | DENY |
+| G | Approval for a different action | DENY |
+| H | Approval for a different risk context | DENY |
+| I | Approval for a different attempt | DENY |
+| J | Replay (same approval twice at the apply boundary) | first ALLOW, second DENY |
+| K | Expired approval | DENY |
+| L | Malformed approval / non-string approval id | DENY |
+| M | Evidence-only authorization attempt | DENY |
+| N | Different `PatchProposal` object with identical metadata | DENY (object-identity binding) |
+| O | Direct lower-level `ApplyAuthorization` bypass | DENY |
+
+The existing store/pipeline tests (missing, malformed, expired, wrong
+fingerprint/path/action/risk/attempt, replayed, forged approval) and corpus
+A13-A20 continue to pass.
+
+### Security Impact
+
+- An agent-controlled object with `approved=True` and a matching
+  fingerprint can no longer reach apply (typed decision required).
+- A forged `ControllerDecision` cannot authorize a HIGH/CRITICAL apply
+  (store-verified approval binding required, risk recomputed at the
+  boundary).
+- Proposal-contained approval metadata and evidence-only records are never
+  authority.
+- The approval-to-actual-apply binding is explicit (approval identity +
+  patch object identity), not merely transitive through a shared
+  `PatchProposal`.
+- The default gate stays DEFAULT OFF (D-021/D-022): `ApplyExecutor()` and
+  `WorkerActionPipeline()` without risk args keep the historical
+  typed-decision + fingerprint contract; no security boundary was loosened.
+
+### Tests
+
+- Focused: `python -m pytest tests/approval_boundary_test.py -q` =
+  **48 passed**.
+- Focused pair: `python -m pytest -q tests/approval_boundary_test.py
+  tests/security/adversarial_corpus_test.py` = **72 passed, 1 skipped**.
+- Full suite: `python -m pytest -q` = **390 passed / 9 skipped**
+  (baseline 373; +17 boundary tests).
+- `python -m compileall -q simulation tests` = exit 0.
+- `git diff --check` = clean (only pre-existing LF/CRLF warnings).
+
+### Known Limitations
+
+- The apply boundary recomputes risk with its own `RiskEngine`; in the
+  production assembly this is the same engine as the pipeline's, but a
+  caller who wires a custom risk engine into the pipeline while passing a
+  default `ApplyExecutor` should be aware the boundary uses the default
+  classification unless the pipeline rebinds it (the pipeline binds its
+  own engine when the gate is enabled).
+- Interactive human-approval UX still does not exist; `ApprovalStore.grant`
+  is invoked programmatically.
+- Approval consumption state is in-memory per store instance; the durable
+  evidence is the `WorkerHumanApprovalGranted` event log.
+
+### Remaining Work
+
+- Human-approval UX.
+- Productization decision on making the risk gate default-on.
+
+### Commit Hash
+
+Uncommitted working-tree evidence on `worker-action-pipeline`
+(no commit, no push per sprint rules).
+
+---
+
 # End of Mission Log

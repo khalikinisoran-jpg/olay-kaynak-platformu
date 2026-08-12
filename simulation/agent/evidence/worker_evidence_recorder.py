@@ -223,6 +223,28 @@ class WorkerEvidenceRecorder:
             ),
         )
 
+    def record_approval_granted(self, approval):
+
+        payload = {
+            "approval_id": approval.approval_id,
+            "patch_fingerprint": approval.patch_fingerprint,
+            "path": approval.path,
+            "action": approval.action,
+            "risk_level": approval.risk_level,
+            "attempt": approval.attempt,
+            "authorizer": approval.authorizer,
+            "created_at": approval.created_at,
+            "expires_at": approval.expires_at,
+        }
+
+        self._emit(
+            WorkerEventType.APPROVAL_GRANTED,
+            payload,
+            trace_message=(
+                "Human approval granted."
+            ),
+        )
+
     def record_recovery_attempt(self, attempt):
 
         task_id = ""

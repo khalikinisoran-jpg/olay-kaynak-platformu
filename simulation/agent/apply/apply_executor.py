@@ -21,10 +21,12 @@ from simulation.agent.worker.patch_proposal import (
 
 class ApplyExecutor:
 
-    def __init__(self):
+    def __init__(self, approval_store=None):
 
         self.authorization = (
-            ApplyAuthorization()
+            ApplyAuthorization(
+                approval_store=approval_store,
+            )
         )
 
         self.file_applier = (

@@ -1,9 +1,10 @@
 # PRODUCT_POSITIONING.md
 
 Product positioning derived strictly from the current technical reality
-(branch `worker-action-pipeline` @ `96ed72d`, 2026-08-11; limitation #1
-refreshed by the MISSION-011 close-out on 2026-08-12). Marketing claims
-that cannot be proven from code/tests are explicitly marked UNVERIFIED.
+(branch `worker-action-pipeline` @ `96ed72d`, 2026-08-11; limitation #1/#2
+refreshed by the MISSION-011 close-out on 2026-08-12 and the
+MISSION-012/013 close-out on 2026-08-12). Marketing claims that cannot be
+proven from code/tests are explicitly marked UNVERIFIED.
 
 ---
 
@@ -62,6 +63,7 @@ customer interviews, or external validation exists in the repository
 | Evidence payloads are secret-safe (fingerprints only) | WorkerEvidenceRecorder; worker_evidence_test.py | VERIFIED |
 | Live-LLM integration is gated and fail-closed (timeout, ProviderError, no secret logging) | MISSION-003; llm_provider_test.py | VERIFIED |
 | Adversarial security corpus as executable, summary-gated tests | tests/security/adversarial_corpus_test.py | VERIFIED |
+| Fingerprint-bound, single-use human approval boundary (HIGH/CRITICAL) that fails closed on missing/malformed/expired/wrong/replayed approvals | Approval/ApprovalStore; tests/approval_boundary_test.py; corpus A13-A20 | VERIFIED |
 
 **Untested/marketing differentiators (UNVERIFIED):**
 - "Enterprise-grade" (docs/PROJECT_STATE.md) — no enterprise features exist.
@@ -74,10 +76,13 @@ customer interviews, or external validation exists in the repository
 
 1. **Risk engine (MISSION-011) is tested but opt-in:** deterministic
    RiskEngine/RiskPolicy/RiskLevel (83 tests) but the gate activates only
-   when explicitly wired; the shipped assembly stays gate-off until the
-   human-approval store exists (MISSION-012, D-021).
-2. **Human approval boundary missing:** `approval_store` is a contract with
-   no implementation.
+   when explicitly wired; the shipped assembly stays gate-off until a
+   human-approval UX exists (MISSION-012, D-021/D-022).
+2. **Human approval boundary is implemented but has no interactive UX:**
+   `Approval`/`ApprovalStore` (MISSION-012, 31 tests) enforce
+   fingerprint/path/action/risk/attempt/expiry-bound single-use approval
+   for HIGH/CRITICAL, but a human must grant approvals programmatically —
+   there is no CLI/UI approval flow yet.
 3. **No production/deployment story:** no CI, packaging, config system,
    logging/metrics, or deployment profiles (docs/ROADMAP.md Phase 2/3 are
    future).

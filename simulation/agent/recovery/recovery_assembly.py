@@ -1,5 +1,9 @@
 from simulation.agent.agent import Agent
 
+from simulation.agent.approval.approval_store import (
+    ApprovalStore
+)
+
 from simulation.agent.apply.apply_executor import (
     ApplyExecutor
 )
@@ -56,6 +60,7 @@ def build_recovery_agent(
     evidence_recorder=None,
     risk_engine=None,
     risk_policy=None,
+    approval_store=None,
 ) -> Agent:
 
     """Explicit production assembly for bounded recovery.
@@ -73,8 +78,11 @@ def build_recovery_agent(
 
     The risk gate is OFF unless BOTH ``risk_engine`` and ``risk_policy``
     are explicitly provided. Wiring it in makes HIGH/CRITICAL proposals
-    require human approval, which currently has no implementation
-    (MISSION-012), so it stays an explicit opt-in.
+    require human approval. When the gate is enabled and no
+    ``approval_store`` is supplied, a default ``ApprovalStore`` backed
+    by the same evidence recorder is created so HIGH/CRITICAL patches
+    have a real approval path (MISSION-012). The gate itself stays an
+    explicit opt-in; the shipped default runtime never enables it.
     """
 
     recorder = (
@@ -82,6 +90,17 @@ def build_recovery_agent(
         if evidence_recorder is not None
         else WorkerEvidenceRecorder(kernel=kernel)
     )
+
+    store = approval_store
+
+    if store is None and (
+        risk_engine is not None
+        and risk_policy is not None
+    ):
+
+        store = ApprovalStore(
+            evidence_recorder=recorder
+        )
 
     action_pipeline = WorkerActionPipeline(
         patch_validator=PatchValidator(),
@@ -94,7 +113,9 @@ def build_recovery_agent(
             apply_executor=(
                 apply_executor
                 if apply_executor is not None
-                else ApplyExecutor()
+                else ApplyExecutor(
+                    approval_store=store
+                )
             ),
             verification_executor=(
                 verification_executor
@@ -105,6 +126,7 @@ def build_recovery_agent(
         evidence_recorder=recorder,
         risk_engine=risk_engine,
         risk_policy=risk_policy,
+        approval_store=store,
     )
 
     recovery_engine = BoundedRecoveryEngine(

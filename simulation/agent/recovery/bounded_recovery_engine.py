@@ -211,6 +211,7 @@ class BoundedRecoveryEngine:
                     worker_result,
                     verify_paths=verify_paths,
                     test_targets=test_targets,
+                    attempt=attempt_number,
                 )
 
             except Exception as exc:

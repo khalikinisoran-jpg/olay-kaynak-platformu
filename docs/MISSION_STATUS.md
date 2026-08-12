@@ -2,7 +2,8 @@
 
 Canonical status of every identifiable development mission, derived from
 Git history, code, tests and docs/MISSION_LOG.md (2026-08-11 audit at HEAD
-`96ed72d`; MISSION-011 close-out status refreshed 2026-08-12).
+`96ed72d`; MISSION-011 close-out status refreshed 2026-08-12; MISSION-012,
+MISSION-013 and MISSION-014 closed 2026-08-12).
 
 Status vocabulary (from docs/MISSION_LOG.md):
 - **VERIFIED** — committed + passing deterministic tests / audit evidence.
@@ -171,25 +172,63 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
   path.
 - **REMAINING WORK:** MISSION-012 (implement `ApprovalStore` + human-approval
   UX, then re-evaluate whether the gate becomes default in the shipped
-  assembly).
+  assembly). — **RESOLVED:** MISSION-012 closed (2026-08-12); the gate stays
+  explicit opt-in (D-021/D-022); default-on remains a productization decision.
 
 ---
 
 ## Active / Open Missions
 
 ### MISSION-012 — Human Approval Boundary
-- **STATUS:** PLANNED (partial scaffold only)
-- **EVIDENCE:** pipeline consumes `approval_store.find_valid(patch.fingerprint())`
-  and emits `STAGE_APPROVAL` / `FAILURE_APPROVAL` (worker_action_pipeline.py:321-347).
-  No `ApprovalStore` implementation exists anywhere (VERIFIED by grep).
-- **REMAINING WORK:** implement approval store + authorization event;
-  decide how HIGH/CRITICAL risk flows to a human.
+- **STATUS:** VERIFIED / CLOSED (2026-08-12)
+- **EVIDENCE:** `simulation/agent/approval/{approval.py,approval_store.py}` +
+  `tests/approval_boundary_test.py` (31 tests) + corpus A13-A20 +
+  full suite **373 passed / 9 skipped**.
+- **APPROVAL MODEL:** frozen `Approval` bound to patch fingerprint, path,
+  action, risk level, attempt, authorizer and expiry; single-use
+  `ApprovalStore.find_valid`; pipeline-level typed + full-binding
+  validation (fail-closed on missing/malformed/expired/wrong/substituted
+  approvals). Grants are recorded as `WorkerHumanApprovalGranted` evidence
+  events through the existing Kernel/event store.
+- **DEFAULT GATE DECISION (D-021 re-evaluation):** the risk gate stays
+  **DEFAULT OFF / explicit opt-in**. The approval store now exists, but the
+  shipped assembly still does not enable the gate by default; the evidence
+  base does not justify silently turning it on (see docs/DECISION_LOG.md
+  D-022).
+- **REMAINING WORK:** a human-approval UX for granting approvals; deciding
+  gate default-on when the shipped runtime is productized (still UNKNOWN).
 
 ### MISSION-013 — Advanced Adversarial Benchmark
-- **STATUS:** PLANNED (referenced in MISSION-010 remaining work; no code)
+- **STATUS:** VERIFIED / CLOSED (2026-08-12)
+- **EVIDENCE:** `tests/security/adversarial_corpus_test.py` extended from
+  17 test functions (A01-A12) to 25 (A13-A20 approval/policy records);
+  corpus summary-gated; full suite 373 passed / 9 skipped.
+- **REMAINING WORK:** further threat categories (concurrency, symlink
+  variants beyond junction coverage, live-LLM end-to-end) remain open.
 
-### MISSION-014 — Agent-Independent Enforcement
-- **STATUS:** PLANNED (referenced; no code)
+### MISSION-014 — Authorization Boundary Hardening
+- **STATUS:** VERIFIED / CLOSED (2026-08-12)
+- **EVIDENCE:** `simulation/agent/apply/apply_authorization.py`,
+  `simulation/agent/controller/controller_decision.py`,
+  `simulation/agent/controller/controller.py`,
+  `simulation/agent/approval/approval_store.py`,
+  `simulation/agent/apply/apply_executor.py`,
+  `simulation/agent/pipeline/worker_action_pipeline.py`,
+  `simulation/agent/recovery/recovery_assembly.py` +
+  `tests/approval_boundary_test.py` (48 tests, incl. MISSION-014
+  A–O boundary tests) + corpus A01-A20 + full suite
+  **390 passed / 9 skipped**.
+- **VULNERABILITY CLOSED:** `ApplyAuthorization.authorize` previously
+  trusted duck-typed metadata (any object with `approved=True` and a
+  matching `patch_fingerprint`), and did not verify the
+  ApprovalStore/human-approval authority. A forged or agent-controlled
+  decision object could reach apply. Now the boundary is store-backed:
+  a typed `ControllerDecision` whose `approved is True` and whose
+  fingerprint matches the patch, PLUS (for HIGH/CRITICAL/UNKNOWN risk
+  recomputed deterministically at the boundary) a store-verified,
+  single-use approval binding consumed at the apply boundary.
+- **REMAINING WORK:** interactive human-approval UX; default-on gate is
+  a productization decision (D-021/D-022).
 
 ### MISSION-015 — Productization Readiness Assessment
 - **STATUS:** PLANNED (referenced; no code)
@@ -207,7 +246,7 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
 
 ## UNKNOWN Missions / States
 
-- Exact intended scope of MISSION-013/014/015 (no design documents).
+- Exact intended scope of MISSION-015 (no design documents).
 - No missions beyond MISSION-015 are referenced anywhere; the next
   mission number is inferred to be MISSION-016 if the sequence continues —
   **INFERRED, not verified.**
@@ -215,6 +254,7 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
   "IMPLEMENTED" without current test re-verification; behavior is covered by
   today's passing suite, so re-classified VERIFIED-by-suite where tests exist —
   **INFERRED.**
-- Whether the risk gate should become default-on in the shipped assembly once
-  MISSION-012 provides an approval store — **UNKNOWN** (decision deferred to
-  MISSION-012; see D-021).
+- Whether the risk gate should become default-on in the shipped assembly
+  once a human-approval UX exists — **UNKNOWN** (D-021/D-022: gate stays
+  explicit opt-in; default-on is a productization decision, not an
+  implementation requirement).

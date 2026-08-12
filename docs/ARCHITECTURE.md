@@ -1,10 +1,12 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `96ed72d` (2026-08-11; risk-layer section
-> refreshed by the MISSION-011 close-out, 2026-08-12). This document
-> describes verified code only. Roadmap/future ideas are not presented as
-> current reality; see ROADMAP.md for the future.
+> `worker-action-pipeline` @ `f94c82b` (2026-08-11; risk-layer section
+> refreshed by the MISSION-011 close-out on 2026-08-12, the
+> MISSION-012/013 close-out on 2026-08-12, and the MISSION-014
+> authorization-boundary hardening on 2026-08-12). This document describes
+> verified code only. Roadmap/future ideas are not presented as current
+> reality; see ROADMAP.md for the future.
 
 ---
 
@@ -123,10 +125,21 @@ Proposal-to-apply chain. Active only when explicitly assembled
 WorkerResult (proposals)
    → [per patch] PatchValidator.validate  (scope/staleness/no-op)
    → [opt-in risk gate] RiskEngine.classify + RiskPolicy.decide
-   → Controller.approve(ValidationResult)  (typed, valid is True)
+       → UNKNOWN/DENY stops here
+       → HIGH/CRITICAL: ApprovalStore.find_valid(full context + patch
+            object) consumes and binds the approval to the exact patch
+            object + pipeline binding check
+            (missing/malformed/expired/wrong/replayed ⇒ DENY)
+   → Controller.approve(ValidationResult, approval?)  (typed, valid is True;
+        binds the consumed approval_id into the decision)
    → ApplyVerifyPipeline.execute(patch, decision)
        → ApplyExecutor.apply
-           → ApplyAuthorization.authorize (approved True + fingerprint match)
+           → ApplyAuthorization.authorize  (typed ControllerDecision,
+                approved is True, fingerprint match; when store-backed,
+                HIGH/CRITICAL/UNKNOWN risk is recomputed at the boundary
+                and the approval binding is re-verified via
+                ApprovalStore.authorize_apply — single-use at apply,
+                bound to the exact patch object)
            → FileApplier.apply (canonical path write + read-back + restore)
        → (if applied) VerificationExecutor.verify / verify_python_compile
    → PatchStageResult per patch; first failure stops the run
@@ -140,10 +153,23 @@ evidence, stdout/stderr, exit_code, failure_stage.
 Risk gate is OFF by default (`risk_gate_enabled` = both constructor args
 provided; worker_action_pipeline.py:213). `build_recovery_agent` enables
 it only when the caller explicitly passes `risk_engine` and `risk_policy`
-(MISSION-011 opt-in; default stays off by design, D-021). When active the
-flow is: RiskEngine.classify -> RiskPolicy.decide -> (UNKNOWN/DENY stops,
-HIGH/CRITICAL requires approval) -> Controller -> ApplyVerifyPipeline with
-the policy-chosen verification depth. VERIFIED — `tests/risk_pipeline_test.py`.
+(MISSION-011 opt-in; default stays off by design, D-021/D-022). When
+active the flow is: RiskEngine.classify -> RiskPolicy.decide ->
+(UNKNOWN/DENY stops, HIGH/CRITICAL requires approval) -> Controller ->
+ApplyVerifyPipeline with the policy-chosen verification depth. VERIFIED —
+`tests/risk_pipeline_test.py`, `tests/approval_boundary_test.py`.
+
+Human approval (MISSION-012/014): `Approval` is a frozen, fingerprint/path/
+action/risk/attempt/expiry-bound single-use contract; `ApprovalStore` is
+fingerprint-keyed and consumes approvals on `find_valid` (which requires
+the full authorization context and binds the exact patch object). The
+pipeline validates the returned object itself (`_approval_is_valid`), and
+the store-backed apply boundary re-verifies the consumed approval binding
+(`ApprovalStore.authorize_apply`) at the narrowest point — so a missing,
+malformed, expired, wrong, replayed, forged or differently-object-bound
+approval always fails closed, and proposal-contained/agent-fabricated
+approval metadata is never authority. Grants are recorded as
+`WorkerHumanApprovalGranted` evidence events.
 
 ---
 
@@ -172,9 +198,18 @@ the policy-chosen verification depth. VERIFIED — `tests/risk_pipeline_test.py`
 - `Controller` (`agent/controller/controller.py`): approves only when
   `validation.valid is True` (strict identity) and action=="modify";
   malformed/missing validation fails closed. Message text is never the
-  signal (MISSION-007).
-- `ApplyAuthorization`: `decision.approved is True` AND
-  `decision.patch_fingerprint == patch.fingerprint()`.
+  signal (MISSION-007). When a consumed `Approval` is supplied it is bound
+  into the decision (`approval_id`); a malformed or wrong-fingerprint
+  approval is rejected (MISSION-014).
+- `ApplyAuthorization`: requires a real `ControllerDecision` with
+  `approved is True` and `decision.patch_fingerprint == patch.fingerprint()`.
+  When store-backed (risk gate enabled), it recomputes the patch risk
+  deterministically at the boundary and, for HIGH/CRITICAL/UNKNOWN,
+  requires a store-verified approval binding consumed exactly once at the
+  apply boundary (`ApprovalStore.authorize_apply`). Fake objects, forged
+  decisions, agent-claimed approval ids, replayed/expired approvals,
+  evidence-only metadata and object-substituted approvals fail closed
+  (MISSION-014).
 - `FileApplier`: re-checks scope via `PathPolicy.resolve_target`
   (canonical path), reads current content, requires exact
   `old_content` match at write time, writes, reads back, and restores on
@@ -233,6 +268,30 @@ the policy-chosen verification depth. VERIFIED — `tests/risk_pipeline_test.py`
   opt-in: active only when both `risk_engine` and `risk_policy` are passed
   to `WorkerActionPipeline` / `build_recovery_agent`.
 
+# 12a. Human Approval Boundary (simulation/agent/approval/, MISSION-012/014)
+
+- `Approval` (frozen): single-use authorization bound to patch
+  fingerprint, path, action, risk level, attempt, authorizer, created_at
+  and expires_at. Fail-closed construction (malformed/missing fields
+  raise; only HIGH/CRITICAL risk labels are valid approval targets).
+- `ApprovalStore`: fingerprint-keyed; `grant(...)` persists and records a
+  `WorkerHumanApprovalGranted` evidence event; `find_valid(fingerprint,
+  path, action, risk_level, attempt, patch=None)` requires the complete
+  authorization context (missing path/action/risk/attempt fails closed),
+  returns the first unexpired, unconsumed approval matching the full
+  context, consumes it and binds it to the exact patch object.
+  `authorize_apply(approval_id, patch)` is the single-use apply-boundary
+  consumption: it verifies the approval was granted by this store, was
+  released by `find_valid`, is bound to this exact patch object, is not
+  expired, and matches fingerprint/path/action.
+- Pipeline enforcement (`_approval_is_valid`): the pipeline independently
+  re-validates the returned object's type and every binding field, and the
+  store-backed apply authorization re-verifies the consumed approval
+  binding at apply time, so substitution/replay/forgery/
+  metadata-injection all fail closed.
+- Tested (tests/approval_boundary_test.py, 48 tests incl. MISSION-014
+  A–O; corpus A01-A20, MISSION-013).
+
 ---
 
 # 13. LLM Providers (simulation/llm/)
@@ -261,13 +320,14 @@ the policy-chosen verification depth. VERIFIED — `tests/risk_pipeline_test.py`
 
 - `weather` strategy planned but no executor registered -> ValueError at
   runtime (planner.py:55, strategy_dispatcher.py).
-- `approval_store` interface consumed but never implemented
-  (MISSION-012); HIGH/CRITICAL risk therefore fails closed at the approval
-  stage until then.
+- Human approval boundary implemented and hardened (MISSION-012/014) but
+  there is no interactive human-approval UX yet: `ApprovalStore.grant` is
+  invoked programmatically; without a grant, HIGH/CRITICAL fails closed at
+  the approval stage.
 - Risk gate tested but DEFAULT OFF: it activates only when both
   `risk_engine` and `risk_policy` are explicitly wired
   (`build_recovery_agent`/`WorkerActionPipeline`); the shipped assembly
-  stays gate-off by design (D-021, explicit opt-in).
+  stays gate-off by design (D-021/D-022, explicit opt-in).
 - DecisionTrace in-memory only.
 - `simulation/domain/`, `simulation/services/`,
   `persistence/event_store_backup.py`, `persistence/recovery.py`,

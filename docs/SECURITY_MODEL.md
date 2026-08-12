@@ -1,11 +1,13 @@
 # SECURITY_MODEL.md
 
 Canonical security model of the implemented worker action pipeline and
-event-sourcing core, branch `worker-action-pipeline` @ `96ed72d`
+event-sourcing core, branch `worker-action-pipeline` @ `f94c82b`
 (2026-08-11; risk-layer status refreshed by the MISSION-011 close-out on
-2026-08-12). Every claim is classified VERIFIED (code + passing test),
-INFERRED (reasoned from code, no direct test), or UNKNOWN (cannot be
-determined). Complements docs/SECURITY_BASELINE.md (MISSION-005 audit).
+2026-08-12, the MISSION-012/013 close-out on 2026-08-12, and the
+MISSION-014 authorization-boundary hardening on 2026-08-12). Every claim
+is classified VERIFIED (code + passing test), INFERRED (reasoned from
+code, no direct test), or UNKNOWN (cannot be determined). Complements
+docs/SECURITY_BASELINE.md (MISSION-005 audit).
 
 ---
 
@@ -68,10 +70,16 @@ determined). Complements docs/SECURITY_BASELINE.md (MISSION-005 audit).
   identity); missing/malformed/unknown fails closed; message text never
   consulted (MISSION-007). **VERIFIED** — `tests/controller_decision_test.py`
   (13 tests).
-- ApplyAuthorization requires `decision.approved is True` AND
-  `decision.patch_fingerprint == patch.fingerprint()`
-  (apply_authorization.py:18). **VERIFIED** — controller_decision_test.py
-  (exact-True, fingerprint-match), worker_contract_test.py.
+- ApplyAuthorization requires a real `ControllerDecision` with
+  `decision.approved is True` AND `decision.patch_fingerprint ==
+  patch.fingerprint()` (apply_authorization.py:18); a duck-typed fake
+  object is rejected by the type check, so an agent-controlled object with
+  `approved=True` + matching fingerprint can no longer authorize apply.
+  When the boundary is bound to the approval authority (risk gate
+  enabled) it recomputes the patch risk deterministically and requires a
+  store-verified, single-use approval binding for HIGH/CRITICAL/UNKNOWN
+  applies (MISSION-014). **VERIFIED** — controller_decision_test.py,
+  approval_boundary_test.py (MISSION-014 A/B/O).
 - Apply is never active by default: `Agent(kernel)` has no pipeline; only
   `build_recovery_agent()` or `agent_run.py --recovery` wires apply.
   **VERIFIED** — `tests/worker_runtime_test.py`
@@ -175,6 +183,62 @@ determined). Complements docs/SECURITY_BASELINE.md (MISSION-005 audit).
   construction. **VERIFIED** — `tests/risk_policy_test.py`.
 - **STATUS: VERIFIED (MISSION-011).**
 
+## 8a. Human Approval Boundary
+
+**Implementation:** `simulation/agent/approval/` (MISSION-012).
+
+- `Approval` is a frozen, single-use authorization contract bound to patch
+  fingerprint, path, action, risk level, attempt, authorizer and expiry.
+  Construction is fail-closed: missing/empty/non-string fingerprint, path,
+  action or authorizer, a non-HIGH/CRITICAL risk label, a non-positive or
+  non-int attempt, and malformed timestamps all raise
+  (approval.py `__post_init__`). **VERIFIED** —
+  `tests/approval_boundary_test.py`
+  (test_approval_construction_fails_closed_on_malformed_fields).
+- `ApprovalStore.find_valid` requires the complete authorization context
+  (missing fingerprint, path, action, risk level or attempt fails closed),
+  returns the first granted, unexpired, unconsumed approval matching the
+  full requested context, consumes it on success and binds it to the exact
+  patch object when supplied (approval_store.py:104). A replay of the same
+  approval => `None`. **VERIFIED** — tests/approval_boundary_test.py
+  (replay/expiry/substitution/incomplete-context tests), corpus
+  A13/A14/A15/A17/A18.
+- `ApprovalStore.authorize_apply(approval_id, patch)` is the narrowest
+  enforcement point: the apply boundary verifies the referenced approval
+  was granted by this store, was released by `find_valid`, is bound to
+  this exact patch object (object identity), is not expired, has not
+  already authorized an apply, and matches fingerprint/path/action. On
+  success it consumes the approval for apply (exactly once). **VERIFIED** —
+  tests/approval_boundary_test.py (MISSION-014 A–O).
+- The pipeline re-validates the returned object itself
+  (`_approval_is_valid`, worker_action_pipeline.py): it must be a typed
+  `Approval` whose fingerprint, path, action, risk level and attempt
+  exactly match the current patch/risk/attempt, and it must not be
+  expired. Missing, malformed (dict/object), substituted, downgraded or
+  forged approvals => DENY at the approval stage (`failure_stage="approval"`),
+  no apply, no verification. The store-backed apply authorization then
+  re-verifies the consumed approval binding at apply time, so a forged
+  `ControllerDecision`, an agent-claimed approval id, a replayed approval
+  or an approval bound to a different patch object cannot reach the write
+  path (MISSION-014). **VERIFIED** — tests/approval_boundary_test.py
+  (malformed/forged/wrong-context + A–O tests), corpus A16/A19.
+- Proposal-contained or agent-fabricated approval metadata is never
+  consulted; only a validated `Approval` returned by the store can
+  authorize a HIGH/CRITICAL patch (agent independence). **VERIFIED** —
+  corpus A16/A20.
+- Every grant is recorded as a `WorkerHumanApprovalGranted` event through
+  the existing Kernel/event store (hash chain, sequence, snapshot, replay
+  all apply); payloads are secret-safe (no patch content).
+  **VERIFIED** — tests/approval_boundary_test.py
+  (test_approval_grant_records_evidence_event,
+  test_approval_grant_flows_through_real_kernel_hash_chain).
+- The risk gate stays DEFAULT OFF / explicit opt-in (D-021/D-022); this
+  boundary only activates when the caller wires `risk_engine` +
+  `risk_policy` (+ optional `approval_store`) into the pipeline/assembly.
+  **VERIFIED** — tests/approval_boundary_test.py
+  (test_assembly_wires_approval_store_when_gate_enabled).
+- **STATUS: VERIFIED (MISSION-012/014).**
+
 ## 9. Evidence / Integrity
 
 **Implementation:** `EventStore`, `HashChain`, `HashVerifier`,
@@ -217,16 +281,33 @@ determined). Complements docs/SECURITY_BASELINE.md (MISSION-005 audit).
   (controller.py:22). **VERIFIED** — controller_decision_test.py.
 - `WorkerEvidenceRecorder` rejects unknown event types
   (worker_events.py:59). **VERIFIED** — worker_evidence_test.py.
+- HIGH/CRITICAL without a valid approval fails closed at the approval
+  stage: missing approval store, missing grant, malformed (non-`Approval`)
+  returned value, expired approval, wrong fingerprint/path/action/risk/
+  attempt, or a replayed approval all => DENY (`failure_stage="approval"`),
+  no apply, no verification. **VERIFIED** —
+  tests/approval_boundary_test.py (48 tests), corpus A13-A20.
+- The apply boundary is itself store-backed when the risk gate is enabled:
+  a forged `ControllerDecision` (with or without a matching fingerprint),
+  an agent-claimed approval id, an unconsumed grant id, evidence-only
+  metadata, a replayed/expired approval, or an approval bound to a
+  different patch object (identical metadata included) all fail closed at
+  `ApplyAuthorization`/`ApprovalStore.authorize_apply` before any write
+  (MISSION-014). **VERIFIED** — tests/approval_boundary_test.py (MISSION-014
+  A–O).
 - **UNKNOWN:** behavior when the LLM provider is unavailable at runtime in
   the shipped default path (ProviderFactory.create raises ValueError if
   OPENROUTER_API_KEY missing; no graceful degradation test).
 
 ## 11. Adversarial Tests
 
-`tests/security/adversarial_corpus_test.py` (MISSION-008): 17 test
-functions / 15 records (A01-A12 + sub-cases), summary-gated — the final
-summary test fails the suite if any recorded entry failed. **VERIFIED** —
-all PASS on 2026-08-11.
+`tests/security/adversarial_corpus_test.py` (MISSION-008, extended by
+MISSION-013): 25 test functions / 23 records (A01-A20 + sub-cases),
+summary-gated — the final summary test fails the suite if any recorded
+entry failed. **VERIFIED** — all PASS on 2026-08-12 (24 passed, 1
+symlink-dependent skip in the normal suite). The MISSION-014
+authorization-boundary hardening adds 17 deterministic boundary tests
+(A–O) in `tests/approval_boundary_test.py` (48 tests total).
 
 | ID | Attack | Boundary measured | Result |
 |----|--------|-------------------|--------|
@@ -242,11 +323,21 @@ all PASS on 2026-08-11.
 | A10 | Retry budget (999 requested) | Recovery bound | hard cap 3 |
 | A11 | Evidence tampering after dispatch | Hash chain | detected |
 | A12/A12b | Fingerprint boundary / prefix confusion | Apply authorization | DENY |
+| A13 | Approval replay (same approval twice) | Approval single-use | first ALLOW, second DENY |
+| A14 | Approval substitution (approve A, replay for B) | Approval fingerprint binding | DENY |
+| A15 | Risk-context substitution (HIGH approval for CRITICAL flow) | Approval risk binding | DENY |
+| A16 | Forged dict approval metadata (hostile store) | Approval type/binding | DENY |
+| A17 | Expired / stale approval | Approval expiry | DENY |
+| A18 | Attempt substitution (attempt-1 approval at attempt 2) | Approval attempt binding | DENY |
+| A19 | Path substitution (typed Approval, different path) | Pipeline-level binding check | DENY |
+| A20 | Approval-gate bypass (no authority + proposal claims) | Agent independence | DENY |
 
 **NOT covered by the corpus (UNVERIFIED):** live-LLM end-to-end
-apply/verify/recovery. (Risk engine behavior, the pipeline risk gate,
-human-approval boundary and compile-only depth are now covered by
-`tests/risk_*.py`, MISSION-011.)
+apply/verify/recovery and concurrency/multi-agent behavior. (Risk engine
+behavior, the pipeline risk gate, human-approval boundary, the MISSION-014
+store-backed apply authorization, compile-only depth and
+approval/policy substitution are now covered by `tests/risk_*.py` and
+`tests/approval_boundary_test.py`, MISSION-011/012/014.)
 
 ---
 
@@ -255,12 +346,19 @@ human-approval boundary and compile-only depth are now covered by
 - Strong verified boundary for path scope, exact old_content, typed
   controller approval, fingerprint-bound apply, deterministic
   verification, bounded recovery, hash-chained evidence, fail-closed
-  defaults, and a now-tested system-derived risk layer
-  (RiskLevel/RiskEngine/RiskPolicy, MISSION-011).
-- The largest remaining security-relevant gap is the human-approval
-  boundary (MISSION-012): the `approval_store` contract is consumed by the
-  pipeline but unimplemented, so HIGH/CRITICAL risk is enforced by
-  fail-closed blocking until that exists. The risk gate is therefore an
-  explicit opt-in, not default-on (D-021).
-- No production deployment exists; symlink-skip and live-LLM behavior
-  remain UNKNOWN outside this environment.
+  defaults, a tested system-derived risk layer
+  (RiskLevel/RiskEngine/RiskPolicy, MISSION-011) and a tested,
+  fingerprint-bound, single-use human approval boundary
+  (Approval/ApprovalStore, MISSION-012) hardened at the apply boundary so
+  that no duck-typed object, forged decision, agent-claimed approval id,
+  replayed/expired approval, evidence-only record or object-substituted
+  approval can authorize a write (MISSION-014).
+- HIGH/CRITICAL risk is now enforced with a real approval path that fails
+  closed on missing/malformed/expired/wrong/replayed approvals, never
+  trusts agent- or proposal-contained approval metadata, and re-verifies
+  the consumed approval binding at the apply boundary itself
+  (MISSION-012/014, corpus A13-A20, boundary tests A–O). The risk gate
+  remains an explicit opt-in, not default-on (D-021/D-022).
+- No production deployment exists; symlink-skip, live-LLM and
+  concurrency/multi-agent behavior remain UNKNOWN outside this
+  environment.

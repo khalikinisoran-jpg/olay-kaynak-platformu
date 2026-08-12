@@ -2,6 +2,10 @@ from simulation.agent.apply.apply_executor import (
     ApplyExecutor
 )
 
+from simulation.agent.approval.approval import (
+    Approval
+)
+
 from simulation.agent.apply.apply_result import (
     ApplyResult
 )
@@ -186,11 +190,23 @@ class StubApprovalStore:
 
         self.queries = []
 
-    def find_valid(self, fingerprint):
+    def find_valid(
+        self,
+        fingerprint,
+        path=None,
+        action=None,
+        risk_level=None,
+        attempt=None,
+        patch=None,
+    ):
 
         self.queries.append(fingerprint)
 
         return self.approval
+
+    def authorize_apply(self, approval_id, patch):
+
+        return True
 
 
 class ExplodingRiskEngine:
@@ -297,6 +313,25 @@ def approved_decision(patch):
             valid=True,
             message="Patch validation passed.",
         ),
+    )
+
+
+def make_valid_approval(
+    patch,
+    risk_level="HIGH",
+    attempt=1,
+    authorizer="human-test",
+    expires_at=None,
+):
+
+    return Approval.create(
+        patch_fingerprint=patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level=risk_level,
+        attempt=attempt,
+        authorizer=authorizer,
+        expires_at=expires_at,
     )
 
 
@@ -631,7 +666,13 @@ def test_gate_enabled_high_risk_with_approval_flows_to_apply(
         encoding="utf-8"
     )
 
-    approval = object()
+    patch = make_patch(
+        target,
+        original,
+        updated,
+    )
+
+    approval = make_valid_approval(patch)
 
     store = StubApprovalStore(approval)
 
@@ -706,16 +747,18 @@ def test_policy_verification_depth_reaches_pipeline(
         ),
     )
 
-    pipeline = build_gated_pipeline(
-        make_verification_result(),
-        apply_verify_pipeline=recorded,
-        approval_store=StubApprovalStore(object()),
-    )
-
     patch = make_patch(
         target,
         original,
         updated,
+    )
+
+    pipeline = build_gated_pipeline(
+        make_verification_result(),
+        apply_verify_pipeline=recorded,
+        approval_store=StubApprovalStore(
+            make_valid_approval(patch)
+        ),
     )
 
     policy_depth = RiskPolicy.from_level(

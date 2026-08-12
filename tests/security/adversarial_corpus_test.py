@@ -16,6 +16,18 @@ from simulation.agent.apply.file_applier import (
     FileApplier
 )
 
+from simulation.agent.approval.approval import (
+    Approval
+)
+
+from simulation.agent.approval.approval_store import (
+    ApprovalStore
+)
+
+from simulation.agent.controller.controller import (
+    Controller
+)
+
 from simulation.agent.controller.controller_decision import (
     ControllerDecision
 )
@@ -62,6 +74,10 @@ from simulation.agent.worker.worker_task import (
     WorkerTask
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 from simulation.core.kernel import Kernel
 
 from simulation.persistence.event_store import EventStore
@@ -74,6 +90,14 @@ from simulation.security.hash_verifier import HashVerifier
 
 from simulation.security.path_policy import (
     PathPolicy
+)
+
+from simulation.security.risk_engine import (
+    RiskEngine
+)
+
+from simulation.security.risk_policy import (
+    RiskPolicy
 )
 
 
@@ -188,6 +212,53 @@ class FakeVerificationExecutor:
             return make_verification_result()
 
         return self.results.pop(0)
+
+
+def make_worker_result(*patches):
+
+    return WorkerResult(
+        task_id="a-corpus",
+        success=True,
+        summary="Adversarial approval corpus.",
+        patches=tuple(patches),
+    )
+
+
+class StubApprovalStore:
+
+    """Returns a fixed approval for any query (simulates a
+    malicious / agent-controlled approval authority)."""
+
+    def __init__(self, approval):
+
+        self.approval = approval
+
+    def find_valid(
+        self,
+        fingerprint,
+        path=None,
+        action=None,
+        risk_level=None,
+        attempt=None,
+        patch=None,
+    ):
+
+        return self.approval
+
+
+def make_gated_pipeline(approval_store):
+
+    return WorkerActionPipeline(
+        patch_validator=PatchValidator(),
+        controller=Controller(),
+        apply_verify_pipeline=ApplyVerifyPipeline(
+            apply_executor=ApplyExecutor(),
+            verification_executor=FakeVerificationExecutor(),
+        ),
+        risk_engine=RiskEngine(),
+        risk_policy=RiskPolicy(),
+        approval_store=approval_store,
+    )
 
 
 def _symlink_or_skip(source, link):
@@ -1165,6 +1236,539 @@ def test_a12b_absolute_lexical_scope_confusion(corpus, tmp_path):
     )
 
     assert ok is False
+
+
+# ---------------------------------------------------------------------------
+# A13 Approval Replay
+# ---------------------------------------------------------------------------
+
+def test_a13_approval_replay_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    store = ApprovalStore()
+
+    store.grant(
+        patch_fingerprint=patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-1",
+        expires_at=3600,
+    )
+
+    first = store.find_valid(
+        patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+    )
+
+    second = store.find_valid(
+        patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+    )
+
+    passed = (
+        first is not None
+        and second is None
+    )
+
+    actual = (
+        f"first={first is not None} "
+        f"second={second is not None}"
+    )
+
+    corpus.record(
+        "A13",
+        "reuse the same approval twice for the same patch",
+        "first ALLOW, second DENY (single-use, no replay)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A14 Approval Substitution (patch fingerprint)
+# ---------------------------------------------------------------------------
+
+def test_a14_approval_patch_substitution_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    approved = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    smuggled = make_patch(
+        target,
+        original,
+        "value = 99\n",
+        (str(target),),
+    )
+
+    store = ApprovalStore()
+
+    store.grant(
+        patch_fingerprint=approved.fingerprint(),
+        path=approved.path,
+        action=approved.action,
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-1",
+        expires_at=3600,
+    )
+
+    found = store.find_valid(
+        smuggled.fingerprint(),
+        path=smuggled.path,
+        action=smuggled.action,
+        risk_level="HIGH",
+        attempt=1,
+    )
+
+    passed = found is None
+
+    actual = (
+        "ALLOWED"
+        if found is not None
+        else "DENY"
+    )
+
+    corpus.record(
+        "A14",
+        "approve patch A, replay approval for smuggled patch B",
+        "DENY (approval is fingerprint-bound)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A15 Risk Context Substitution (escalation / downgrade)
+# ---------------------------------------------------------------------------
+
+def test_a15_approval_risk_context_substitution_is_denied(
+    corpus,
+    tmp_path,
+):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    store = ApprovalStore()
+
+    store.grant(
+        patch_fingerprint=patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-1",
+        expires_at=3600,
+    )
+
+    found = store.find_valid(
+        patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="CRITICAL",
+        attempt=1,
+    )
+
+    passed = found is None
+
+    actual = (
+        "ALLOWED"
+        if found is not None
+        else "DENY"
+    )
+
+    corpus.record(
+        "A15",
+        "HIGH approval replayed to authorize a CRITICAL risk flow",
+        "DENY (approval is bound to the granted risk context)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A16 Forged Approval Metadata (agent-controlled)
+# ---------------------------------------------------------------------------
+
+def test_a16_forged_approval_metadata_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    class ForgingStore:
+
+        def find_valid(
+            self,
+            fingerprint,
+            path=None,
+            action=None,
+            risk_level=None,
+            attempt=None,
+            patch=None,
+        ):
+
+            return {
+                "approved": True,
+                "fingerprint": fingerprint,
+                "path": path,
+                "action": action,
+                "risk_level": risk_level,
+                "attempt": attempt,
+            }
+
+    pipeline = make_gated_pipeline(ForgingStore())
+
+    result = pipeline.execute(
+        make_worker_result(patch)
+    )
+
+    passed = (
+        result.success is False
+        and result.failure_stage == "approval"
+        and result.apply_success is False
+        and target.read_text(
+            encoding="utf-8"
+        ) == original
+    )
+
+    actual = (
+        f"stage={result.failure_stage} "
+        f"apply={result.apply_success} "
+        f"reason={result.failure_reason!r}"
+    )
+
+    corpus.record(
+        "A16",
+        "agent-controlled store fabricates dict approval metadata",
+        "DENY (approval must be a typed, bound Approval)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A17 Stale / Expired Approval
+# ---------------------------------------------------------------------------
+
+def test_a17_expired_approval_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    store = ApprovalStore()
+
+    store.grant(
+        patch_fingerprint=patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-1",
+        expires_at=-60,
+    )
+
+    found = store.find_valid(
+        patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+    )
+
+    passed = found is None
+
+    actual = (
+        "ALLOWED"
+        if found is not None
+        else "DENY"
+    )
+
+    corpus.record(
+        "A17",
+        "replay an expired (stale) approval",
+        "DENY (expired approval is unusable)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A18 Attempt Substitution
+# ---------------------------------------------------------------------------
+
+def test_a18_attempt_substitution_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    store = ApprovalStore()
+
+    store.grant(
+        patch_fingerprint=patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-1",
+        expires_at=3600,
+    )
+
+    found = store.find_valid(
+        patch.fingerprint(),
+        path=patch.path,
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=2,
+    )
+
+    passed = found is None
+
+    actual = (
+        "ALLOWED"
+        if found is not None
+        else "DENY"
+    )
+
+    corpus.record(
+        "A18",
+        "replay attempt-1 approval at attempt 2",
+        "DENY (approval is bound to the attempt context)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A19 Path Substitution (forged approval through a hostile store)
+# ---------------------------------------------------------------------------
+
+def test_a19_approval_path_substitution_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    forged = Approval(
+        approval_id="a19",
+        patch_fingerprint=patch.fingerprint(),
+        path=str(tmp_path / "other.txt"),
+        action=patch.action,
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="attacker",
+        created_at="2026-08-12T00:00:00Z",
+        expires_at="",
+    )
+
+    pipeline = make_gated_pipeline(
+        StubApprovalStore(forged)
+    )
+
+    result = pipeline.execute(
+        make_worker_result(patch)
+    )
+
+    passed = (
+        result.success is False
+        and result.failure_stage == "approval"
+        and result.apply_success is False
+        and target.read_text(
+            encoding="utf-8"
+        ) == original
+    )
+
+    actual = (
+        f"stage={result.failure_stage} "
+        f"apply={result.apply_success} "
+        f"reason={result.failure_reason!r}"
+    )
+
+    corpus.record(
+        "A19",
+        "approval typed but bound to a different path (hostile store)",
+        "DENY (pipeline validates path binding itself)",
+        actual,
+        passed,
+    )
+
+    assert passed
+
+
+# ---------------------------------------------------------------------------
+# A20 Approval Gate Bypass With No Authority
+# ---------------------------------------------------------------------------
+
+def test_a20_approval_gate_without_authority_is_denied(corpus, tmp_path):
+
+    target = tmp_path / "settings.secret.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(
+        original,
+        encoding="utf-8"
+    )
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 2\n",
+        (str(target),),
+    )
+
+    object.__setattr__(
+        patch,
+        "human_approved",
+        True,
+    )
+
+    object.__setattr__(
+        patch,
+        "approval_token",
+        "FORGED-AGENT-TOKEN",
+    )
+
+    pipeline = make_gated_pipeline(None)
+
+    result = pipeline.execute(
+        make_worker_result(patch)
+    )
+
+    passed = (
+        result.success is False
+        and result.failure_stage == "approval"
+        and result.apply_success is False
+        and target.read_text(
+            encoding="utf-8"
+        ) == original
+    )
+
+    actual = (
+        f"stage={result.failure_stage} "
+        f"apply={result.apply_success}"
+    )
+
+    corpus.record(
+        "A20",
+        "proposal-contained approval claims with no authority store",
+        "DENY (fail-closed; proposal metadata is never authority)",
+        actual,
+        passed,
+    )
+
+    assert passed
 
 
 # ---------------------------------------------------------------------------

@@ -1,3 +1,5 @@
+from simulation.agent.approval.approval import Approval
+
 from simulation.agent.controller.controller_decision import (
     ControllerDecision
 )
@@ -16,7 +18,8 @@ class Controller:
     def approve(
         self,
         patch: PatchProposal,
-        validation: ValidationResult
+        validation: ValidationResult,
+        approval: Approval | None = None
     ) -> ControllerDecision:
 
         if validation is None:
@@ -56,10 +59,42 @@ class Controller:
                 )
             )
 
+        if approval is not None and not isinstance(
+            approval,
+            Approval
+        ):
+
+            return ControllerDecision(
+                approved=False,
+                reason=(
+                    "Controller rejected malformed "
+                    "approval binding."
+                )
+            )
+
+        if (
+            approval is not None
+            and approval.patch_fingerprint
+            != patch.fingerprint()
+        ):
+
+            return ControllerDecision(
+                approved=False,
+                reason=(
+                    "Controller rejected approval bound "
+                    "to a different patch."
+                )
+            )
+
         return ControllerDecision(
             approved=True,
             reason=(
                 "Controller approved validated patch."
             ),
-            patch_fingerprint=patch.fingerprint()
+            patch_fingerprint=patch.fingerprint(),
+            approval_id=(
+                approval.approval_id
+                if approval is not None
+                else ""
+            )
         )

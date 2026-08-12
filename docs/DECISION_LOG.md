@@ -132,12 +132,66 @@ from behavior, not explicitly recorded), or UNKNOWN.
   HIGH/CRITICAL approval boundary, depth propagation);
   `recovery_assembly.py` signature + defaults.
 - **Rationale (why not default-on):** HIGH/CRITICAL require human approval,
-  which depends on the `approval_store` contract that has no implementation
-  (MISSION-012). Wiring the gate into the shipped assembly would silently
-  hard-block every HIGH/CRITICAL patch with no resolution path. Keeping it
-  opt-in preserves backward compatibility, does not weaken any security
-  boundary, and lets MISSION-012 re-evaluate default-on when an approval
-  store exists.
+  which depended on the `approval_store` contract that had no
+  implementation (MISSION-012). Wiring the gate into the shipped assembly
+  would silently hard-block every HIGH/CRITICAL patch with no resolution
+  path. Keeping it opt-in preserves backward compatibility, does not weaken
+  any security boundary, and lets MISSION-012 re-evaluate default-on when
+  an approval store exists.
+- **Re-evaluated by MISSION-012 (D-022):** the approval store now exists,
+  but the gate still stays explicit opt-in. See D-022.
+
+## D-022 — Approval model is single-use, fully bound and evidence-recorded
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-012 (2026-08-12).
+- **Decision:** Human approval is a frozen `Approval` bound to patch
+  fingerprint, path, action, risk level, attempt, authorizer and expiry.
+  `ApprovalStore.find_valid` returns the first unexpired, unconsumed
+  approval matching the full context and consumes it (single-use; replay
+  impossible). The pipeline independently re-validates the returned
+  object's type and every binding field (`_approval_is_valid`), so
+  agent-fabricated or proposal-contained approval metadata is never
+  authority. Every grant is recorded as a `WorkerHumanApprovalGranted`
+  event through the existing Kernel/event store (no parallel evidence
+  architecture). Malformed/missing/expired/wrong/replayed approvals all
+  DENY at the approval stage.
+- **Evidence:** `simulation/agent/approval/` +
+  `tests/approval_boundary_test.py` (31 tests) + corpus A13-A20 +
+  `tests/risk_pipeline_test.py` (updated stubs to real `Approval` objects).
+- **Default-gate consequence:** the risk gate remains DEFAULT OFF /
+  explicit opt-in. The approval store removes the hard-block, but turning
+  the gate on in the shipped assembly is now a productization decision the
+  repository's current evidence base does not require; it stays off by
+  default (backward compatible, no security boundary loosened).
+
+## D-023 — The apply authorization boundary is store-backed and fail-closed
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-014 (2026-08-12).
+- **Decision:** `ApplyAuthorization` never trusts duck-typed metadata. It
+  requires a real `ControllerDecision` with `approved is True` and an
+  exact fingerprint match. When bound to the approval authority (risk gate
+  enabled) it recomputes the patch risk deterministically at the boundary
+  and, for HIGH/CRITICAL/UNKNOWN applies, requires a store-verified,
+  single-use approval binding: `ControllerDecision.approval_id` +
+  `ApprovalStore.authorize_apply(approval_id, patch)` which verifies the
+  approval was granted by that store, released by `find_valid`, bound to
+  the exact patch object, not expired, and not already applied. The
+  approval-to-apply binding is explicit (approval identity + patch object
+  identity), not merely transitive through a shared `PatchProposal`.
+- **Rationale:** MISSION-012's pipeline-level approval gate was necessary
+  but not sufficient: a forged/agent-controlled decision object carrying
+  `approved=True` + the matching fingerprint could still reach the apply
+  authorization, and the boundary did not itself verify the human-approval
+  authority. Enforcing at the narrowest trusted boundary (the store-backed
+  apply authorization) makes the failure mode structural, not a
+  well-behaved-caller assumption.
+- **Consequence:** the gate stays DEFAULT OFF (D-021/D-022): a default
+  `ApplyExecutor()`/`WorkerActionPipeline()` keeps the historical
+  typed-decision + fingerprint contract. No security boundary was loosened;
+  the default runtime remains proposal-only.
+- **Evidence:** `simulation/agent/apply/apply_authorization.py`,
+  `simulation/agent/approval/approval_store.py`,
+  `simulation/agent/controller/controller.py`,
+  `simulation/agent/controller/controller_decision.py`,
+  `tests/approval_boundary_test.py` (48 tests, MISSION-014 A–O).
 
 ---
 
@@ -145,8 +199,10 @@ from behavior, not explicitly recorded), or UNKNOWN.
 
 - **Recovery by default?** Making `--recovery` the default in
   `agent_run.py` is deliberately unresolved (MISSION-004 remaining work).
-- **Risk gate default-on?** Resolved for MISSION-011: the gate stays an
-  explicit opt-in (D-021). Whether it becomes default-on in the shipped
-  assembly once an `ApprovalStore` exists is deferred to MISSION-012.
-- **MISSION-012 approval store:** interface exists; implementation and
-  human-approval UX undefined. **UNKNOWN.**
+- **Risk gate default-on?** Resolved for MISSION-011 and re-confirmed for
+  MISSION-012: the gate stays an explicit opt-in (D-021/D-022). Whether it
+  becomes default-on in the shipped assembly once a human-approval UX
+  exists is a productization decision. **UNKNOWN.**
+- **Human-approval UX:** the `ApprovalStore` exists and is tested; the
+  interactive flow for routing a HIGH/CRITICAL request to a human and back
+  into `grant` is undefined. **OPEN.**
