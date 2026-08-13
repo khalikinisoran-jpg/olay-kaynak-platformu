@@ -66,6 +66,9 @@ def build_recovery_agent(
     risk_policy=None,
     approval_store=None,
     approval_ledger_path=None,
+    approval_gateway=None,
+    governance=None,
+    apply_journal=None,
 ) -> Agent:
 
     """Explicit production assembly for bounded recovery.
@@ -82,12 +85,23 @@ def build_recovery_agent(
     trace is always active when this assembly is used.
 
     The risk gate is OFF unless BOTH ``risk_engine`` and ``risk_policy``
-    are explicitly provided. Wiring it in makes HIGH/CRITICAL proposals
-    require human approval. When the gate is enabled and no
-    ``approval_store`` is supplied, a default ``ApprovalStore`` backed
-    by the same evidence recorder is created so HIGH/CRITICAL patches
-    have a real approval path (MISSION-012). The gate itself stays an
-    explicit opt-in; the shipped default runtime never enables it.
+    are explicitly provided (or a ``governance`` evaluator is provided,
+    in which case its engine and policy are used). Wiring it in makes
+    HIGH/CRITICAL proposals require human approval. When the gate is
+    enabled and no ``approval_store`` is supplied, a default
+    ``ApprovalStore`` backed by the same evidence recorder is created so
+    HIGH/CRITICAL patches have a real approval path (MISSION-012). The
+    gate itself stays an explicit opt-in; the shipped default runtime
+    never enables it.
+
+    MISSION-019 additions:
+
+    - ``governance`` is a single ``GovernanceEvaluator`` shared by the
+      pipeline gate, the approval console and the apply boundary, so the
+      three layers cannot drift on risk classification.
+    - ``apply_journal`` wires an ``ApplyOutcomeJournal`` into the apply
+      executor and the apply/verify pipeline so every apply intent and
+      its terminal outcome is durably recorded and restart-reconcilable.
     """
 
     recorder = (
@@ -95,6 +109,16 @@ def build_recovery_agent(
         if evidence_recorder is not None
         else WorkerEvidenceRecorder(kernel=kernel)
     )
+
+    if governance is not None:
+
+        if risk_engine is None:
+
+            risk_engine = governance.risk_engine
+
+        if risk_policy is None:
+
+            risk_policy = governance.risk_policy
 
     store = approval_store
 
@@ -128,7 +152,8 @@ def build_recovery_agent(
                 apply_executor
                 if apply_executor is not None
                 else ApplyExecutor(
-                    approval_store=store
+                    approval_store=store,
+                    journal=apply_journal,
                 )
             ),
             verification_executor=(
@@ -136,11 +161,15 @@ def build_recovery_agent(
                 if verification_executor is not None
                 else VerificationExecutor()
             ),
+            journal=apply_journal,
         ),
         evidence_recorder=recorder,
         risk_engine=risk_engine,
         risk_policy=risk_policy,
         approval_store=store,
+        approval_gateway=approval_gateway,
+        governance=governance,
+        apply_journal=apply_journal,
     )
 
     recovery_engine = BoundedRecoveryEngine(
@@ -159,3 +188,31 @@ def build_recovery_agent(
         worker_pipeline=action_pipeline,
         recovery_engine=recovery_engine,
     )
+
+
+def run_startup_reconciliation(
+    journal,
+    allowed_paths=(),
+    approval_store=None,
+):
+
+    """Detect-only restart reconciliation for the apply-outcome journal.
+
+    Returns a ``ReconciliationReport`` classifying every journaled apply
+    intent and flagging orphaned mutations / consumed approvals without
+    a terminal outcome. Never mutates files and never bypasses the
+    approval boundary. A corrupt journal raises ``RuntimeError``
+    (fail-closed).
+    """
+
+    from simulation.agent.recovery.startup_reconciliation import (
+        ReconciliationEngine,
+    )
+
+    engine = ReconciliationEngine(
+        journal=journal,
+        allowed_paths=tuple(allowed_paths),
+        approval_store=approval_store,
+    )
+
+    return engine.detect()

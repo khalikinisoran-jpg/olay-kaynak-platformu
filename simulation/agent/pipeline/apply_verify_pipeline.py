@@ -37,6 +37,13 @@ class ApplyVerifyPipeline:
     reported in ``ApplyVerifyResult.rollback`` so the upper flow can
     treat it as a terminal, non-retryable outcome instead of retrying
     on a corrupted or unknown state.
+
+    When an ``apply_outcome_journal`` is wired (MISSION-019) the
+    pipeline records the terminal VERIFIED / ROLLED_BACK /
+    ROLLBACK_FAILED outcome against the ``intent_id`` produced by the
+    apply executor, so a crash between the file write and the evidence
+    event is always detectable after restart. The journal is durable
+    outcome evidence, never an authorization input.
     """
 
     VERIFICATION_DEPTH_COMPILE = "compile"
@@ -46,7 +53,8 @@ class ApplyVerifyPipeline:
     def __init__(
         self,
         apply_executor=None,
-        verification_executor=None
+        verification_executor=None,
+        journal=None
     ):
 
         self.apply_executor = (
@@ -61,18 +69,30 @@ class ApplyVerifyPipeline:
             else VerificationExecutor()
         )
 
+        self.journal = (
+            journal
+            if journal is not None
+            else getattr(
+                self.apply_executor,
+                "journal",
+                None,
+            )
+        )
+
     def execute(
         self,
         patch: PatchProposal,
         decision: ControllerDecision,
         verify_paths=None,
         test_targets=(),
-        verification_depth=VERIFICATION_DEPTH_COMPILE_TESTS
+        verification_depth=VERIFICATION_DEPTH_COMPILE_TESTS,
+        attempt=None
     ) -> ApplyVerifyResult:
 
         apply_result = self.apply_executor.apply(
             patch,
-            decision
+            decision,
+            attempt=attempt,
         )
 
         if not apply_result.success:
@@ -115,6 +135,10 @@ class ApplyVerifyPipeline:
 
         if verification_result.passed:
 
+            self._record_verified(
+                apply_result.intent_id
+            )
+
             return ApplyVerifyResult(
                 apply_result=apply_result,
                 verification=verification_result,
@@ -125,6 +149,7 @@ class ApplyVerifyPipeline:
         rollback = self._rollback(
             patch,
             verify_paths,
+            apply_result.intent_id,
         )
 
         return ApplyVerifyResult(
@@ -135,10 +160,43 @@ class ApplyVerifyPipeline:
             rollback=rollback,
         )
 
+    def _record_verified(self, intent_id):
+
+        if self.journal is None or not intent_id:
+
+            return
+
+        self.journal.record_verified(
+            intent_id
+        )
+
+    def _record_rollback_outcome(self, intent_id, rollback):
+
+        if self.journal is None or not intent_id:
+
+            return
+
+        if rollback is None:
+
+            return
+
+        if rollback.success:
+
+            self.journal.record_rolled_back(
+                intent_id
+            )
+
+        else:
+
+            self.journal.record_rollback_failed(
+                intent_id
+            )
+
     def _rollback(
         self,
         patch: PatchProposal,
         verify_paths,
+        intent_id,
     ):
 
         rollback_fn = getattr(
@@ -151,6 +209,12 @@ class ApplyVerifyPipeline:
 
             return None
 
+        if self.journal is not None and intent_id:
+
+            self.journal.record_rollback_started(
+                intent_id
+            )
+
         ok, message = rollback_fn(patch)
 
         rollback = RollbackResult(
@@ -158,6 +222,11 @@ class ApplyVerifyPipeline:
             path=patch.path,
             message=message,
             restore_verified=ok,
+        )
+
+        self._record_rollback_outcome(
+            intent_id,
+            rollback,
         )
 
         if not ok:

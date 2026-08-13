@@ -23,5 +23,9 @@ Thumbs.db
 # Virtual environment
 .venv/
 
+# Packaging artifacts
+*.egg-info/
+build/
+
 # Runtime data
 data/

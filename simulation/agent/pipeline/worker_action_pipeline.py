@@ -40,6 +40,10 @@ from simulation.agent.worker.worker_result import (
     WorkerResult
 )
 
+from simulation.security.governance_evaluator import (
+    GovernanceEvaluator
+)
+
 from simulation.security.risk_engine import (
     RiskEngine
 )
@@ -181,7 +185,10 @@ class WorkerActionPipeline:
         evidence_recorder=None,
         risk_engine=None,
         risk_policy=None,
-        approval_store=None
+        approval_store=None,
+        approval_gateway=None,
+        governance=None,
+        apply_journal=None
     ):
 
         self.patch_validator = (
@@ -204,44 +211,107 @@ class WorkerActionPipeline:
 
         self.evidence_recorder = evidence_recorder
 
-        self.risk_engine = (
-            risk_engine
-            if risk_engine is not None
-            else RiskEngine()
-        )
-
-        self.risk_policy = (
-            risk_policy
-            if risk_policy is not None
-            else RiskPolicy()
-        )
-
         self.approval_store = approval_store
 
-        self.risk_gate_enabled = (
-            risk_engine is not None
-            and risk_policy is not None
-        )
+        self.approval_gateway = approval_gateway
+
+        self.apply_journal = apply_journal
+
+        if governance is not None:
+
+            self.governance = governance
+
+            self.risk_engine = governance.risk_engine
+
+            self.risk_policy = governance.risk_policy
+
+            self.risk_gate_enabled = True
+
+        else:
+
+            self.risk_engine = (
+                risk_engine
+                if risk_engine is not None
+                else RiskEngine()
+            )
+
+            self.risk_policy = (
+                risk_policy
+                if risk_policy is not None
+                else RiskPolicy()
+            )
+
+            self.governance = GovernanceEvaluator(
+                risk_engine=self.risk_engine,
+                risk_policy=self.risk_policy,
+            )
+
+            self.risk_gate_enabled = (
+                risk_engine is not None
+                and risk_policy is not None
+            )
+
+        self._bind_apply_journal()
 
         self._bind_approval_authority()
+
+    def _bind_apply_journal(self):
+
+        """Wire the optional apply-outcome journal into the pipeline.
+
+        The journal records apply intent / outcome transitions around
+        the real file write and verification. It is evidence of *what
+        happened on disk*, never an authorization input. When no journal
+        is supplied every record method is a no-op and behavior is
+        unchanged.
+        """
+
+        if self.apply_journal is None:
+
+            return
+
+        executor = getattr(
+            self.apply_verify_pipeline,
+            "apply_executor",
+            None,
+        )
+
+        pipeline = self.apply_verify_pipeline
+
+        try:
+
+            pipeline.journal = self.apply_journal
+
+        except Exception:
+
+            pass
+
+        if executor is not None:
+
+            try:
+
+                executor.journal = self.apply_journal
+
+            except Exception:
+
+                pass
 
     def _bind_approval_authority(self):
 
         """Bind the apply boundary to the approval authority.
 
-        When the risk gate is enabled and an approval store backs the
-        pipeline, the apply executor's authorization must verify the
-        approval binding itself (not merely trust the pipeline). Only
-        a store-backed authorization can fail closed on forged
-        decisions, agent-claimed approval ids and replayed approvals
-        at the apply boundary.
+        When the risk gate is enabled the apply executor's
+        authorization must re-verify the approval binding itself (not
+        merely trust the pipeline) and must classify the patch with the
+        *same* ``GovernanceEvaluator`` the pipeline uses (MISSION-019),
+        so a caller-supplied custom engine can never drift between the
+        pipeline gate and the apply boundary. Only a store-backed,
+        shared-evaluator authorization can fail closed on forged
+        decisions, agent-claimed approval ids and replayed approvals at
+        the apply boundary.
         """
 
         if not self.risk_gate_enabled:
-
-            return
-
-        if self.approval_store is None:
 
             return
 
@@ -262,12 +332,11 @@ class WorkerActionPipeline:
                 authorization,
                 ApplyAuthorization,
             )
-            and authorization.approval_store is None
         ):
 
             executor.authorization = ApplyAuthorization(
                 approval_store=self.approval_store,
-                risk_engine=self.risk_engine,
+                governance=self.governance,
             )
 
     def execute(
@@ -365,28 +434,24 @@ class WorkerActionPipeline:
 
             if self.risk_gate_enabled:
 
-                assessment = self.risk_engine.classify(
+                governance_decision = self.governance.evaluate(
                     patch
                 )
 
-                risk_decision = self.risk_policy.decide(
-                    assessment
-                )
-
-                if risk_decision.allowed is not True:
+                if governance_decision.allowed is not True:
 
                     stages.append(
                         PatchStageResult(
                             patch=patch,
                             success=False,
                             stage=self.STAGE_RISK,
-                            message=risk_decision.reason,
+                            message=governance_decision.reason,
                         )
                     )
 
                     break
 
-                if risk_decision.requires_human_approval:
+                if governance_decision.requires_human_approval:
 
                     approval = None
 
@@ -398,7 +463,7 @@ class WorkerActionPipeline:
                                 path=patch.path,
                                 action=patch.action,
                                 risk_level=(
-                                    risk_decision.risk_level.value
+                                    governance_decision.risk_level.value
                                 ),
                                 attempt=attempt_context,
                                 patch=patch,
@@ -409,10 +474,53 @@ class WorkerActionPipeline:
                         self._approval_is_valid(
                             approval,
                             patch,
-                            risk_decision.risk_level.value,
+                            governance_decision.risk_level.value,
                             attempt_context,
                         )
                     )
+
+                    if (
+                        not valid
+                        and self.approval_gateway is not None
+                        and self.approval_store is not None
+                    ):
+
+                        granted = (
+                            self.approval_gateway.request_approval(
+                                patch,
+                                risk_level=(
+                                    governance_decision.risk_level.value
+                                ),
+                                attempt=attempt_context,
+                                evidence_reference=(
+                                    worker_result.task_id
+                                ),
+                            )
+                        )
+
+                        if granted is not None:
+
+                            approval = (
+                                self.approval_store.find_valid(
+                                    patch.fingerprint(),
+                                    path=patch.path,
+                                    action=patch.action,
+                                    risk_level=(
+                                        governance_decision.risk_level.value
+                                    ),
+                                    attempt=attempt_context,
+                                    patch=patch,
+                                )
+                            )
+
+                            valid, approval_reason = (
+                                self._approval_is_valid(
+                                    approval,
+                                    patch,
+                                    governance_decision.risk_level.value,
+                                    attempt_context,
+                                )
+                            )
 
                     if not valid:
 
@@ -435,7 +543,7 @@ class WorkerActionPipeline:
                         break
 
                 verification_depth = (
-                    risk_decision.verification_depth
+                    governance_decision.verification_depth
                 )
 
             if approval is not None:
@@ -487,6 +595,7 @@ class WorkerActionPipeline:
                 verify_paths=verify_paths,
                 test_targets=test_targets,
                 verification_depth=verification_depth,
+                attempt=attempt_context,
             )
 
             if recorder is not None:

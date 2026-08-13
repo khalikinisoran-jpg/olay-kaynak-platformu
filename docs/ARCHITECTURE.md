@@ -1,10 +1,10 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `d347f43` (2026-08-12; MISSION-016
-> Chief-Engineer-Gap-Closure additions: governed runtime path, rollback,
-> approval ledger, event-store/snapshot hardening, verification hardening,
-> secret/prompt-injection boundary, lazy provider, risk refinement).
+> `worker-action-pipeline` @ `a8de82e` (2026-08-13; MISSION-017
+> Productization & Human Approval additions: interactive CLI approval
+> console, deterministic runtime-mode tests, adversarial corpus A31-A36,
+> CI packaging smoke, approval-lookup benchmark).
 > This document describes verified code only. Roadmap/future ideas are not
 > presented as current reality; see ROADMAP.md for the future.
 
@@ -159,6 +159,18 @@ active the flow is: RiskEngine.classify -> RiskPolicy.decide ->
 ApplyVerifyPipeline with the policy-chosen verification depth. VERIFIED —
 `tests/risk_pipeline_test.py`, `tests/approval_boundary_test.py`.
 
+RiskEngine (MISSION-018A) classifies content into SAFE / SUSPICIOUS /
+OPAQUE before producing a level: SAFE content may keep the LOW/MEDIUM
+baseline; SUSPICIOUS credential-like material (JSON/YAML/TOML credential
+keys, bare token prefixes, base64/encoded material, URL userinfo, shell
+credential flags, env secret references, authorization headers/Bearer) is
+elevated to HIGH (approval); OPAQUE content (control characters) yields
+UNKNOWN -> DENY. `not detected` is never treated as `safe`. Path signals
+additionally cover backup/temp suffixes, hidden credential files,
+credential directories and production-env naming. Trivial assignments
+(`self.token = None`) stay benign. VERIFIED — `tests/risk_regression_test.py`,
+`tests/risk_pipeline_test.py`, adversarial corpus A37-A50.
+
 Human approval (MISSION-012/014): `Approval` is a frozen, fingerprint/path/
 action/risk/attempt/expiry-bound single-use contract; `ApprovalStore` is
 fingerprint-keyed and consumes approvals on `find_valid` (which requires
@@ -235,7 +247,16 @@ approval metadata is never authority. Grants are recorded as
   that enables apply+verify+recovery; binds a `WorkerEvidenceRecorder`
   backed by the Kernel. Optional `risk_engine`/`risk_policy` parameters
   expose the pipeline risk gate as an explicit opt-in (off by default,
-  D-021).
+  D-021). **RECOVERY authorization (MISSION-018B):** the apply boundary
+  recomputes risk and DENIES every HIGH/CRITICAL/UNKNOWN apply without a
+  store-verified approval, so even a gate-off assembly can never mutate
+  such a patch. Every retry is an independent PatchProposal through
+  validation -> risk -> approval -> controller -> store-backed apply ->
+  verification; attempt binding prevents an older approval from
+  authorizing a newer patch. `agent_run.py --recovery` wires the risk gate
+  + approval store + ledger (pre-authorized autonomous retry); GOVERNED
+  additionally wires the interactive `ConsoleApprovalGateway`. The retry
+  budget never substitutes for human authorization.
 
 ---
 
@@ -260,13 +281,17 @@ approval metadata is never authority. Grants are recorded as
 - `HashChain` / `HashVerifier`: SHA-256 chaining; `verify` recomputes
   from GENESIS and returns False on break (prints "Hash bozuk:" —
   informational, no secrets).
-- `RiskEngine` / `RiskPolicy` / `RiskLevel` (MISSION-011): deterministic
-  system-derived risk from path/action/change-size/content signals;
-  advisory LLM risk can only raise the level; policy maps UNKNOWN->DENY,
-  HIGH/CRITICAL->human approval, LOW/MEDIUM->auto (max_attempts
-  bounded). Tested (tests/risk_*.py, 83 tests, MISSION-011). The gate is
-  opt-in: active only when both `risk_engine` and `risk_policy` are passed
-  to `WorkerActionPipeline` / `build_recovery_agent`.
+- `RiskEngine` / `RiskPolicy` / `RiskLevel` (MISSION-011, hardened
+  MISSION-018A): deterministic system-derived risk from path/action/
+  change-size/content signals; advisory LLM risk can only raise the level;
+  policy maps UNKNOWN->DENY, HIGH/CRITICAL->human approval, LOW/MEDIUM->
+  auto (max_attempts bounded). MISSION-018A adds fail-closed content
+  classification (SAFE / SUSPICIOUS / OPAQUE; `not detected` is never
+  `safe`), path hardening (backup/temp, hidden credential files,
+  credential dirs, production-env naming) and a MISSION-018A regression
+  corpus. Tested (tests/risk_*.py, MISSION-011/018A). The gate is opt-in:
+  active only when both `risk_engine` and `risk_policy` are passed to
+  `WorkerActionPipeline` / `build_recovery_agent`.
 
 # 12a. Human Approval Boundary (simulation/agent/approval/, MISSION-012/014)
 
@@ -290,7 +315,31 @@ approval metadata is never authority. Grants are recorded as
   binding at apply time, so substitution/replay/forgery/
   metadata-injection all fail closed.
 - Tested (tests/approval_boundary_test.py, 48 tests incl. MISSION-014
-  A–O; corpus A01-A20, MISSION-013).
+  A–O; corpus A13-A20, MISSION-013).
+
+# 12b. Interactive CLI Human-Approval Interface (simulation/agent/approval/approval_console.py, MISSION-017)
+
+- `PendingApprovalRequest`: immutable human-readable snapshot built from
+  the real `PatchProposal` + `RiskAssessment`; renders fingerprint, path,
+  action, risk level + context, attempt, expiry, authorizer and evidence
+  reference (never patch content).
+- `prompt_approval_decision(request, store, input_fn, print_fn)`: renders
+  the request and routes an explicit human approve into
+  `ApprovalStore.grant(...)` with the request-derived context; deny / EOF /
+  unrecognized input return `None` (fail-closed). `input_fn`/`print_fn`
+  are injectable for deterministic tests.
+- `ConsoleApprovalGateway.request_approval(patch, risk_level, attempt,
+  evidence_reference)`: recomputes the risk with the system `RiskEngine`;
+  refuses when the pipeline-provided risk differs (no downgraded display),
+  then prompts the human. Wired into `WorkerActionPipeline` as
+  `approval_gateway` (consulted only when no valid stored approval exists)
+  and into `agent_run.py --governed`.
+- Flow: pipeline STAGE_APPROVAL → `find_valid` returns None →
+  `approval_gateway.request_approval(...)` → human approves →
+  `store.grant(...)` → pipeline re-consumes via `find_valid(patch=patch)`
+  (object-identity binding + single-use preserved) → controller → apply →
+  verify → evidence. The gateway is never an authority; the store/apply
+  boundary remain the authority.
 
 ---
 
@@ -352,15 +401,30 @@ approval metadata is never authority. Grants are recorded as
 
 ---
 
-# 15. Known Architectural Gaps (code-verified)
+# 15. MISSION-019: Governance Consolidation & Crash Consistency
 
-- Human approval boundary implemented and hardened (MISSION-012/014/016)
-  but there is no interactive human-approval UX yet: `ApprovalStore.grant`
-  is invoked programmatically; without a grant, HIGH/CRITICAL fails closed at
-  the approval stage.
+- **Single governance authority (`simulation/security/governance_evaluator.py`, D-031):** one `GovernanceEvaluator` wraps one `RiskEngine` + one `RiskPolicy`. `WorkerActionPipeline` builds it, `ConsoleApprovalGateway` consumes it, and `WorkerActionPipeline._bind_approval_authority` rebinds the apply executor's `ApplyAuthorization` to the *same* evaluator (engine identity), so the pipeline / console / apply boundary can never diverge on risk classification. The apply boundary keeps its independent fail-closed checks (typed decision, `approved is True`, fingerprint, store-backed approval). MISSION-018A/018B semantics unchanged.
+- **Apply-outcome journal (`simulation/agent/apply/apply_outcome_journal.py`, D-032):** append-only, hash-chained, secret-safe lifecycle record (INTENT -> APPLY_STARTED -> APPLIED/APPLY_FAILED -> VERIFIED/ROLLBACK_STARTED -> ROLLED_BACK/ROLLBACK_FAILED) written around the real file write by `ApplyExecutor` + `ApplyVerifyPipeline`. `load()` fails closed on corruption / out-of-order / duplicate transitions. Wired via `WorkerActionPipeline(apply_journal=...)`, `build_recovery_agent(apply_journal=...)` and `agent_run.py --apply-journal`.
+- **Detect-only reconciliation (`simulation/agent/recovery/startup_reconciliation.py`, D-032):** `ReconciliationEngine.detect()` classifies journaled intents, inspects in-scope files against journaled content hashes, and flags orphaned mutations / consumed approvals without a terminal outcome. Never writes a file; repair is deliberately out of scope (a mutation needing explicit authorization).
+- **Atomic snapshots (D-033):** `SnapshotStore.save` uses temp + fsync + `os.replace`; recovery's unverifiable-snapshot fallback is unchanged.
+- **Kernel semantics (documented):** append -> trace -> reducer; a reducer failure persists the event, diverges live state, and replay reproduces the failure (fail-closed).
+- **Retry-evidence redaction (D-034):** verification stdout/stderr is redacted + length-bounded before the next LLM retry prompt.
+- New `--apply-journal` CLI flag; `--recovery`/`--governed` run startup reconciliation on boot.
+
+---
+
+# 16. Known Architectural Gaps (code-verified)
+
+- Human approval boundary implemented, hardened and given a CLI UX
+  (MISSION-012/014/016/017): `ConsoleApprovalGateway` +
+  `approval_console.py` route explicit human decisions into
+  `ApprovalStore.grant` and are wired into `agent_run.py --governed`.
+  The interface is synchronous (blocks the governed run until the operator
+  decides; EOF fails closed).
 - Risk gate / governed apply DEFAULT OFF: `--governed`/`--recovery` are the
   explicit opt-ins; the shipped default runtime stays proposal-only
-  (D-021/D-022/D-015).
+  (D-021/D-022/D-015). Default-on remains an open productization decision
+  now that a human-approval UX exists.
 - Rollback on verification failure is provided by the real `ApplyExecutor`;
   a custom executor without `rollback` leaves the failed state (documented).
 - `DecisionTrace` in-memory only.

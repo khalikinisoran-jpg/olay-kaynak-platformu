@@ -29,6 +29,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Verify package installs (packaging smoke)
+        shell: bash
+        run: |
+          pip install -e . --quiet
+          python -c "import simulation; from simulation.agent.approval.approval_console import ConsoleApprovalGateway; print('package-ok')"
+
       - name: Compile all packages
         run: python -m compileall -q simulation tests
 

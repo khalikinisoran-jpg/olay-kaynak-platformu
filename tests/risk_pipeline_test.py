@@ -1,9 +1,13 @@
-from simulation.agent.apply.apply_executor import (
+﻿from simulation.agent.apply.apply_executor import (
     ApplyExecutor
 )
 
 from simulation.agent.approval.approval import (
     Approval
+)
+
+from simulation.agent.approval.approval_store import (
+    ApprovalStore
 )
 
 from simulation.agent.apply.apply_result import (
@@ -107,12 +111,14 @@ class RecordingApplyExecutor:
     def apply(
         self,
         patch,
-        decision
+        decision,
+        attempt=None
     ):
 
         self.calls.append({
             "patch": patch,
             "decision": decision,
+            "attempt": attempt,
         })
 
         return ApplyResult(
@@ -150,12 +156,14 @@ class RecordingApplyVerifyPipeline(ApplyVerifyPipeline):
         verification_depth=(
             ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
         ),
+        attempt=None,
     ):
 
         self.calls.append({
             "patch": patch,
             "decision": decision,
             "verification_depth": verification_depth,
+            "attempt": attempt,
         })
 
         return super().execute(
@@ -164,6 +172,7 @@ class RecordingApplyVerifyPipeline(ApplyVerifyPipeline):
             verify_paths=verify_paths,
             test_targets=test_targets,
             verification_depth=verification_depth,
+            attempt=attempt,
         )
 
 
@@ -1023,6 +1032,197 @@ def test_apply_verify_explicit_compile_tests_depth_uses_full_verify(
     assert len(executor.verify_calls) == 1
 
     assert executor.compile_calls == []
+
+
+def run_gated_denial(tmp_path, filename, updated, expected_stage):
+    """Governed pipeline over a real target with a scripted update.
+
+    Returns (result, apply_executor, target) after running the patch. The
+    empty ApprovalStore means any HIGH/CRITICAL classification must fail
+    closed at the approval stage and never reach apply.
+    """
+
+    target = tmp_path / filename
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    original = "value = 1\n"
+
+    target.write_text(original, encoding="utf-8")
+
+    patch = make_patch(target, original, updated)
+
+    apply_executor = RecordingApplyExecutor()
+
+    pipeline = build_gated_pipeline(
+        make_verification_result(),
+        apply_executor=apply_executor,
+        approval_store=ApprovalStore(),
+    )
+
+    result = pipeline.execute(make_worker_result(patch))
+
+    return result, apply_executor, target, original
+
+
+def test_gate_enabled_json_value_denies_auto_apply(tmp_path):
+    """MISSION-018A: JSON credential bypass must require approval."""
+
+    result, apply_executor, target, original = run_gated_denial(
+        tmp_path,
+        "notes.txt",
+        '{"password": "hunter2"}\n',
+        "approval",
+    )
+
+    assert result.success is False
+
+    assert result.failure_stage == "approval"
+
+    assert result.apply_success is False
+
+    assert apply_executor.calls == []
+
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_gate_enabled_bare_value_denies_auto_apply(tmp_path):
+
+    result, apply_executor, target, original = run_gated_denial(
+        tmp_path,
+        "notes.txt",
+        "sk-1234567890abcdef0123456789abcdef\n",
+        "approval",
+    )
+
+    assert result.success is False
+
+    assert result.failure_stage == "approval"
+
+    assert apply_executor.calls == []
+
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_gate_enabled_encoded_value_denies_auto_apply(tmp_path):
+
+    result, apply_executor, target, original = run_gated_denial(
+        tmp_path,
+        "notes.txt",
+        'creds = "Z2hwX2FiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6MTIzNDU2Nzg5MA=="\n',
+        "approval",
+    )
+
+    assert result.success is False
+
+    assert result.failure_stage == "approval"
+
+    assert apply_executor.calls == []
+
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_gate_enabled_url_userinfo_denies_auto_apply(tmp_path):
+
+    result, apply_executor, target, original = run_gated_denial(
+        tmp_path,
+        "notes.txt",
+        'url = "https://admin:hunter2@example.com/api"\n',
+        "approval",
+    )
+
+    assert result.success is False
+
+    assert result.failure_stage == "approval"
+
+    assert apply_executor.calls == []
+
+
+def test_gate_enabled_yaml_path_denies_auto_apply(tmp_path):
+
+    result, apply_executor, target, original = run_gated_denial(
+        tmp_path,
+        "prod.yaml",
+        "value = 2\n",
+        "approval",
+    )
+
+    assert result.success is False
+
+    assert result.failure_stage == "approval"
+
+    assert apply_executor.calls == []
+
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_gate_enabled_opaque_content_denies(tmp_path):
+    """MISSION-018A: unparseable (control-character) content fails closed
+    at the risk stage (UNKNOWN -> DENY), never reaches approval/apply."""
+
+    target = tmp_path / "notes.txt"
+
+    original = "value = 1\n"
+
+    target.write_text(original, encoding="utf-8")
+
+    patch = make_patch(
+        target,
+        original,
+        "value = 1\x00value = 2\n",
+    )
+
+    apply_executor = RecordingApplyExecutor()
+
+    pipeline = build_gated_pipeline(
+        make_verification_result(),
+        apply_executor=apply_executor,
+        approval_store=ApprovalStore(),
+    )
+
+    result = pipeline.execute(make_worker_result(patch))
+
+    assert result.success is False
+
+    assert result.failure_stage == "risk"
+
+    assert result.apply_success is False
+
+    assert apply_executor.calls == []
+
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_gate_enabled_trivial_value_stays_low(tmp_path):
+    """MISSION-018A: benign trivial assignments (self.token = None) must
+    not be elevated and still auto-apply in governed mode."""
+
+    target = tmp_path / "notes.txt"
+
+    original = "value = 1\n"
+
+    updated = "self.token = None\nvalue = 2\n"
+
+    target.write_text(original, encoding="utf-8")
+
+    patch = make_patch(target, original, updated)
+
+    pipeline = build_gated_pipeline(
+        make_verification_result(),
+        apply_executor=ApplyExecutor(),
+        approval_store=ApprovalStore(),
+    )
+
+    result = pipeline.execute(make_worker_result(patch))
+
+    assert result.success is True
+
+    assert result.apply_success is True
+
+    assert (
+        target.read_text(encoding="utf-8")
+        == updated
+    )
 
 
 def test_assembly_default_risk_gate_disabled():

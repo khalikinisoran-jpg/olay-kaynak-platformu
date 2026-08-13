@@ -42,6 +42,19 @@ class RiskPolicy:
       validation/controller/apply/verification gates).
     - Retry allowance is capped per level and never exceeds the
       recovery engine hard cap of 3.
+
+    LOW / MEDIUM security assumption (MISSION-018A): auto-apply for LOW /
+    MEDIUM is safe ONLY because ``RiskEngine`` now classifies content into
+    three states before a level is produced -- SAFE (plain content), which
+    may keep a LOW/MEDIUM baseline; SUSPICIOUS (credential-like material),
+    which is always elevated to HIGH so it never reaches this automatic
+    path; and OPAQUE (unparseable/control-character content), which yields
+    UNKNOWN so it is DENIED here. ``not detected`` is never treated as
+    ``safe``. False negatives are bounded by (1) the expanded structural
+    suspicion detection, (2) the OPAQUE -> UNKNOWN fail-closed path, (3)
+    the worker/apply path scope enforcement, (4) deterministic
+    verification with rollback on failure, and (5) the store-backed
+    apply boundary that re-classifies the patch before a write.
     """
 
     VERIFICATION_DEPTH_COMPILE = "compile"

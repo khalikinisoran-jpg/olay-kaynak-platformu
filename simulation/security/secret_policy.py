@@ -179,3 +179,35 @@ def redact_content(content) -> tuple[str, bool]:
         was_redacted = was_redacted or count > 0
 
     return redacted, was_redacted
+
+
+MAX_LLM_EVIDENCE_CHARS = 2000
+
+
+def sanitize_for_llm(text, max_chars=MAX_LLM_EVIDENCE_CHARS) -> str:
+
+    """Sanitize untrusted verification output before it reaches the LLM.
+
+    Verification stdout/stderr is fed back to the analyzer on a recovery
+    retry so the model can fix the failure. A failed test can print a
+    secret value (env var, token, config), so this helper redacts
+    secret-like material and bounds the length before the text enters
+    the prompt. It is a heuristic mitigation (MISSION-019) — never a
+    claim that untrusted output is "safe".
+    """
+
+    if not isinstance(text, str):
+
+        return ""
+
+    redacted, _ = redact_content(text)
+
+    if max_chars is None:
+
+        return redacted
+
+    if len(redacted) <= max_chars:
+
+        return redacted
+
+    return redacted[:max_chars] + "\n[truncated]"

@@ -1547,4 +1547,382 @@ Uncommitted working-tree evidence on `worker-action-pipeline`
 
 ---
 
+## MISSION-017 — Overnight Productization & Human Approval Sprint
+
+**Status:** IMPLEMENTED / VERIFIED-by-suite
+**Date:** 2026-08-13
+**Branch:** worker-action-pipeline
+**Base HEAD:** `a8de82e` ("Harden event store and snapshot integrity")
+
+### Objective
+
+Move the project closer to a real product boundary without weakening any
+security boundary: build a safe interactive human-approval UX on top of
+the existing MISSION-014 authorization boundary, lock the runtime modes
+deterministically, extend adversarial coverage to the new surface, verify
+the secret boundary on the new console path, and keep docs/source/tests in
+sync. No commit/push per sprint rules.
+
+### Implementation
+
+- **Interactive CLI human-approval interface** (`simulation/agent/approval/
+  approval_console.py`): `PendingApprovalRequest` (immutable snapshot built
+  from the real `PatchProposal` + `RiskAssessment`; renders fingerprint,
+  path, action, risk level + context, attempt, expiry, authorizer,
+  evidence reference — never patch content), `build_pending_request`
+  (typed, fail-closed), `prompt_approval_decision` (explicit approve/deny;
+  EOF/unrecognized fail closed), and `ConsoleApprovalGateway` (recomputes
+  risk with the system `RiskEngine`; refuses a downgraded display; grants
+  through the store). Wired into `WorkerActionPipeline` as an optional
+  `approval_gateway` (consulted only when no valid stored approval exists;
+  the grant is re-consumed via `find_valid` so object-identity binding and
+  single-use are preserved) and into `agent_run.py --governed`.
+- **Deterministic runtime modes** (`tests/runtime_mode_test.py`, 12 tests):
+  PROPOSAL_ONLY (default, no apply), RECOVERY (pipeline, gate OFF),
+  GOVERNED (pipeline, gate ON, store-backed); mode selection is
+  deterministic and the gate never activates with only one risk component.
+- **Adversarial corpus A31-A36** (`tests/security/adversarial_corpus_test.py`):
+  A31 fake approval UI (hostile gateway returns an unbound Approval),
+  A32 forged operator identity is not a boundary, A33 console display/apply
+  path substitution, A34 console risk downgrade, A35 console-granted
+  approval single-use, A36 governed with empty allowed-path fails closed.
+- **Secret boundary on the console path** (`tests/approval_console_test.py`):
+  ledger, rendered request and evidence events never contain patch content
+  or secret values; evidence reference is not an authority.
+- **CI hygiene**: `.github/workflows/ci.yml` gains a packaging smoke step
+  (`pip install -e .` + import check). Verified locally
+  (`pip install -e .` succeeds and imports); **not yet exercised on a
+  hosted runner (UNKNOWN until then).**
+- **Benchmark**: `benchmarks/approval_lookup_benchmark.py` measures
+  in-memory `ApprovalStore.find_valid` lookup (~86-89k lookups/s at
+  1k/10k grants on this machine); EventStore append benchmark re-run:
+  ~660-740 appends/s (linear, fsync-bound).
+
+### Tests
+
+- Full suite: `python -m pytest -q` = **521 passed / 10 skipped**
+  (MISSION-016 baseline 465/10; +56 net = +41 new tests in the two new
+  modules and the corpus extension, plus 15 tests added to the console
+  module that are counted within those 41).
+- Adversarial corpus: `python -m pytest tests/security/adversarial_corpus_test.py -q`
+  = **40 passed / 1 skipped** (A01-A36).
+- `python -m compileall -q simulation tests` = exit 0.
+- `git diff --check` = clean.
+- Benchmarks: `benchmarks/event_store_benchmark.py` ~660-740 appends/s
+  (linear); `benchmarks/approval_lookup_benchmark.py` ~86-89k lookups/s.
+
+### Security Invariants Preserved
+
+- Default runtime stays proposal-only; governed/recovery remain explicit
+  opt-in; the risk gate stays DEFAULT OFF (D-021/D-022/D-028).
+- No fail-open added: the console only grants into the store; deny/EOF/
+  unrecognized input fail closed; the store/apply boundary remains the
+  authority (agent-controlled approval metadata never consulted).
+- Displayed == granted == applied by construction; risk downgrade refused;
+  substitution/replay/forgery fail closed (corpus A31-A36).
+- Evidence remains evidence-only; ledger/evidence/render never leak patch
+  content or secrets.
+
+### Known Limitations
+
+- The CLI approval interface is synchronous: it blocks the governed run
+  until the operator decides (or EOF, which fails closed). No async/web UI.
+- The CI packaging smoke step has not run on a hosted runner (UNKNOWN).
+- Live-LLM end-to-end HIGH/CRITICAL approval is not exercised (gated
+  live tests remain MEDIUM-risk-path only); the console path is covered
+  deterministically with fake analyzers.
+
+### Remaining Work
+
+- Hosted CI run (ubuntu/windows incl. packaging smoke).
+- Default-on gate decision (productization; UX now exists).
+- MISSION-015 Productization Readiness Assessment.
+- Legacy dead-code removal (persistence/recovery.py, event_store_backup.py,
+  duplicate snapshots, services/ overlap).
+
+### Commit Hash
+
+Uncommitted working-tree evidence on `worker-action-pipeline`
+(no commit, no push per sprint rules). Base `a8de82e`.
+
+---
+
+## MISSION-018A — Risk Boundary Hardening
+
+**Status:** IMPLEMENTED / VERIFIED-by-suite (working tree; no commit/push)
+
+**Date:** 2026-08-13
+
+**Objective:** Close the MISSION-018 audit findings on the risk layer:
+RiskEngine's "not detected = safe" LOW baseline let credential-like or
+suspiciously unclassifiable content silently auto-apply in GOVERNED mode.
+
+**Root cause:** `RiskEngine.classify` started at `LOW` and only elevated
+when a known pattern matched. JSON credentials, bare tokens, base64,
+URL/shell/env/auth-header material, and `.bak`/`.creds`/`prod.yaml`/
+`secrets/*` paths bypassed every signal and stayed LOW/MEDIUM -> auto-apply
+with no human approval (proven by live probes in the MISSION-018 audit).
+
+**Architectural decision (D-029):** no new `RiskLevel` value. The engine
+now classifies content into three states before producing a level:
+
+- SAFE (plain content) -> may keep the LOW/MEDIUM baseline.
+- SUSPICIOUS (credential-like material) -> HIGH (human approval; never
+  auto-applied).
+- OPAQUE (control characters / unparseable) -> UNKNOWN -> policy DENY.
+
+`not detected` is never treated as `safe`. RiskPolicy retains its
+fail-closed mapping; the LOW/MEDIUM security assumption (auto-apply is safe
+only because SUSPICIOUS is always elevated and OPAQUE is DENIED) is now
+explicit in code/doc.
+
+**Implementation:**
+
+- `simulation/security/risk_engine.py`:
+  - SAFE / SUSPICIOUS / OPAQUE content classification (`_content_signals`).
+  - Structural heuristics: credential-key assignments in JSON/YAML/TOML/
+    dotenv/INI/connection-string form (incl. quoted keys and part-numbered
+    keys like `token_part1`), bare token prefixes (`sk-`, `ghp_`, JWT,
+    AKIA, ya29., AIza, SG.), base64/encoded material (padded short blobs or
+    long mixed-property runs), URLs with userinfo, shell credential flags,
+    env secret references, authorization headers / Bearer / Basic.
+  - Path hardening: backup/temp suffixes, hidden credential files,
+    credential directories, production-env naming -> HIGH.
+  - OPAQUE (control characters) -> UNKNOWN -> DENY.
+  - Trivial assignments (`self.token = None`, `count = 3`,
+    `os.environ["HOME"]`, `tokenizer = Tokenizer()`) stay benign.
+- `simulation/security/risk_policy.py`: LOW/MEDIUM security assumption
+  documented; behavior unchanged.
+- `tests/risk_regression_test.py`: MISSION-018A corpus (+37 cases: the 16
+  known attacks + variations + benign negatives + OPAQUE).
+- `tests/risk_pipeline_test.py`: +7 tests (suspicious content requires
+  approval at the approval stage; OPAQUE fails at the risk stage; trivial
+  assignments still auto-apply LOW).
+- `tests/security/adversarial_corpus_test.py`: A37-A50 (14 records).
+
+**MISSION-014 preservation:** ApprovalStore / approval_id / fingerprint /
+path / action / attempt / object-identity / single-use / expiry /
+ApplyAuthorization untouched. HIGH/CRITICAL valid-approval path and all
+forged / replay / wrong-context DENY tests still pass (approval_boundary,
+approval_console, runtime_mode, runtime_governed_integration).
+
+**RECOVERY:** unchanged in this mission (deferred to MISSION-018B).
+
+**Validation:**
+
+- focused: risk_*.py 146 passed; approval_boundary + approval_console 71
+  passed; runtime_mode + runtime_governed_integration 23 passed;
+  adversarial corpus 54 passed / 1 skipped (A01-A50).
+- full suite: **579 passed / 10 skipped** (baseline 521 -> +58).
+- `.venv\Scripts\python.exe -m compileall -q simulation tests` exit 0.
+- `git diff --check` clean.
+- no commit, no push.
+
+**Remaining:** MISSION-018B (RECOVERY approval boundary); hosted CI run;
+default-on gate decision; MISSION-015 productization assessment.
+
+---
+
+## MISSION-018B — Recovery Approval Boundary
+
+**Status:** IMPLEMENTED / VERIFIED-by-suite (working tree; no commit/push)
+
+**Date:** 2026-08-13
+
+**Objective:** Ensure the RECOVERY / retry path can never bypass the
+GOVERNED authorization boundary, so a HIGH/CRITICAL/UNKNOWN patch is never
+mutated without a store-backed human approval — including through a
+gate-off assembly or `agent_run.py --recovery`.
+
+**Root cause (verified in the MISSION-018 live audit):**
+`ApplyAuthorization.authorize` contained
+`if self.approval_store is None: return True` BEFORE any risk
+recomputation, so the gate-off RECOVERY mode (risk_gate_enabled=False,
+approval_store=None) flowed `Recovery -> Controller -> ApplyAuthorization
+-> FileApplier` and mutated HIGH/CRITICAL patches with no risk or approval
+evaluation.
+
+**Architectural decision (D-030):** the apply authorization boundary is
+now unconditionally fail-closed. It recomputes the patch risk
+deterministically; LOW/MEDIUM applies are authorized on the typed-decision
++ fingerprint contract (safe only because MISSION-018A ensures positively
+classified non-suspicious content reaches LOW/MEDIUM); every
+HIGH/CRITICAL/UNKNOWN apply requires a store-verified, single-use approval
+binding and a missing approval store is itself a denial. Each recovery
+retry is an independent PatchProposal that flows through validation ->
+risk -> approval -> controller -> store-backed apply -> verification;
+attempt binding prevents an older attempt's approval from authorizing a
+newer patch, and the retry budget never substitutes for human
+authorization.
+
+**Recovery flow BEFORE:**
+```
+verification failure -> next attempt -> new patch
+  -> validation -> controller -> ApplyAuthorization
+     (store None -> return True) -> FileApplier -> mutation
+  (HIGH/CRITICAL/UNKNOWN applied without risk or approval)
+```
+
+**Recovery flow AFTER:**
+```
+verification failure -> next attempt -> new PatchProposal
+  -> PatchValidator -> RiskEngine -> RiskPolicy
+  -> ApprovalStore / approval gateway
+  -> Controller -> ApplyAuthorization (risk recomputed; HIGH/CRITICAL/
+     UNKNOWN require store-verified approval; store-less => DENY)
+  -> FileApplier -> Verify
+```
+
+**Implementation:**
+
+- `simulation/agent/apply/apply_authorization.py` — `authorize` recomputes
+  risk before the store check; `approval_store is None` => `False` for
+  HIGH/CRITICAL/UNKNOWN; LOW/MEDIUM => typed-decision + fingerprint.
+- `agent_run.py` — `--recovery` wires `RiskEngine`, `RiskPolicy`,
+  `ApprovalStore` (ledger-backed) and the evidence recorder; no interactive
+  gateway. Help text updated. `--governed` unchanged.
+- `tests/security/adversarial_corpus_test.py` — A51-A65 (recovery
+  authorization): second-attempt HIGH without new approval DENY (A51),
+  old attempt-1 approval cannot authorize attempt 2 (A52), old HIGH
+  approval not inherited by a LOW retry (A53), object identity across same
+  metadata (A54), fingerprint replay (A55), wrong approval_id on retry
+  (A56), expired retry approval (A57), UNKNOWN retry DENY (A58), OPAQUE
+  cannot be approved into apply (A59), no-store recovery never mutates
+  HIGH (A60), budget not authorization (A61), valid newly-approved retry
+  ALLOW (A62), bounded retry when authorized (A63), non-verification
+  terminal (A64), duplicate fingerprint stop (A65).
+
+**MISSION-014 preservation:** ApprovalStore / approval_id / fingerprint /
+path / action / attempt / risk / object-identity / single-use / expiry /
+ApplyAuthorization unchanged; all approval-boundary and console tests pass.
+
+**MISSION-018A preservation:** RiskEngine SAFE/SUSPICIOUS/OPAQUE and
+OPAQUE->UNKNOWN->DENY hold inside recovery (A58/A59); risk regression and
+pipeline tests pass.
+
+**RECOVERY behavior preservation:** cap 3, duplicate-fingerprint stop,
+verification-failure bounded retry, terminal non-verification failures all
+retained (A62-A65).
+
+**Validation:**
+
+- focused: recovery_engine + rollback 38 passed; runtime_mode +
+  runtime_governed_integration 23 passed; approval_boundary +
+  approval_console 71 passed; adversarial corpus 69 passed / 1 skipped
+  (A01-A65).
+- full suite: **594 passed / 10 skipped** (baseline 579 -> +15).
+- `.venv\Scripts\python.exe -m compileall -q simulation tests` exit 0.
+- `git diff --check` clean.
+- Live deterministic probes on the real assembly confirmed: --recovery
+  HIGH/CRITICAL without approval => DENY (no write); with pre-granted
+  approval => ALLOW; gate-off assembly HIGH => DENY at the apply boundary.
+- no commit, no push.
+
+**Remaining:** hosted CI run; default-on gate decision; MISSION-015
+productization assessment.
+
+---
+
+## MISSION-019 — Governance Boundary Consolidation & Crash-Consistency
+
+**Status:** IMPLEMENTED / VERIFIED-by-suite (working tree; no commit/push)
+
+**Date:** 2026-08-13
+
+**Base:** `a8de82e` + uncommitted MISSION-017/018A/018B working tree.
+
+**Objective (from the MISSION-019 Architect Review):** (A) eliminate the
+divergence risk of three separate risk-evaluation points; (B) close the
+crash-consistency gap between a file mutation and its durable
+outcome/evidence; (C) define and test `Kernel.dispatch` reducer-failure
+semantics.
+
+**Implementation:**
+
+- **Single governance authority (`GovernanceEvaluator`, D-031):**
+  `simulation/security/governance_evaluator.py` wraps one `RiskEngine` +
+  one `RiskPolicy` and is consumed by the pipeline gate,
+  `ConsoleApprovalGateway` and `ApplyAuthorization`. The pipeline binds
+  its exact evaluator into the apply boundary (`_bind_approval_authority`
+  now rebinds whenever the gate is enabled, using engine identity), so a
+  caller-wired custom engine can never drift between the pipeline and
+  the boundary. The boundary keeps its independent fail-closed checks.
+  MISSION-018A (SAFE/SUSPICIOUS/OPAQUE) and MISSION-018B
+  (store-less HIGH/CRITICAL/UNKNOWN => DENY) are preserved verbatim.
+- **Apply-outcome journal (D-032):**
+  `simulation/agent/apply/apply_outcome_journal.py` — append-only,
+  hash-chained, secret-safe (content-hash-only) journal of the apply
+  lifecycle (INTENT -> APPLY_STARTED -> APPLIED/APPLY_FAILED ->
+  VERIFIED/ROLLBACK_STARTED -> ROLLED_BACK/ROLLBACK_FAILED); state
+  machine validated at write and on `load()` (fail-closed on
+  corruption/out-of-order/duplicate). Wired through `ApplyExecutor`,
+  `ApplyVerifyPipeline`, `WorkerActionPipeline` (`apply_journal`),
+  `build_recovery_agent` and `agent_run.py --apply-journal`.
+- **Detect-only startup reconciliation (D-032):**
+  `simulation/agent/recovery/startup_reconciliation.py` — after a
+  restart classifies every journaled intent, inspects in-scope target
+  files against the journaled content hashes, and flags orphaned
+  mutations / consumed approvals without a terminal outcome. Never
+  writes a file; repairing an orphan is a mutation and therefore stays
+  explicitly out of the startup path (no authorization bypass).
+- **Atomic snapshots (D-033):** `SnapshotStore.save` uses temp +
+  fsync + `os.replace`; the "unverifiable snapshot => full replay"
+  recovery semantics are unchanged.
+- **Kernel reducer-failure semantics (documented + tested):** the
+  append -> trace -> reducer order is kept; a reducer failure leaves the
+  event durably persisted, live state diverges, and restart replay
+  reproduces the same failure (fail-closed, no silent divergence).
+- **Secret retry-leak boundary (D-034):** verification stdout/stderr is
+  redacted + length-bounded (`secret_policy.sanitize_for_llm`) before it
+  enters the next LLM retry prompt.
+- **`agent_run.py`:** new `--apply-journal` flag; `--recovery` and
+  `--governed` run detect-only startup reconciliation on boot.
+
+**Preserved invariants:** MISSION-014 (approval store / fingerprint /
+path / action / attempt / object-identity / single-use / expiry / apply
+boundary), MISSION-018A (fail-closed risk content classification),
+MISSION-018B (store-less HIGH/CRITICAL/UNKNOWN => DENY; retry budget is
+never authorization), bounded recovery (cap 3, duplicate-fingerprint
+stop), evidence-is-never-authority (D-012), default proposal-only
+runtime. No test was deleted or weakened; the deterministic corpus is
+extended (A66-A72), not reduced.
+
+**New tests:**
+
+- `tests/governance_evaluator_test.py` (8) — determinism, single
+  authority, engine-identity binding, custom-engine HIGH end-to-end.
+- `tests/apply_outcome_journal_test.py` (11) — journal lifecycle,
+  fail-closed corruption/tamper/transition/duplicate/unknown-intent,
+  secret-safety, chain integrity.
+- `tests/startup_reconciliation_test.py` (10) — orphan classification,
+  consumed-approval-without-outcome, duplicate-approval anomaly,
+  detect-only guarantee, corrupt-journal fail-closed.
+- `tests/fault_injection_test.py` (9) — the seven crash windows +
+  restart end-to-end + snapshot write crash.
+- `tests/secret_retry_boundary_test.py` (5) — retry evidence redaction.
+- `tests/property/governance_property_test.py` (4) — randomized
+  invariants (no-approval-never-mutates-HIGH/UNKNOWN, store-required,
+  journal consistency, no old-approval reuse).
+- Adversarial corpus records A66-A72 (corrupt/duplicate/out-of-order
+  journal, orphan detection, approval reuse anomaly, engine-drift
+  elimination, retry redaction).
+
+**Validation:**
+
+- full suite: **648 passed / 10 skipped** (baseline 594 -> +54).
+- adversarial corpus: **76 passed / 1 skipped** (A01-A72).
+- `.venv\Scripts\python.exe -m compileall -q simulation tests` exit 0.
+- `git diff --check` clean (LF/CRLF warnings only).
+- Benchmark (`benchmarks/governance_benchmark.py`, local sanity):
+  GovernanceEvaluator.evaluate ~3.3k evals/s; journal full cycle ~200/s
+  (fsync-bound); ApplyExecutor.apply+journal ~78 applies/s.
+- no commit, no push.
+
+**Remaining:** hosted CI run (UNKNOWN until executed externally);
+default-on gate decision; MISSION-015 productization assessment;
+decision on auto-repair of orphaned mutations (kept out of scope by
+design — it is a mutation and requires explicit authorization).
+
+---
+
 # End of Mission Log

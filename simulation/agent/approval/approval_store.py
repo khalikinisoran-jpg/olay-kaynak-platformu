@@ -342,6 +342,26 @@ class ApprovalStore:
 
         return approval.approval_id in self._consumed
 
+    def is_consumed_id(self, approval_id) -> bool:
+
+        """Public consumed-state lookup by approval id.
+
+        Used by startup reconciliation to flag a consumed approval whose
+        apply intent never reached a terminal outcome.
+        """
+
+        if not isinstance(approval_id, str) or not approval_id:
+
+            return False
+
+        return approval_id in self._consumed
+
+    def consumed_ids(self) -> frozenset:
+
+        """All approval ids consumed (released by ``find_valid``)."""
+
+        return frozenset(self._consumed)
+
     def is_applied(self, approval) -> bool:
 
         if not isinstance(approval, Approval):

@@ -26,9 +26,24 @@ An event-sourced AI runtime prototype with:
 - a governed runtime path (`--governed`) with deterministic risk
   classification, a store-backed single-use human-approval boundary and a
   durable approval ledger;
+- an interactive CLI human-approval interface (`ConsoleApprovalGateway` +
+  `approval_console.py`, MISSION-017) that renders a HIGH/CRITICAL
+  request (patch fingerprint, path, action, risk level + context,
+  attempt, expiry, authorizer, evidence reference) and routes an explicit
+  human approve/deny into `ApprovalStore.grant` without ever trusting
+  agent-controlled approval metadata;
 - a documented security model with executable adversarial tests
   (docs/SECURITY_MODEL.md, tests/security/adversarial_corpus_test.py,
-  A01-A30).
+  A01-A72).
+- **MISSION-019 (governance consolidation + crash consistency):** one
+  deterministic governance authority (`GovernanceEvaluator`) shared by
+  the pipeline gate, the approval console and the apply boundary (no
+  risk divergence); an apply-outcome journal + detect-only startup
+  reconciliation so a crash between a file write and its evidence is
+  always detectable; atomic snapshot writes; and verification evidence
+  redacted before it reaches the LLM on retry. These close the
+  reliability/audit gaps the architecture review identified without
+  weakening any prior security boundary.
 
 **What it is not (VERIFIED):** a productized, packaged, deployed, or
 externally validated platform. There is no production configuration, no
@@ -70,6 +85,9 @@ customer interviews, or external validation exists in the repository
 | Live-LLM integration is gated and fail-closed (timeout, ProviderError, no secret logging) | MISSION-003; llm_provider_test.py | VERIFIED |
 | Adversarial security corpus as executable, summary-gated tests | tests/security/adversarial_corpus_test.py | VERIFIED |
 | Fingerprint-bound, single-use human approval boundary (HIGH/CRITICAL) that fails closed on missing/malformed/expired/wrong/replayed approvals | Approval/ApprovalStore; tests/approval_boundary_test.py; corpus A13-A20 | VERIFIED |
+| Interactive CLI human-approval interface that displays the full authorization context and routes explicit human decisions into the store | approval_console.py; tests/approval_console_test.py; corpus A31-A36 | VERIFIED |
+| One deterministic governance authority (pipeline gate + approval console + apply boundary can never diverge on risk classification) | governance_evaluator.py; tests/governance_evaluator_test.py; corpus A71 | VERIFIED |
+| Apply intents and their terminal outcomes are durably journaled and restart-reconcilable (a mutation can never exist silently without a durable outcome record) | apply_outcome_journal.py, startup_reconciliation.py; tests/apply_outcome_journal_test.py, startup_reconciliation_test.py, fault_injection_test.py; corpus A66-A70 | VERIFIED |
 
 **Untested/marketing differentiators (UNVERIFIED):**
 - "Enterprise-grade" (docs/PROJECT_STATE.md) — no enterprise features exist.
@@ -83,11 +101,17 @@ customer interviews, or external validation exists in the repository
 1. **The risk gate / governed apply are explicit opt-in:** `--governed`
    activates deterministic risk + store-backed approval + apply; the
    shipped default runtime stays proposal-only (D-021/D-022/D-015).
-2. **Human approval boundary is implemented but has no interactive UX:**
+2. **Human approval boundary is implemented with a CLI UX:**
    `Approval`/`ApprovalStore`/`ApprovalLedger` (MISSION-012/014/016)
    enforce fingerprint/path/action/risk/attempt/expiry-bound single-use
-   approval for HIGH/CRITICAL with durable consumption, but a human must
-   grant approvals programmatically — there is no CLI/UI approval flow yet.
+   approval for HIGH/CRITICAL with durable consumption, and MISSION-017
+   added an interactive CLI interface (`ConsoleApprovalGateway`,
+   `approval_console.py`) that shows the operator the full request and
+   routes approve/deny into the store. The interface is wired into the
+   governed runtime and tested deterministically
+   (tests/approval_console_test.py). Agent-controlled approval metadata
+   remains non-authoritative; the store/apply boundary remains the
+   authority.
 3. **No production/deployment story:** no hosted service, no multi-user
    model, no production metrics; CI/packaging are added but not exercised
    on a hosted runner.
@@ -103,6 +127,9 @@ customer interviews, or external validation exists in the repository
 9. **Docs drift:** README/CHANGELOG/PROJECT_CONTEXT describe older versions.
 10. **Approval durability requires a wired `ApprovalLedger`** (the governed
     CLI wires it).
+11. **No hosted CI run yet:** the CI workflow (incl. the MISSION-017
+    packaging smoke step) has not been exercised on a GitHub-hosted
+    runner; its PASS status is UNKNOWN until then.
 
 ---
 

@@ -239,14 +239,185 @@ from behavior, not explicitly recorded), or UNKNOWN.
   heuristic mitigation, not a guarantee.
 - **Evidence:** `tests/secret_boundary_test.py`, corpus A25/A26.
 
+## D-028 — Human approval UX is a minimal, safe CLI interface (MISSION-017)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-017 (2026-08-13).
+- **Decision:** The human-approval flow is an interactive CLI
+  (`simulation/agent/approval/approval_console.py`: `PendingApprovalRequest`,
+  `prompt_approval_decision`, `ConsoleApprovalGateway`) rather than a web
+  UI or API. The interface renders the full authorization context
+  (fingerprint, path, action, risk level + context, attempt, expiry,
+  authorizer, evidence reference) and routes an explicit human approve/deny
+  into `ApprovalStore.grant`. It is wired into `WorkerActionPipeline`
+  (`approval_gateway`, consulted only when no valid stored approval exists)
+  and `agent_run.py --governed`. The gateway is never an authority:
+  displayed == granted == applied by construction (all derived from the real
+  patch + system risk), a risk downgrade is refused, deny/EOF fail closed,
+  and the grant still flows through `find_valid`/`authorize_apply`.
+- **Evidence:** `tests/approval_console_test.py` (23 tests), corpus
+  A31-A36, `tests/runtime_mode_test.py`.
+- **Default-gate consequence:** the risk gate stays DEFAULT OFF. A
+  human-approval UX now exists, so the default-on decision (D-021/D-022)
+  becomes a pure productization choice with no missing implementation
+  dependency — still **UNKNOWN** until a product decision is made.
+
+## D-029 — Risk content classification is fail-closed: "not detected" is not "safe" (MISSION-018A)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-018A (2026-08-13).
+- **Decision:** `RiskEngine` no longer treats the absence of a known HIGH
+  pattern as proof of low risk. Content is classified into three states
+  before a level is produced: SAFE (plain content) may keep the LOW/MEDIUM
+  baseline; SUSPICIOUS (structural credential material — JSON/YAML/TOML/
+  dotenv credential keys, bare token prefixes, base64/encoded material,
+  URLs with userinfo, shell credential flags, environment secret
+  references, authorization headers/Bearer) is always elevated to HIGH so a
+  human approval is required and auto-apply is impossible; OPAQUE content
+  (control characters / unparseable) yields UNKNOWN so `RiskPolicy` DENYs
+  it. No new `RiskLevel` enum value was added; the existing
+  UNKNOWN->DENY and HIGH/CRITICAL->approval model is sufficient. Path
+  signals were extended to backup/temp suffixes, hidden credential files,
+  credential directories and production-env naming. Trivial assignments
+  (`self.token = None`, `count = 3`, `os.environ["HOME"]`) stay benign so
+  ordinary patches are not unnecessarily elevated.
+- **Rationale:** the MISSION-018 audit demonstrated (with live probes) that
+  the previous "not detected = safe" LOW baseline let the documented
+  evasion classes auto-apply in GOVERNED mode without approval. Fail-closed
+  means unknown/uncertain security input must never silently auto-apply;
+  HIGH (approval) and UNKNOWN (DENY) are both acceptable outcomes. Adding
+  only more regexes without fixing the baseline assumption would have left
+  the class of "unrecognized" content unsafe.
+- **Consequence:** LOW/MEDIUM auto-apply is retained but its security
+  assumption is now explicit: it applies only to content positively
+  classified as SAFE, bounded by (1) expanded suspicion detection, (2)
+  OPAQUE->UNKNOWN fail-closed, (3) path-scope enforcement, (4)
+  verification+rollback, (5) the store-backed apply boundary that
+  re-classifies the patch. MISSION-014 approval authority and RECOVERY
+  behavior are untouched.
+- **Evidence:** `simulation/security/risk_engine.py`,
+  `simulation/security/risk_policy.py`, `tests/risk_regression_test.py`,
+  `tests/risk_pipeline_test.py`, adversarial corpus A37-A50; full suite
+  579 passed / 10 skipped.
+
+## D-030 — RECOVERY never bypasses the approval boundary; the apply boundary fails closed without an authority (MISSION-018B)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-018B (2026-08-13).
+- **Decision:** `ApplyAuthorization.authorize` no longer returns `True`
+  when `approval_store is None`. The risk level is recomputed
+  deterministically at the apply boundary and LOW/MEDIUM applies are
+  authorized on the typed-decision + fingerprint contract; every
+  HIGH/CRITICAL/UNKNOWN apply now requires a store-verified, single-use
+  approval binding, and **a missing approval store is itself a denial**.
+  This makes the apply boundary the narrowest enforcement point for every
+  runtime path, including the bounded RECOVERY mode: a gate-off assembly or
+  `agent_run.py --recovery` can no longer mutate a HIGH/CRITICAL/UNKNOWN
+  patch without an approval authority. Each recovery retry is an
+  independent PatchProposal that flows through risk classification, the
+  approval stage and the store-backed apply boundary; attempt binding
+  prevents an older attempt's approval from authorizing a new patch.
+- **CLI semantics:** `agent_run.py --recovery` now wires the risk gate +
+  approval store + ledger (no interactive gateway). RECOVERY means
+  "bounded autonomous retry within a pre-authorized scope": LOW/MEDIUM
+  auto-apply with rollback; HIGH/CRITICAL/UNKNOWN fail closed unless a
+  pre-granted ledger approval exists. GOVERNED additionally wires the
+  interactive `ConsoleApprovalGateway` so an operator can approve on the
+  spot. PROPOSAL_ONLY stays mutation-free.
+- **Rationale:** the MISSION-018 live audit demonstrated the
+  `if self.approval_store is None: return True` path allowed RECOVERY to
+  mutate HIGH/CRITICAL patches without any risk or approval evaluation.
+  The retry budget is an availability/DoS bound, never a substitute for
+  human authorization.
+- **Consequence:** MISSION-014's approval authority (fingerprint/path/
+  action/attempt/risk/object-identity binding, single-use, expiry) is
+  preserved and now also enforced for ungoverned/gate-off assemblies;
+  MISSION-018A's fail-closed risk classification is preserved; bounded
+  retry (cap 3, duplicate-fingerprint stop, verification-only retry,
+  terminal non-verification failures) is unchanged.
+- **Evidence:** `simulation/agent/apply/apply_authorization.py`,
+  `agent_run.py`, adversarial corpus A51-A65; full suite 594 passed / 10
+  skipped.
+
+## D-031 — One deterministic governance authority: `GovernanceEvaluator` (MISSION-019)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-019 (2026-08-13).
+- **Decision:** a single `GovernanceEvaluator`
+  (`simulation/security/governance_evaluator.py`) wraps one `RiskEngine`
+  + one `RiskPolicy` and is the ONLY risk authority consumed by the
+  three governed layers — the pipeline gate
+  (`WorkerActionPipeline`), the approval console
+  (`ConsoleApprovalGateway`) and the apply boundary
+  (`ApplyAuthorization`). `WorkerActionPipeline._bind_approval_authority`
+  rebinds the apply executor's authorization to the pipeline's exact
+  evaluator (engine identity, not a fresh default), so a caller-wired
+  custom engine can never drift between the pipeline and the boundary.
+  The apply boundary keeps its independent fail-closed checks (typed
+  `ControllerDecision`, `approved is True`, fingerprint, store-backed
+  `authorize_apply`) — a single evaluator does NOT mean the boundary
+  stops checking; it means the *same* engine/policy is consulted.
+- **Rationale:** MISSION-014 documented the drift risk of separately
+  constructed engines; the MISSION-019 audit ranked triple
+  risk-recomputation divergence as a top structural risk.
+- **Consequence:** MISSION-018A (SAFE/SUSPICIOUS/OPAQUE) and MISSION-018B
+  (store-less HIGH/CRITICAL/UNKNOWN => DENY) semantics are unchanged;
+  the evaluator only fixes *which* engine/policy is consulted.
+- **Evidence:** `tests/governance_evaluator_test.py` (engine-identity
+  binding + end-to-end custom-engine HIGH path), corpus A71.
+
+## D-032 — Apply-outcome journal + detect-only startup reconciliation (MISSION-019)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-019 (2026-08-13).
+- **Decision:** `ApplyOutcomeJournal`
+  (`simulation/agent/apply/apply_outcome_journal.py`) is an append-only,
+  hash-chained, secret-safe (content-hash-only) record of the apply
+  lifecycle: INTENT -> APPLY_STARTED -> APPLIED | APPLY_FAILED ->
+  VERIFIED | ROLLBACK_STARTED -> ROLLED_BACK | ROLLBACK_FAILED. Writes
+  are validated against the state machine; `load()` fails closed on any
+  corruption / out-of-order / duplicate transition. It is wired through
+  `ApplyExecutor` + `ApplyVerifyPipeline` + `build_recovery_agent` +
+  `agent_run.py` (--apply-journal). `ReconciliationEngine`
+  (`simulation/agent/recovery/startup_reconciliation.py`) is **detect
+  only**: after a restart it classifies every intent, inspects in-scope
+  files against the journaled content hashes, and flags orphaned
+  mutations and consumed approvals without a terminal outcome. It never
+  writes a file and never re-authors an apply — repairing an orphan is
+  a mutation and therefore requires a separate, explicit authorization
+  decision (no "recovery exists" authorization bypass).
+- **Rationale:** the audit showed the file mutation and the evidence
+  event are not transactional; a crash between them left a mutation with
+  no durable record. The journal closes that audit gap.
+- **Consequence:** the journal is durable outcome evidence, never an
+  authorization input (D-012 preserved); approval single-use, the apply
+  boundary and bounded recovery are unchanged.
+- **Evidence:** `tests/apply_outcome_journal_test.py`,
+  `tests/startup_reconciliation_test.py`, `tests/fault_injection_test.py`
+  (all seven crash windows), corpus A66-A70.
+
+## D-033 — Atomic snapshot writes (MISSION-019)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-019 (2026-08-13).
+- **Decision:** `SnapshotStore.save` writes to a temp file, flushes +
+  fsyncs, then `os.replace` over the target (tempfile + replace, same
+  pattern as `FileApplier`), so a crash mid-write leaves either the old
+  snapshot or the fully-written new one. Recovery's existing
+  "unverifiable snapshot => fall back to full replay" semantics are
+  unchanged.
+- **Rationale:** the previous `open("w")` write could truncate the
+  snapshot on a crash; recovery handled it safely, but the corruption
+  window is now removed at the source.
+- **Evidence:** `tests/fault_injection_test.py::test_window7_snapshot_write_crash_preserves_old_snapshot`.
+
+## D-034 — Verification evidence redacted before it reaches the LLM (MISSION-019)
+- **Status:** ACCEPTED, **VERIFIED** — MISSION-019 (2026-08-13).
+- **Decision:** `WorkerAgent._format_evidence_line` routes verification
+  stdout/stderr through `secret_policy.sanitize_for_llm` (redaction +
+  length bound) before embedding it into the next retry prompt. This is
+  a heuristic mitigation, not a claim that untrusted output is safe.
+- **Rationale:** a failed test can print a secret value; the previous
+  code fed it verbatim into the next LLM prompt.
+- **Evidence:** `tests/secret_retry_boundary_test.py`, corpus A72.
+
 ## Open Decisions
 
 - **Recovery by default?** Making `--recovery` the default in
   `agent_run.py` is deliberately unresolved (MISSION-004 remaining work).
 - **Risk gate default-on?** Resolved for MISSION-011 and re-confirmed for
-  MISSION-012: the gate stays an explicit opt-in (D-021/D-022). Whether it
-  becomes default-on in the shipped assembly once a human-approval UX
-  exists is a productization decision. **UNKNOWN.**
-- **Human-approval UX:** the `ApprovalStore` exists and is tested; the
-  interactive flow for routing a HIGH/CRITICAL request to a human and back
-  into `grant` is undefined. **OPEN.**
+  MISSION-012/017: the gate stays an explicit opt-in (D-021/D-022). A
+  human-approval UX now exists (MISSION-017), so default-on has no missing
+  implementation dependency; whether it becomes default-on in the shipped
+  assembly is a productization decision. **UNKNOWN.**
+- **Human-approval UX:** resolved for the CLI by MISSION-017 (D-028); an
+  async/API or web approval channel remains out of scope.
+  **RESOLVED (CLI).**

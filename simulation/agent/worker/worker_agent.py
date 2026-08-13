@@ -32,6 +32,7 @@ from simulation.security.secret_policy import (
     REDACTED_MARKER,
     is_secret_file,
     redact_content,
+    sanitize_for_llm,
 )
 
 
@@ -325,6 +326,6 @@ class WorkerAgent:
         return (
             f"- {record.stage}: "
             f"exit_code={record.exit_code} "
-            f"stdout={record.stdout!r} "
-            f"stderr={record.stderr!r}"
+            f"stdout={sanitize_for_llm(record.stdout)!r} "
+            f"stderr={sanitize_for_llm(record.stderr)!r}"
         )

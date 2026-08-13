@@ -7,11 +7,14 @@ MISSION-011 findings were refreshed by the MISSION-011 close-out on
 close-out on 2026-08-12 (human approval boundary + adversarial corpus
 extension), MISSION-014 findings were added by the MISSION-014
 close-out on 2026-08-12 (authorization boundary hardening; see sections
-3/5/6/7), and MISSION-016 findings were added by the Chief-Engineer
+3/5/6/7), MISSION-016 findings were added by the Chief-Engineer
 Gap-Closure sprint on 2026-08-12 (base HEAD `d347f43`; governed runtime,
 rollback, approval ledger, event-store/snapshot hardening, verification
 hardening, secret/prompt-injection boundary, lazy provider, risk
-refinement, corpus A21-A30, CI/packaging).
+refinement, corpus A21-A30, CI/packaging), and MISSION-017 findings were
+added by the Productization & Human Approval sprint on 2026-08-13 (base
+HEAD `a8de82e`; interactive CLI approval console, runtime-mode tests,
+corpus A31-A36, CI packaging smoke, approval-lookup benchmark).
 
 Method: full repository inspection (README, ROADMAP, VISION, CHANGELOG,
 docs/*, docs/MISSION_LOG.md, docs/SECURITY_BASELINE.md, all simulation/
@@ -51,12 +54,22 @@ From docs/MISSION_LOG.md + commit evidence (see docs/MISSION_STATUS.md):
 | Documentation/sync missions (DONE) | 3 | 3966e18, 19c6e85/3966e18, 9b5c21e (MISSION-009) |
 | Numbered missions VERIFIED | 6 | MISSION-003, 004, 005, 006, 007, 008 |
 | Numbered missions VERIFIED (post-009) | 5 | MISSION-010, MISSION-011, MISSION-012, MISSION-013, MISSION-014 |
-| MISSION-016 (working tree, no commit) | 1 | Chief-Engineer Gap-Closure Sprint |
-| **Total completed/verified** | **23** | 8 + 3 + 11 + 1 |
+| MISSION-016 (committed) | 1 | Chief-Engineer Gap-Closure Sprint (`d347f43`, `a8de82e`) |
+| MISSION-017 (working tree) | 1 | Productization & Human Approval Sprint |
+| MISSION-018A (working tree) | 1 | Risk Boundary Hardening |
+| MISSION-018B (working tree) | 1 | Recovery Approval Boundary |
+| **Total completed/verified** | **26** | 8 + 3 + 6 + 5 + 1 + 1 + 1 + 1 |
 
-Notes (VERIFIED): MISSION-016 closed 2026-08-12 in the working tree with
-**465 passed / 10 skipped**, corpus A01-A30 (**34 passed / 1 skipped**),
-and a gated live-LLM E2E pass (real provider).
+Notes (VERIFIED): MISSION-016 closed 2026-08-12 and was committed
+(`d347f43`, `a8de82e`) with **465 passed / 10 skipped**, corpus A01-A30,
+and a gated live-LLM E2E pass (real provider). MISSION-017 closed
+2026-08-13 in the working tree with **521 passed / 10 skipped**, corpus
+A01-A36 (**40 passed / 1 skipped**), and a CI packaging smoke step (not
+yet hosted-exercised). MISSION-018A closed 2026-08-13 in the working tree
+with **579 passed / 10 skipped** and corpus A01-A50 (**54 passed /
+1 skipped**): the risk layer now fails closed on credential-like /
+opaque content (`not detected` is never `safe`), closing the MISSION-018
+audit evasion classes.
 
 Notes (VERIFIED): MISSION-005..008, MISSION-010..014 each carry dedicated
 test files that pass today; MISSION-003 additionally executed a live
@@ -98,7 +111,9 @@ Remaining open missions:
 | Mission | Status | Evidence |
 |---------|--------|----------|
 | MISSION-015 Productization readiness assessment | **PLANNED** | MISSION_LOG.md (MISSION-014 remaining work) |
-| MISSION-016 Chief Engineer Gap-Closure Sprint | **IMPLEMENTED / VERIFIED-by-suite** (working tree, no commit/push) | full suite 465/10; corpus A01-A30; live-LLM E2E 1 passed; MISSION_LOG.md |
+| MISSION-017 Productization & Human Approval Sprint | **IMPLEMENTED / VERIFIED-by-suite** (working tree, no commit/push) | full suite 521/10; corpus A01-A36; approval_console.py; runtime_mode_test.py; MISSION_LOG.md |
+| MISSION-018A Risk Boundary Hardening | **IMPLEMENTED / VERIFIED-by-suite** (working tree, no commit/push) | full suite 579/10; corpus A01-A50; risk_engine.py SAFE/SUSPICIOUS/OPAQUE; risk_regression_test.py; risk_pipeline_test.py; MISSION_LOG.md; D-029 |
+| MISSION-018B Recovery Approval Boundary | **IMPLEMENTED / VERIFIED-by-suite** (working tree, no commit/push) | full suite 594/10; corpus A01-A65; apply_authorization.py fail-closed (store-less HIGH/CRITICAL/UNKNOWN => DENY); agent_run --recovery wired to risk+store; MISSION_LOG.md; D-030 |
 
 Also OPEN (ROADMAP.md phases, no code): event query engine, runtime
 console, secret scanning, multi-agent/concurrency tests, full recovery
@@ -109,14 +124,18 @@ persistent decision trace.
 
 ## 4. UNKNOWN Missions / Unknowns
 
-- Next mission number after MISSION-015 (inferred MISSION-016, not
+- Next mission number after MISSION-016/017 (inferred MISSION-018, not
   verified). **INFERRED.**
 - Scope of MISSION-015 (no design docs). **UNKNOWN.**
-- Live-LLM end-to-end apply/verify/recovery behavior. **UNKNOWN**
-  (only proposal-only live path tested).
-- Whether the risk gate becomes default-on in the shipped assembly after a
-  human-approval UX exists. **UNKNOWN** (D-021/D-022: gate stays explicit
-  opt-in; default-on is a productization decision).
+- Live-LLM end-to-end apply/verify/recovery behavior for HIGH/CRITICAL
+  with the interactive approval console. **UNKNOWN** (the gated live E2E
+  harness exercises the MEDIUM-risk path only; the console path is covered
+  deterministically with fake analyzers).
+- Whether the risk gate becomes default-on in the shipped assembly now that
+  a human-approval UX exists. **UNKNOWN** (D-021/D-022/D-028: gate stays
+  explicit opt-in; default-on is a productization decision).
+- Whether the MISSION-017 CI packaging smoke step passes on a hosted
+  runner. **UNKNOWN** (verified locally only).
 - Symlink-dependent security behavior outside this Windows environment.
   **UNKNOWN** (7 tests skip where symlinks are denied).
 - Whether the "weather" planner strategy is intended to work.
@@ -130,13 +149,15 @@ persistent decision trace.
 ## 5. Critical Gaps
 
 ### Technical
-1. **No interactive human-approval UX (MISSION-012/014/016 implemented):**
-   the `Approval`/`ApprovalStore`/`ApprovalLedger` boundary is implemented,
-   tested and durable, but granting an approval still requires a
-   programmatic call. **MEDIUM**
+1. **Interactive human-approval UX now exists** (MISSION-017): CLI
+   `ConsoleApprovalGateway`/`approval_console.py` routes explicit human
+   decisions into `ApprovalStore.grant`; synchronous (blocks the governed
+   run until the operator decides; EOF fails closed). An async/web channel
+   remains out of scope. **RESOLVED (CLI).**
 2. **No production benchmarks:** the local append benchmark exists
-   (`benchmarks/event_store_benchmark.py`, linear ~800-815 appends/s) but is
-   not a production measurement. **LOW-MEDIUM**
+   (`benchmarks/event_store_benchmark.py`, linear ~660-740 appends/s) and
+   an approval-lookup benchmark was added (MISSION-017, ~86-89k lookups/s
+   in-memory); neither is a production measurement. **LOW-MEDIUM**
 3. **Duplicate snapshot implementations** (`persistence/snapshot.py` vs
    `snapshot/snapshot_manager.py` vs `persistence/snapshot_manager.py`),
    legacy `persistence/recovery.py`/`event_store_backup.py`, and
@@ -146,7 +167,8 @@ persistent decision trace.
    **MEDIUM**
 
 ### Security
-5. **Human-approval UX missing** (safe, not interactive). **MEDIUM**
+5. **Human-approval UX is CLI/synchronous only** (safe; blocks the
+   governed run until the operator decides; EOF fails closed). **LOW**
 6. **Secret redaction / prompt-injection are heuristics, not guarantees**
    (documented; secret files skipped wholesale, inline redaction
    best-effort). **MEDIUM** (mitigated)
@@ -172,16 +194,15 @@ persistent decision trace.
 
 ## 6. Recommended Next 5 Actions
 
-Ranked by risk reduction vs. effort (MISSION-016 is implemented but
-uncommitted; MISSION-011..014 are closed and NOT re-listed):
+Ranked by risk reduction vs. effort (MISSION-016 committed; MISSION-017
+implemented but uncommitted; MISSION-011..014 are closed and NOT re-listed):
 
-1. **Build the human-approval UX:** the boundary + ledger are implemented,
-   tested and durable (MISSION-012/014/016); add the interaction that
-   routes a HIGH/CRITICAL request to a human and back into `grant` (CLI
-   prompt or approval-file intake). Last piece before default-on can be
-   re-evaluated (D-022).
-2. **Commit / push the MISSION-016 sprint**, then run the new CI on
-   Linux/macOS to close the symlink coverage gap.
+1. **Commit / push the MISSION-017 sprint** and run the new CI (incl.
+   packaging smoke) on a hosted runner to close the symlink and
+   Linux/macOS coverage gap.
+2. **Decide the default-on gate** now that a human-approval UX exists
+   (MISSION-017): the gate stays explicit opt-in by design (D-021/D-022);
+   default-on is an open productization decision.
 3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment.**
@@ -191,25 +212,25 @@ uncommitted; MISSION-011..014 are closed and NOT re-listed):
 
 ---
 
-## 7. Repository Facts Summary (all VERIFIED; refreshed at MISSION-016 close-out 2026-08-12)
+## 7. Repository Facts Summary (all VERIFIED; refreshed at MISSION-017 close-out 2026-08-13)
 
-- Branch `worker-action-pipeline` @ `d347f43`; 16 commits ahead of `main`.
-- Working tree: MISSION-016 sprint changes uncommitted (governed CLI,
-  rollback, approval ledger, event-store/snapshot hardening, verification
-  hardening, secret boundary, lazy provider, risk refinement, corpus
-  A21-A30, CI, pyproject, new tests; tracked junk staged for removal).
-- Test suite: MISSION-016 close-out **465 passed, 10 skipped** (MISSION-014
-  baseline: 390/9; +75).
-- Adversarial corpus: **34 passed / 1 skipped** (A01-A30).
+- Branch `worker-action-pipeline` @ `a8de82e`; 17 commits ahead of `main`.
+- Working tree: MISSION-017 sprint changes uncommitted (interactive approval
+  console, runtime-mode tests, corpus A31-A36, CI packaging smoke,
+  approval-lookup benchmark, doc sync).
+- Test suite: MISSION-017 close-out **521 passed, 10 skipped** (MISSION-016
+  baseline: 465/10; +56).
+- Adversarial corpus: **40 passed / 1 skipped** (A01-A36).
 - Gated live-LLM E2E: **1 passed** (real provider, run on 2026-08-12).
 - 4 tags: v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0.
 - Remote: github.com/khalikinisoran-jpg/olay-kaynak-platformu.git.
 - requirements.txt: pytest==9.1.1, requests, python-dotenv; pyproject.toml
-  added (setuptools packaging metadata).
+  (setuptools packaging metadata; `pip install -e .` verified locally
+  2026-08-13).
 - .env present locally (OPENROUTER_API_KEY, untracked/gitignored).
-- CI workflow added: `.github/workflows/ci.yml` (ubuntu + windows; pytest +
-  compileall + corpus + diff-check). Empty `tests/{chaos,integration,
-  property,unit}` dirs remain.
+- CI workflow: `.github/workflows/ci.yml` (ubuntu + windows; pytest +
+  compileall + corpus + diff-check + packaging smoke step added
+  MISSION-017). Empty `tests/{chaos,integration,property,unit}` dirs remain.
 
 ---
 

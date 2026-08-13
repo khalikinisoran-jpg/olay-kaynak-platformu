@@ -39,6 +39,27 @@ class Kernel:
 
     def dispatch(self, event):
 
+        """Persist and apply one event (the single write path).
+
+        Ordering contract (MISSION-019, documented semantics):
+
+        1. ``append`` — the event is durably persisted (fsynced) and
+           the store assigns the authoritative sequence.
+        2. ``trace`` — the decision trace records the dispatch.
+        3. ``reducer`` — the in-memory state is projected forward.
+
+        If the reducer raises for a persisted event (a malformed
+        payload for a reducer-handled event type), the exception
+        propagates and the live state is NOT updated for that event:
+        the event remains durably in the store while ``self.events``
+        and the live state diverge from it. On restart, recovery
+        re-applies the event from the (chain-verified) store and
+        therefore reproduces the same reducer failure — fail-closed,
+        with no silent state divergence. The event store is the
+        authority; the reducer must be total for every event the store
+        can contain.
+        """
+
         sequence = self.event_store.append(event)
 
         stored_event = Event(

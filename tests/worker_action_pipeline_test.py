@@ -112,12 +112,14 @@ class RecordingApplyExecutor:
     def apply(
         self,
         patch,
-        decision
+        decision,
+        attempt=None
     ):
 
         self.calls.append({
             "patch": patch,
             "decision": decision,
+            "attempt": attempt,
         })
 
         return ApplyResult(

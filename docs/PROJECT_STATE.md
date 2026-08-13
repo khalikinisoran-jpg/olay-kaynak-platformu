@@ -14,11 +14,11 @@ results > documentation.
 |-------|-------|----------------|
 | Project Name | Event-Sourced AI Runtime | VERIFIED (docs) |
 | Status | Active Development | VERIFIED (git activity) |
-| Last Updated | 2026-08-12 | VERIFIED |
+| Last Updated | 2026-08-13 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch`) |
-| Branch HEAD | `d347f43` ("Close authorization boundary and add project master"); MISSION-016 sprint changes uncommitted | VERIFIED (`git rev-parse HEAD`) |
+| Branch HEAD | `a8de82e` ("Harden event store and snapshot integrity"); MISSION-017 sprint changes uncommitted | VERIFIED (`git rev-parse HEAD`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 16 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is 17 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
 | Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`) |
@@ -50,7 +50,13 @@ What is actually implemented and verifiable today:
   `tests/worker_runtime_test.py::test_default_agent_runtime_is_proposal_only_no_apply_no_verify`).
 - An opt-in mutation path: `python agent_run.py --recovery` wires
   `build_recovery_agent()` which enables apply + verification + bounded
-  recovery for in-scope files (`agent_run.py:52`, `simulation/agent/recovery/recovery_assembly.py`).
+  recovery for in-scope files. Since MISSION-018B the authorization
+  boundary stays ACTIVE: the apply boundary recomputes risk and DENIES
+  every HIGH/CRITICAL/UNKNOWN apply without a store-verified approval, and
+  `--recovery` wires the risk gate + approval store + ledger so
+  HIGH/CRITICAL/UNKNOWN fail closed unless a pre-granted ledger approval
+  exists (no interactive prompt; that is `--governed`'s role). LOW/MEDIUM
+  auto-apply with rollback on verification failure and bounded retry.
 - A **governed apply path**: `python agent_run.py --governed` adds the
   deterministic risk gate and a store-backed, single-use human-approval
   boundary with a durable approval ledger (MISSION-016). HIGH/CRITICAL fail
@@ -71,16 +77,34 @@ What is actually implemented and verifiable today:
   (MISSION-016); providers are created lazily so non-LLM strategies run
   without an API key.
 - A risk/verification pipeline (RiskEngine/RiskPolicy/RiskLevel) that is
-  deterministic, tested (MISSION-011: 83 tests) and correctly integrated as
-  an explicit opt-in gate at the pipeline and assembly level; it is NOT
+  deterministic, tested (MISSION-011: 83 tests; MISSION-018A: fail-closed
+  content classification + risk-regression corpus) and correctly integrated
+  as an explicit opt-in gate at the pipeline and assembly level; it is NOT
   active in the default runtime (see Known Limitations). Risk path matching
   was refined (MISSION-016) to use token boundaries for `auth`/`token`/
-  `secret` and a deterministic regression corpus was added.
+  `secret` and a deterministic regression corpus was added. MISSION-018A
+  made content classification fail-closed: `not detected` is never treated
+  as `safe`. Content is classified as SAFE (plain; may auto-apply as
+  LOW/MEDIUM), SUSPICIOUS (credential-like material -> HIGH, human approval
+  required) or OPAQUE (control characters -> UNKNOWN -> DENY). The audited
+  evasion classes (JSON/bare-token/base64/URL/shell/env/auth-header
+  credentials; `.bak`/`.creds`/`prod.yaml`/`secrets/*` paths) are now
+  regression-locked (corpus A37-A50).
 - A human approval boundary (MISSION-012): fingerprint-bound, single-use,
   evidence-recorded `Approval` / `ApprovalStore`; HIGH/CRITICAL fail closed
   without a valid approval; granted approvals are recorded as
   `WorkerHumanApprovalGranted` events. Also an explicit opt-in, never in
   the default runtime.
+- **An interactive CLI human-approval interface** (MISSION-017):
+  `ConsoleApprovalGateway` + `approval_console.py` renders a HIGH/CRITICAL
+  request (patch fingerprint, path, action, risk level + context, attempt,
+  expiry, authorizer, evidence reference) and routes an explicit human
+  approve/deny into `ApprovalStore.grant`. It is wired into
+  `agent_run.py --governed` and the pipeline consults it only when no valid
+  stored approval exists; the grant still flows through `find_valid` +
+  `authorize_apply`, so the store/apply boundary remains the authority and
+  agent-controlled approval metadata stays non-authoritative. Tested in
+  `tests/approval_console_test.py` (23 tests) and corpus A31-A36.
 - A hardened authorization boundary (MISSION-014): the apply boundary
   requires a typed `ControllerDecision` (`approved is True` + exact
   fingerprint) and, for HIGH/CRITICAL/UNKNOWN applies, a store-verified,
@@ -192,7 +216,11 @@ Two distinct recovery mechanisms exist:
    retries a verification FAIL up to a hard cap of 3 attempts with
    duplicate-fingerprint suppression and append-only attempt history.
    Active only when the agent is assembled via `build_recovery_agent()`
-   or `agent_run.py --recovery`.
+   or `agent_run.py --recovery`. **Authorization (MISSION-018B):** each
+   retry is an independent PatchProposal that flows through risk
+   classification and the store-backed approval/apply boundary; an older
+   attempt's approval never authorizes a newer patch, and the retry budget
+   never substitutes for human authorization.
 
 Recovery is NOT active by default in the shipped runtime
 (`agent_run.py` uses proposal-only `Agent(kernel)` unless `--recovery`).
@@ -219,49 +247,38 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-12 (MISSION-016 close-out):
+Authoritative run on 2026-08-13 (MISSION-019 close-out):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
-465 passed, 10 skipped in ~8s
+648 passed, 10 skipped in ~14s
 ```
 
-- 33 collected test modules (tests/ + tests/security/ + root
-  recovery_test.py).
 - 10 skipped: 3 opt-in `live_llm` integration tests (never run in the
   normal suite) + 7 symlink-dependent tests that skip where the OS denies
   symlink creation (junction variants pass on this Windows environment).
-- The 465-passed count is +75 over the MISSION-014 checkpoint (390):
-  MISSION-016 added governed-runtime integration tests (11), approval
-  durability (7), verification hardening (4), snapshot integrity (5),
-  event-store concurrency (2), lazy provider (3), secret boundary (10),
-  risk regression corpus (18+1), rollback (5), live-LLM E2E harness (1) and
-  extended the adversarial corpus A21-A30 (+10).
+- The 648-passed count is +54 over the MISSION-018B close-out (594):
+  MISSION-019 added the governance-evaluator suite (8), the apply-outcome
+  journal suite (11), the startup-reconciliation suite (10), the
+  fault-injection crash-window suite (9), the secret retry-boundary suite
+  (5), the property invariant suite (4, under `tests/property/`) and
+  adversarial corpus records A66-A72.
 - Gated live run (real provider): `RUN_LIVE_LLM=1 python -m pytest -m
   live_llm tests/live_llm_e2e_test.py -q` → **1 passed** (2026-08-12).
 
-- 23 collected test modules (22 under tests/, including tests/security/
-  sub-package, plus root recovery_test.py).
-- 9 skipped: 2 opt-in `live_llm` integration tests (never run in the
-  normal suite; no API cost) + 7 symlink-dependent tests that skip where
-  the OS denies symlink creation (junction variants pass on this Windows
-  environment).
-- The 390-passed count is +17 over the MISSION-012/013 close-out (373):
-  MISSION-014 added 17 authorization-boundary tests (A–O) to
-  `tests/approval_boundary_test.py` (31 → 48 tests) and hardened the
-  apply authorization boundary.
-
-Coverage by module (test counts, VERIFIED by `Select-String` + full run):
+Coverage by module (test counts, VERIFIED by `pytest --collect-only` on
+2026-08-13):
 
 | Test module | Count |
 |-------------|-------|
-| tests/structured_analysis_test.py | 41 |
-| tests/worker_contract_test.py | 31 |
 | tests/approval_boundary_test.py | 48 |
+| tests/structured_analysis_test.py | 41 |
+| tests/security/adversarial_corpus_test.py | 76 (A01-A72) |
+| tests/recovery_engine_test.py | 33 |
+| tests/worker_contract_test.py | 31 |
+| tests/security/path_security_test.py | 31 |
 | tests/risk_engine_test.py | 30 |
-| tests/recovery_engine_test.py | 29 |
-| tests/security/path_security_test.py | 27 |
-| tests/security/adversarial_corpus_test.py | 25 (A01-A20) |
+| tests/approval_console_test.py | 23 |
 | tests/risk_level_test.py | 20 |
 | tests/risk_policy_test.py | 18 |
 | tests/security/worker_read_scope_test.py | 16 |
@@ -269,12 +286,19 @@ Coverage by module (test counts, VERIFIED by `Select-String` + full run):
 | tests/risk_pipeline_test.py | 15 |
 | tests/controller_decision_test.py | 13 |
 | tests/worker_evidence_test.py | 13 |
+| tests/runtime_mode_test.py | 12 |
+| tests/apply_outcome_journal_test.py | 11 |
 | tests/worker_action_pipeline_test.py | 11 |
+| tests/startup_reconciliation_test.py | 10 |
 | tests/apply_verify_pipeline_test.py | 9 |
+| tests/fault_injection_test.py | 9 |
 | tests/llm_provider_test.py | 9 |
+| tests/governance_evaluator_test.py | 8 |
 | tests/worker_runtime_test.py | 7 |
 | tests/patch_integrity_test.py | 6 |
+| tests/secret_retry_boundary_test.py | 5 |
 | tests/worker_runtime_integration_test.py | 4 |
+| tests/property/governance_property_test.py | 4 |
 | tests/llm_provider_integration_test.py | 2 (gated, skipped) |
 | tests/planner_contract_test.py | 1 |
 | recovery_test.py (root) | 1 |
@@ -295,23 +319,32 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              d347f43 (2026-08-12, "Close authorization boundary and add project master")
-Working tree:      MISSION-016 sprint changes uncommitted
-                   (governed CLI, rollback, approval ledger, event-store/snapshot
-                   hardening, verification hardening, secret boundary, lazy provider,
-                   risk refinement, corpus A21-A30, CI, pyproject, new tests)
-Staged for removal: tracked junk (git, kernel.txt, tracked .pyc) via git rm
-Untracked files:   simulation/agent/approval/approval_ledger.py,
-                   simulation/security/secret_policy.py,
-                   benchmarks/, new test modules
+HEAD:              a8de82e (2026-08-13, "Harden event store and snapshot integrity")
+Working tree:      MISSION-017/018A/018B/019 changes uncommitted
+                   (approval console, risk hardening, recovery approval
+                   boundary, GovernanceEvaluator, apply-outcome journal,
+                   startup reconciliation, atomic snapshots, retry redaction,
+                   corpus A66-A72, new test suites, doc sync)
+Untracked files:   simulation/agent/approval/approval_console.py,
+                   simulation/security/governance_evaluator.py,
+                   simulation/agent/apply/apply_outcome_journal.py,
+                   simulation/agent/recovery/startup_reconciliation.py,
+                   benchmarks/{approval_lookup_benchmark.governance_benchmark.py},
+                   tests/approval_console_test.py, tests/runtime_mode_test.py,
+                   tests/governance_evaluator_test.py,
+                   tests/apply_outcome_journal_test.py,
+                   tests/startup_reconciliation_test.py,
+                   tests/fault_injection_test.py,
+                   tests/secret_retry_boundary_test.py,
+                   tests/property/governance_property_test.py
 .gitignore:        cleaned (junk entries removed), still excludes .env, .venv/,
                    data/, __pycache__/, *.pyc
 Local env:         .env present with OPENROUTER_API_KEY (untracked; len 73)
-CI:                .github/workflows/ci.yml added (ubuntu + windows)
-Packaging:         pyproject.toml added
+CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step)
+Packaging:         pyproject.toml (pip install -e . verified locally 2026-08-13)
 ```
 
-`main` is 14 commits behind `worker-action-pipeline`. No release tag exists
+`main` is 17 commits behind `worker-action-pipeline`. No release tag exists
 after v0.5.0 for the worker-action-pipeline work.
 
 ---
@@ -324,11 +357,11 @@ VERIFIED where not marked:
    design (D-021/D-022).** The default runtime is proposal-only; `--governed`
    activates risk + approval + store-backed authorization. The gate is not
    default-on in the shipped assembly (productization decision).
-2. **Human approval boundary is implemented but has no interactive
-   UX.** `ApprovalStore.grant` must be invoked programmatically; there is
-   no UI/CLI flow yet that routes a HIGH/CRITICAL request to a human and
-   back. Without a grant, HIGH/CRITICAL still fails closed at the approval
-   stage.
+2. **The interactive human-approval interface is CLI-only and synchronous:**
+   `ConsoleApprovalGateway` blocks the governed run until the operator types
+   approve/deny (or EOF, which fails closed). It is wired into
+   `agent_run.py --governed`; programmatic callers must supply their own
+   gateway or grant via `ApprovalStore.grant`.
 3. **Approval durability requires a wired `ApprovalLedger`** (MISSION-016).
    Without a ledger the store is in-memory (tests cover both modes).
 4. **Recovery is not active in the default runtime** (opt-in `--recovery` /
@@ -376,12 +409,12 @@ VERIFIED where not marked:
 
 Recommended (from audit findings, not a committed plan):
 
-1. **Human-approval UX:** define how a HIGH/CRITICAL request flows to a
-   human and back into `ApprovalStore.grant` (CLI prompt, approval file,
-   or API); this is the remaining piece before default-on can be
-   re-evaluated as a product decision (D-022).
-2. **Commit / push the MISSION-016 sprint** and run the new CI on
-   Linux/macOS to close the symlink coverage gap.
+1. **Commit / push the MISSION-016 + MISSION-017 sprint** and run the new
+   CI (incl. packaging smoke) on a hosted runner to close the symlink and
+   Linux/macOS coverage gap.
+2. **Decide the default-on gate** now that an interactive human-approval
+   UX exists (MISSION-017): the risk gate stays explicit opt-in by design
+   (D-021/D-022); default-on remains an open productization decision.
 3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment.**
@@ -394,5 +427,5 @@ Recommended (from audit findings, not a committed plan):
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-12 test run (390 passed, 9 skipped). Stale documentation must not
+2026-08-13 test run (521 passed, 10 skipped). Stale documentation must not
 be trusted over code and git history.

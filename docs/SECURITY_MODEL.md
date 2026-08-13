@@ -1,10 +1,13 @@
 # SECURITY_MODEL.md
 
 Canonical security model of the implemented worker action pipeline and
-event-sourcing core, branch `worker-action-pipeline` @ `d347f43`
-(2026-08-12; risk-layer status refreshed by the MISSION-011 close-out on
-2026-08-12, MISSION-012/013/014 close-outs on 2026-08-12, and the
-MISSION-016 gap-closure hardening on 2026-08-12). Every claim
+event-sourcing core, branch `worker-action-pipeline` @ `a8de82e`
+(2026-08-13; risk-layer status refreshed by the MISSION-011 close-out on
+2026-08-12, MISSION-012/013/014 close-outs on 2026-08-12, the
+MISSION-016 gap-closure hardening on 2026-08-12, the MISSION-017
+productization & human-approval additions on 2026-08-13, the
+MISSION-018A risk-boundary hardening on 2026-08-13, and the MISSION-018B
+recovery-authorization hardening on 2026-08-13). Every claim
 is classified VERIFIED (code + passing test), INFERRED (reasoned from
 code, no direct test), or UNKNOWN (cannot be determined). Complements
 docs/SECURITY_BASELINE.md (MISSION-005 audit).
@@ -75,11 +78,16 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
   patch.fingerprint()` (apply_authorization.py:18); a duck-typed fake
   object is rejected by the type check, so an agent-controlled object with
   `approved=True` + matching fingerprint can no longer authorize apply.
-  When the boundary is bound to the approval authority (risk gate
-  enabled) it recomputes the patch risk deterministically and requires a
-  store-verified, single-use approval binding for HIGH/CRITICAL/UNKNOWN
-  applies (MISSION-014). **VERIFIED** — controller_decision_test.py,
-  approval_boundary_test.py (MISSION-014 A/B/O).
+  The boundary recomputes the patch risk deterministically and requires a
+  store-verified, single-use approval binding for every
+  HIGH/CRITICAL/UNKNOWN apply; **a missing approval store is itself a
+  denial** (MISSION-014/018B), so no runtime path — including the bounded
+  RECOVERY mode or a gate-off assembly — can mutate a HIGH/CRITICAL/UNKNOWN
+  patch without an approval authority. LOW/MEDIUM applies are authorized on
+  the typed-decision + fingerprint contract because MISSION-018A ensures
+  only positively-classified non-suspicious content reaches LOW/MEDIUM.
+  **VERIFIED** — controller_decision_test.py, approval_boundary_test.py
+  (MISSION-014 A/B/O), adversarial corpus A51-A65.
 - Apply is never active by default: `Agent(kernel)` has no pipeline; only
   `build_recovery_agent()` or `agent_run.py --recovery` wires apply.
   **VERIFIED** — `tests/worker_runtime_test.py`
@@ -136,6 +144,19 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
   immutable evidence contracts. **VERIFIED** — recovery_engine_test.py (t10).
 - Recovery is not active by default (opt-in assembly / `--recovery`).
   **VERIFIED** — recovery_engine_test.py (t16), agent_run.py.
+- **RECOVERY never bypasses the approval boundary (MISSION-018B):** the
+  apply authorization boundary recomputes the patch risk and requires a
+  store-verified approval for every HIGH/CRITICAL/UNKNOWN apply; a missing
+  approval store is itself a denial, so a gate-off assembly or
+  `agent_run.py --recovery` cannot mutate a HIGH/CRITICAL/UNKNOWN patch
+  without an approval authority. Every retry is an independent
+  PatchProposal with its own risk + approval evaluation; attempt binding
+  prevents an older attempt's approval from authorizing a new patch.
+  `agent_run.py --recovery` now wires the risk gate + approval store +
+  ledger (no interactive gateway): LOW/MEDIUM auto-apply with rollback,
+  HIGH/CRITICAL/UNKNOWN fail closed unless a pre-granted ledger approval
+  exists. The retry budget never substitutes for human authorization.
+  **VERIFIED** — adversarial corpus A51-A65, live probes.
 
 ## 7. Risk Engine
 
@@ -166,6 +187,48 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
   explicit opt-in: it is not wired into the shipped assembly by default
   (D-021).**
 
+## 7a. Risk Engine Fail-Closed Content Classification (MISSION-018A)
+
+**Implementation:** `simulation/security/risk_engine.py` (MISSION-018A).
+
+Security principle: **`not detected` is never treated as `safe`.** The
+engine classifies content into three states before producing a level:
+
+- **SAFE** -> plain, simple content with no credential-like, encoded or
+  opaque material. Only SAFE content may keep the LOW/MEDIUM baseline that
+  `RiskPolicy` auto-applies.
+- **SUSPICIOUS** -> structural credential material, elevated to HIGH so a
+  human approval is required and auto-apply is impossible: credential-key
+  assignments in JSON/YAML/TOML/dotenv/INI/connection-string form (incl.
+  quoted keys like `{"password": "x"}` and part-numbered keys like
+  `token_part1`), bare token prefixes (`sk-`, `ghp_`, `gho_`, `ghs_`,
+  `xox*`, `AKIA`, `ya29.`, JWT `eyJ`, `AIza`, `SG.`), base64/encoded
+  material, URLs with userinfo (`user:pass@`), shell credential flags
+  (`-u`, `--password`, `--token`), environment secret references
+  (`os.environ["SECRET_KEY"]`, `process.env.API_TOKEN`, `${SECRET_KEY}`),
+  and authorization headers / Bearer / Basic tokens.
+- **OPAQUE** -> content that cannot be analyzed as plain text (control
+  characters other than tab/newline/CR). Yields UNKNOWN so `RiskPolicy`
+  DENYs it with no approval and no apply.
+
+Path hardening (all -> HIGH): backup/temp suffixes (`.bak`, `~`, `.orig`,
+`.swp`, ...), hidden credential files (`.creds`, `.credentials`, `.aws`,
+`.azure`, `.gcloud`, `.pgpass`, `.kubeconfig`, ...), credential
+directories (`secrets/`, `credentials/`, `token(s)/`, `keys/`, `certs/`,
+`private/`, `auth/`, `ssh/`, `pki/`, `vault/`, ...) and production-env
+naming (`prod`, `staging`, `uat`, `preprod`, `pre-prod`).
+
+Trivial credential assignments stay benign (`self.token = None`,
+`count = 3`, `os.environ["HOME"]`, `tokenizer = Tokenizer()`), so ordinary
+patches are not unnecessarily elevated. **VERIFIED** —
+`tests/risk_regression_test.py` (MISSION-018A corpus), `tests/risk_pipeline_test.py`
+(suspicious content requires approval / opaque content fails at the risk
+stage / trivial assignments still auto-apply), adversarial corpus A37-A50.
+
+**STATUS: VERIFIED (MISSION-018A). The gate stays DEFAULT OFF; the fix
+closes the auto-apply path for the audited evasion classes and adds an
+OPAQUE -> UNKNOWN fail-closed path.**
+
 ## 8. Risk Policy
 
 **Implementation:** `simulation/security/risk_policy.py` (MISSION-011).
@@ -181,11 +244,23 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
   (risk_policy.py:91-121). **VERIFIED** — `tests/risk_policy_test.py`.
 - `max_attempts` from policy never exceeds the recovery hard cap of 3 by
   construction. **VERIFIED** — `tests/risk_policy_test.py`.
-- **STATUS: VERIFIED (MISSION-011).**
+- **LOW/MEDIUM security assumption (MISSION-018A):** auto-apply for
+  LOW/MEDIUM is safe only because `RiskEngine` classifies content into
+  SAFE / SUSPICIOUS / OPAQUE before a level is produced; SUSPICIOUS is
+  always elevated to HIGH so it never reaches this automatic path, and
+  OPAQUE yields UNKNOWN which is DENIED here. `not detected` is never
+  treated as `safe`. False negatives are bounded by (1) the expanded
+  structural suspicion detection, (2) the OPAQUE -> UNKNOWN fail-closed
+  path, (3) worker/apply path-scope enforcement, (4) deterministic
+  verification with rollback on failure, and (5) the store-backed apply
+  boundary that re-classifies the patch before any write. **VERIFIED** —
+  `tests/risk_regression_test.py` (benign negatives stay LOW/MEDIUM),
+  `tests/risk_pipeline_test.py`, adversarial A50.
+- **STATUS: VERIFIED (MISSION-011 / MISSION-018A).**
 
 ## 8a. Human Approval Boundary
 
-**Implementation:** `simulation/agent/approval/` (MISSION-012).
+**Implementation:** `simulation/agent/approval/` (MISSION-012/014).
 
 - `Approval` is a frozen, single-use authorization contract bound to patch
   fingerprint, path, action, risk level, attempt, authorizer and expiry.
@@ -238,6 +313,42 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
   **VERIFIED** — tests/approval_boundary_test.py
   (test_assembly_wires_approval_store_when_gate_enabled).
 - **STATUS: VERIFIED (MISSION-012/014).**
+
+## 8b. Interactive CLI Human-Approval Interface (MISSION-017)
+
+**Implementation:** `simulation/agent/approval/approval_console.py`.
+
+- A HIGH/CRITICAL request is rendered as a `PendingApprovalRequest` from
+  the real `PatchProposal` + `RiskAssessment`; the renderer shows patch
+  fingerprint, path, action, risk level + context, attempt, expiry,
+  authorizer and evidence reference — never patch old/new content.
+  **VERIFIED** — `tests/approval_console_test.py`
+  (render shows all required fields; render never contains patch content).
+- `ConsoleApprovalGateway.request_approval` is consulted by the pipeline
+  only when no valid stored approval exists. It recomputes the risk with
+  the system `RiskEngine` and refuses (`None`) when the pipeline-provided
+  risk differs from the recomputed one, so a downgraded displayed risk
+  cannot reach the human. **VERIFIED** —
+  `tests/approval_console_test.py::test_console_gateway_refuses_downgraded_risk_display`.
+- On explicit human approve, the gateway grants through `ApprovalStore`
+  and the pipeline re-consumes the approval via `find_valid(patch=...)`
+  (object-identity binding + single-use preserved), so displayed ==
+  granted == applied by construction; any substitution (path/patch/action/
+  risk) fails closed downstream. **VERIFIED** —
+  `tests/approval_console_test.py` (wrong path / wrong patch / risk
+  downgrade), corpus A33/A34.
+- Fail-closed decision: only explicit approve phrases grant; deny, EOF and
+  unrecognized input return `None` and never produce an approval.
+  **VERIFIED** — `tests/approval_console_test.py`
+  (deny / EOF / unrecognized input). A fake gateway returning an Approval
+  the store never granted, or returning dict metadata, fails closed.
+  **VERIFIED** — corpus A31, `test_console_gateway_rejects_non_approval_return`.
+- The console never becomes an authority: the grant still flows through
+  the store `find_valid`/`authorize_apply`, and agent-controlled approval
+  metadata is never consulted. Evidence/ledger never contain patch content
+  or secret values. **VERIFIED** — `tests/approval_console_test.py`
+  (ledger/render/evidence no-leak tests).
+- **STATUS: VERIFIED (MISSION-017).**
 
 ## 9. Evidence / Integrity
 
@@ -397,17 +508,49 @@ docs/SECURITY_BASELINE.md (MISSION-005 audit).
 - The default runtime remains proposal-only and ungoverned; no security
   boundary was loosened. **VERIFIED** — `tests/worker_runtime_test.py`.
 
+## 17a. Runtime Modes (MISSION-017)
+
+- Three deterministic runtime modes exist through the existing assembly
+  (no new abstraction): PROPOSAL_ONLY (`Agent(kernel)`, no pipeline/apply),
+  RECOVERY (`build_recovery_agent`, bounded retry + authorization boundary
+  ACTIVE), and GOVERNED (`build_recovery_agent` with risk_engine +
+  risk_policy + store-backed approval + interactive gateway). Mode
+  selection is deterministic; the gate never activates with only one risk
+  component. **VERIFIED** — `tests/runtime_mode_test.py` (12 tests).
+- **RECOVERY authorization boundary (MISSION-018B):** the apply boundary
+  recomputes risk and DENIES every HIGH/CRITICAL/UNKNOWN apply that lacks a
+  store-verified approval, even when the pipeline risk gate is off and no
+  approval store is wired. `agent_run.py --recovery` now wires the risk
+  gate + approval store + ledger so HIGH/CRITICAL/UNKNOWN fail closed
+  unless a pre-granted ledger approval exists; LOW/MEDIUM auto-apply with
+  rollback on verification failure and bounded retry. There is no
+  interactive prompt in RECOVERY (that is GOVERNED's
+  `ConsoleApprovalGateway`); the retry budget never substitutes for human
+  authorization. **VERIFIED** — adversarial corpus A51-A65, live probes.
+- `agent_run.py --governed` wires the interactive CLI approval gateway
+  (`ConsoleApprovalGateway`), so a HIGH/CRITICAL proposal without a valid
+  stored approval is presented to the operator for approve/deny; deny/EOF
+  fail closed, the grant flows through the store. **VERIFIED** —
+  `tests/approval_console_test.py`.
+
 ## 18. Adversarial Tests
 
 `tests/security/adversarial_corpus_test.py` (MISSION-008, extended by
-MISSION-013 to A13-A20 and by MISSION-016 to A21-A30): summary-gated — the
-final summary test fails the suite if any recorded entry failed.
-**VERIFIED** — all PASS on 2026-08-12 (34 passed, 1 symlink-dependent skip
-in the normal suite). MISSION-016 records: A21 rollback success, A22
+MISSION-013 to A13-A20, by MISSION-016 to A21-A30 and by MISSION-017 to
+A31-A36): summary-gated — the final summary test fails the suite if any
+recorded entry failed.
+**VERIFIED** — all PASS on 2026-08-13 (69 passed, 1 symlink-dependent skip
+in the normal suite; MISSION-018A added A37-A50, MISSION-018B added
+A51-A65). MISSION-016 records: A21 rollback success, A22
 rollback failure terminal, A23 restart replay denial, A24 corrupted ledger
 fail-closed, A25 secret-file skip, A26 redaction, A27 empty-test-not-pass,
 A28 concurrent append consistency, A29 snapshot tampering not trusted,
-A30 direct FileApplier scope enforcement (documented residual).
+A30 direct FileApplier scope enforcement. MISSION-017 records: A31 fake
+approval UI (hostile gateway returns an unbound Approval), A32 forged
+operator identity is not a boundary, A33 console display/apply path
+substitution denied, A34 console risk downgrade denied, A35
+console-granted approval single-use (replay impossible), A36 governed
+without allowed-path fails closed.
 
 | ID | Attack | Boundary measured | Result |
 |----|--------|-------------------|--------|
@@ -431,13 +574,135 @@ A30 direct FileApplier scope enforcement (documented residual).
 | A18 | Attempt substitution (attempt-1 approval at attempt 2) | Approval attempt binding | DENY |
 | A19 | Path substitution (typed Approval, different path) | Pipeline-level binding check | DENY |
 | A20 | Approval-gate bypass (no authority + proposal claims) | Agent independence | DENY |
+| A31 | Fake approval UI (gateway returns an Approval the store never granted) | Pipeline re-consumption via store | DENY |
+| A32 | Forged operator identity (authorizer field) | Binding still authorizes; identity informational | ALLOW (binding correct) |
+| A33 | Console display/apply path substitution | Approval path/fingerprint binding | DENY |
+| A34 | Console risk downgrade (HIGH grant for CRITICAL patch) | Approval risk-level binding | DENY |
+| A35 | Console-granted approval replay | Single-use find_valid consumption | DENY on replay |
+| A36 | Governed mode with empty allowed-path scope | Worker fail-closed (no mutation scope) | DENY |
+| A37 | JSON credential (`{"password": ...}`) previously auto-applied as LOW | RiskEngine HIGH -> approval required | DENY |
+| A38 | Bare token (`sk-...`) previously auto-applied as LOW | RiskEngine HIGH -> approval required | DENY |
+| A39 | Base64/encoded secret previously auto-applied as LOW | RiskEngine HIGH -> approval required | DENY |
+| A40 | URL-embedded credential (`user:pass@`) previously auto-applied | RiskEngine HIGH -> approval required | DENY |
+| A41 | Shell credential flag (`-u user:pass`) previously auto-applied | RiskEngine HIGH -> approval required | DENY |
+| A42 | Environment secret reference (`os.environ['SECRET_KEY']`) | RiskEngine HIGH -> approval required | DENY |
+| A43 | Authorization-header construction in source previously MEDIUM | RiskEngine HIGH -> approval required | DENY |
+| A44 | Fragmented secret (`token_part1`/`token_part2`) | RiskEngine HIGH -> approval required | DENY |
+| A45 | Backup/temp path (`app.py.bak`) previously LOW | RiskEngine HIGH -> approval required | DENY |
+| A46 | Hidden credential file (`.creds`) previously LOW | RiskEngine HIGH -> approval required | DENY |
+| A47 | Production-env naming (`prod.yaml`) previously LOW | RiskEngine HIGH -> approval required | DENY |
+| A48 | `secrets/` directory with benign filename previously LOW | RiskEngine HIGH -> approval required | DENY |
+| A49 | OPAQUE content (control characters) unclassifiable | UNKNOWN -> policy DENY at risk stage | DENY |
+| A50 | Trivial credential assignment (`self.token = None`) | benign LOW auto-apply preserved (positive control) | ALLOW |
+| A51 | Attempt 1 HIGH approved + verify FAIL; attempt 2 HIGH patch without a new approval | new patch = new approval; DENY at approval stage | DENY |
+| A52 | Attempt 1 LOW; attempt 2 CRITICAL; attempt-1 approval reused | attempt binding; new risk needs new approval | DENY |
+| A53 | Attempt 1 HIGH approved; attempt 2 LOW must not inherit the old HIGH approval | independent evaluation; old approval single-use consumed; replay DENY | ALLOW (LOW) / DENY (replay) |
+| A54 | Same metadata but a different PatchProposal object | object-identity binding not bypassed by recovery | DENY |
+| A55 | Same fingerprint replay (find_valid + apply) | single-use at lookup and at apply | DENY |
+| A56 | Attempt-2 patch authorized with attempt-1 approval_id | approval_id bound to patch A | DENY |
+| A57 | Expired approval for the retry attempt | expired approval unusable | DENY |
+| A58 | Retry patch UNKNOWN (opaque) after a MEDIUM attempt | DENY at risk stage; no approval conversion | DENY |
+| A59 | OPAQUE retry carries a pre-granted HIGH approval | UNKNOWN never converts to approval; risk stage DENY | DENY |
+| A60 | Recovery assembly with no approval store drives a HIGH patch | apply boundary DENY; no write | DENY |
+| A61 | HIGH retry without approval despite a 3-attempt budget | budget never grants authorization | DENY |
+| A62 | Attempt 2 HIGH with a fresh approval granted for attempt 2 | new patch = new approval; ALLOW | ALLOW |
+| A63 | Three HIGH attempts, each with its own approval, FAIL FAIL PASS | bounded retry preserved when authorized | ALLOW |
+| A64 | HIGH without approval (approval denial is non-verification) | terminal; no retry | DENY |
+| A65 | Same HIGH patch proposed again on retry | duplicate fingerprint stops retry | DENY |
+| A66 | Corrupt apply journal (duplicate intent) | fail-closed load | REJECTED |
+| A67 | Crash after APPLIED (no verify): orphaned mutation on disk | detected by reconciliation | DETECTED |
+| A68 | Duplicate outcome (second VERIFIED) for one apply intent | single-use outcome | REJECTED |
+| A69 | VERIFIED outcome recorded before APPLIED | invalid transition | REJECTED |
+| A70 | One approval_id reused across two apply intents | reconciliation anomaly | FLAGGED |
+| A71 | Custom risk engine wired to pipeline must be the exact engine at the apply boundary | single authority (identity bound) | NO DRIFT |
+| A72 | Verification stdout with a secret value fed to the next LLM prompt on retry | redacted before prompt | REDACTED |
 
 **NOT covered by the corpus (UNVERIFIED):** live-LLM end-to-end
-apply/verify/recovery and concurrency/multi-agent behavior. (Risk engine
+apply/verify/recovery for the HIGH/CRITICAL approval path and
+concurrency/multi-agent behavior. (Risk engine
 behavior, the pipeline risk gate, human-approval boundary, the MISSION-014
-store-backed apply authorization, compile-only depth and
-approval/policy substitution are now covered by `tests/risk_*.py` and
-`tests/approval_boundary_test.py`, MISSION-011/012/014.)
+store-backed apply authorization, the interactive CLI approval console
+(MISSION-017, A31-A36), compile-only depth and
+approval/policy substitution are now covered by `tests/risk_*.py`,
+`tests/approval_console_test.py`, `tests/runtime_mode_test.py` and
+`tests/approval_boundary_test.py`, MISSION-011/012/014/017.)
+
+---
+
+## 19. Single Governance Authority (MISSION-019)
+
+**Implementation:** `simulation/security/governance_evaluator.py`
+(`GovernanceEvaluator`, `GovernanceDecision`).
+
+- The pipeline gate, `ConsoleApprovalGateway` and `ApplyAuthorization`
+  now consume ONE `GovernanceEvaluator` wrapping one `RiskEngine` +
+  one `RiskPolicy`. `WorkerActionPipeline._bind_approval_authority`
+  rebinds the apply executor's authorization to the pipeline's exact
+  evaluator (engine identity), so a caller-wired custom engine can never
+  diverge between the pipeline and the boundary. **VERIFIED** —
+  `tests/governance_evaluator_test.py` (engine-identity assertion),
+  corpus A71.
+- The apply boundary keeps its independent fail-closed checks (typed
+  `ControllerDecision`, `approved is True`, fingerprint, store-backed
+  `authorize_apply`); a single evaluator means the *same* engine/policy
+  is consulted, not that the boundary stops checking. **VERIFIED**.
+- MISSION-018A (SAFE/SUSPICIOUS/OPAQUE; `not detected` is never `safe`)
+  and MISSION-018B (store-less HIGH/CRITICAL/UNKNOWN => DENY) are
+  unchanged; the evaluator only fixes which engine/policy is consulted.
+  **VERIFIED** — full risk + approval + recovery suites still pass.
+
+## 20. Apply-Outcome Journal & Crash Consistency (MISSION-019)
+
+**Implementation:** `simulation/agent/apply/apply_outcome_journal.py`,
+`simulation/agent/recovery/startup_reconciliation.py`.
+
+- Lifecycle: INTENT -> APPLY_STARTED -> APPLIED | APPLY_FAILED ->
+  VERIFIED | ROLLBACK_STARTED -> ROLLED_BACK | ROLLBACK_FAILED.
+  Append-only, hash-chained, secret-safe (content hashes only).
+  **VERIFIED** — `tests/apply_outcome_journal_test.py`.
+- `load()` fails closed on any corruption, hash break, unknown record
+  type, unknown intent or out-of-order / duplicate transition.
+  **VERIFIED** — corpus A66/A68/A69.
+- Startup reconciliation is **detect-only**: it classifies intents,
+  inspects in-scope files against journaled content hashes, and flags
+  orphaned mutations and consumed approvals without a terminal outcome.
+  It never writes a file and never re-authors an apply, so the approval
+  boundary is never bypassed by "recovery exists". **VERIFIED** —
+  `tests/startup_reconciliation_test.py`, `tests/fault_injection_test.py`
+  (all seven crash windows), corpus A67/A70.
+- **Crash windows closed for detection:** approval-consumed-without-apply,
+  apply-start, apply-without-verify, verify-then-rollback-crash,
+  rollback-complete-without-evidence, reducer failure, snapshot write
+  crash (atomic). **VERIFIED** — `tests/fault_injection_test.py`.
+- **Limitation (UNKNOWN by design):** auto-repair of orphaned mutations
+  is NOT implemented — it is a filesystem mutation and therefore needs a
+  separate, explicit authorization decision; until then, orphans are
+  detected and reported only.
+
+## 21. Kernel Reducer-Failure Semantics (MISSION-019, documented + tested)
+
+- `Kernel.dispatch` order is append -> trace -> reducer
+  (`simulation/core/kernel.py`). A reducer failure on a persisted event
+  propagates; the event stays durably in the store while the live state
+  diverges; restart replay re-applies the event and reproduces the same
+  reducer failure (fail-closed, no silent divergence). **VERIFIED** —
+  `tests/fault_injection_test.py::test_window6_*`.
+
+## 22. Atomic Snapshots (MISSION-019)
+
+- `SnapshotStore.save` writes temp + fsync + `os.replace`; a crash
+  mid-write leaves the old or the fully-written new snapshot, never a
+  truncated mix. Recovery's "unverifiable snapshot => full replay" is
+  unchanged. **VERIFIED** —
+  `tests/fault_injection_test.py::test_window7_*`.
+
+## 23. Verification-Evidence Redaction (MISSION-019)
+
+- Verification stdout/stderr is redacted and length-bounded
+  (`secret_policy.sanitize_for_llm`) before it is embedded in the next
+  LLM retry prompt (`WorkerAgent._format_evidence_line`). Heuristic
+  mitigation, not a proof. **VERIFIED** —
+  `tests/secret_retry_boundary_test.py`, corpus A72.
 
 ---
 
@@ -447,18 +712,31 @@ approval/policy substitution are now covered by `tests/risk_*.py` and
   controller approval, fingerprint-bound apply, deterministic
   verification, bounded recovery, hash-chained evidence, fail-closed
   defaults, a tested system-derived risk layer
-  (RiskLevel/RiskEngine/RiskPolicy, MISSION-011) and a tested,
-  fingerprint-bound, single-use human approval boundary
-  (Approval/ApprovalStore, MISSION-012) hardened at the apply boundary so
-  that no duck-typed object, forged decision, agent-claimed approval id,
-  replayed/expired approval, evidence-only record or object-substituted
-  approval can authorize a write (MISSION-014).
+  (RiskLevel/RiskEngine/RiskPolicy, MISSION-011) hardened by MISSION-018A
+  (SAFE / SUSPICIOUS / OPAQUE content classification; `not detected` is
+  never treated as `safe`) and a tested, fingerprint-bound, single-use
+  human approval boundary (Approval/ApprovalStore, MISSION-012) hardened
+  at the apply boundary so that no duck-typed object, forged decision,
+  agent-claimed approval id, replayed/expired approval, evidence-only
+  record or object-substituted approval can authorize a write
+  (MISSION-014).
 - HIGH/CRITICAL risk is now enforced with a real approval path that fails
   closed on missing/malformed/expired/wrong/replayed approvals, never
   trusts agent- or proposal-contained approval metadata, and re-verifies
   the consumed approval binding at the apply boundary itself
   (MISSION-012/014, corpus A13-A20, boundary tests A–O). The risk gate
-  remains an explicit opt-in, not default-on (D-021/D-022).
+  remains an explicit opt-in, not default-on (D-021/D-022); MISSION-018B
+  additionally makes the apply boundary fail closed without an approval
+  authority, so RECOVERY and gate-off assemblies can never mutate
+  HIGH/CRITICAL/UNKNOWN patches (corpus A51-A65).
 - No production deployment exists; symlink-skip, live-LLM and
   concurrency/multi-agent behavior remain UNKNOWN outside this
   environment.
+- MISSION-019 added a single governance authority (D-031) so the
+  pipeline / console / apply boundary can never diverge on risk
+  classification, an apply-outcome journal + detect-only reconciliation
+  (D-032) so a mutation can never exist without a durable outcome
+  record and orphans are detectable after restart, atomic snapshot
+  writes (D-033), and verification-evidence redaction before the LLM
+  (D-034). None of these loosens a prior boundary; the full suite
+  (648 passed / 10 skipped) and the adversarial corpus (A01-A72) pass.

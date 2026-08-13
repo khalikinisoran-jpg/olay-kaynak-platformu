@@ -412,7 +412,7 @@ def test_apply_failure_records_apply_failed_no_verification(tmp_path):
 
     class FailingApplyExecutor:
 
-        def apply(self, patch, decision):
+        def apply(self, patch, decision, attempt=None):
 
             from simulation.agent.apply.apply_result import (
                 ApplyResult,

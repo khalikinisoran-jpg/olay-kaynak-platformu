@@ -3,8 +3,10 @@
 Canonical status of every identifiable development mission, derived from
 Git history, code, tests and docs/MISSION_LOG.md (2026-08-11 audit at HEAD
 `96ed72d`; MISSION-011 close-out status refreshed 2026-08-12; MISSION-012,
-MISSION-013 and MISSION-014 closed 2026-08-12; MISSION-016 status added
-2026-08-12).
+MISSION-013 and MISSION-014 closed 2026-08-12; MISSION-016 status refreshed
+2026-08-13 as committed; MISSION-017 status added 2026-08-13;
+MISSION-018A status added 2026-08-13; MISSION-018B status added
+2026-08-13).
 
 Status vocabulary (from docs/MISSION_LOG.md):
 - **VERIFIED** — committed + passing deterministic tests / audit evidence.
@@ -235,7 +237,7 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
 - **STATUS:** PLANNED (referenced; no code)
 
 ### MISSION-016 — Chief Engineer Verified-Gap-Closure Sprint
-- **STATUS:** IMPLEMENTED / VERIFIED-by-suite (working tree, no commit/push)
+- **STATUS:** VERIFIED / CLOSED (2026-08-12; committed)
 - **EVIDENCE:** full suite **465 passed / 10 skipped**; adversarial corpus
   **34 passed / 1 skipped** (A01-A30); gated live-LLM E2E **1 passed**
   (real provider); `compileall` exit 0; `git diff --check` clean.
@@ -249,9 +251,118 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
   `weather` branch removed + planner/dispatcher contract test; CI workflow +
   `pyproject.toml`; corpus A21-A30; repo hygiene (stray dirs removed,
   `.gitignore` cleaned, tracked junk staged for removal).
-- **REMAINING WORK:** interactive human-approval UX; commit/push; CI run on
-  Linux/macOS; MISSION-015 productization assessment; legacy dead-code
+- **REMAINING WORK:** interactive human-approval UX (**done in
+  MISSION-017**); commit/push (**done: commits `d347f43`, `a8de82e`**); CI
+  run on Linux/macOS; MISSION-015 productization assessment; legacy dead-code
   removal with per-component evidence.
+
+### MISSION-017 — Overnight Productization & Human Approval Sprint
+- **STATUS:** IMPLEMENTED / VERIFIED-by-suite (working tree, no commit/push)
+- **EVIDENCE:** full suite **521 passed / 10 skipped**; adversarial corpus
+  **40 passed / 1 skipped** (A01-A36); `compileall` exit 0;
+  `git diff --check` clean.
+- **IMPLEMENTATION:** interactive CLI human-approval interface
+  (`approval_console.py`: `PendingApprovalRequest`, `prompt_approval_decision`,
+  `ConsoleApprovalGateway`) wired into the pipeline (`approval_gateway`) and
+  `agent_run.py --governed`; deterministic runtime-mode tests
+  (`tests/runtime_mode_test.py`); corpus A31-A36 (fake approval UI, forged
+  operator identity, console display/apply mismatch, risk downgrade, replay,
+  unsafe mode); CI packaging smoke step; `benchmarks/approval_lookup_benchmark.py`;
+  secret-boundary no-leak tests for the console/ledger/evidence; doc sync.
+- **REMAINING WORK:** hosted CI run; default-on gate decision (UX now
+  exists); MISSION-015 productization assessment.
+
+### MISSION-018A — Risk Boundary Hardening
+- **STATUS:** IMPLEMENTED / VERIFIED-by-suite (working tree, no commit/push)
+- **EVIDENCE:** full suite **579 passed / 10 skipped** (+58: 37 regression
+  corpus entries + 7 risk-pipeline tests + 14 adversarial corpus records
+  A37-A50); adversarial corpus **54 passed / 1 skipped**; `compileall` exit
+  0; `git diff --check` clean.
+- **ROOT CAUSE CLOSED:** `RiskEngine` previously treated "no bad pattern
+  found" as `safe` (LOW baseline), so the MISSION-018 audit's evasion
+  classes (JSON/bare-token/base64/URL/shell/env/auth-header credentials;
+  `.bak`/`.creds`/`prod.yaml`/`secrets/*` paths) auto-applied in GOVERNED
+  mode without approval.
+- **ARCHITECTURAL DECISION (D-029):** no new `RiskLevel` value; the engine
+  now classifies content into SAFE / SUSPICIOUS / OPAQUE. SUSPICIOUS ->
+  HIGH (human approval; never auto-apply); OPAQUE (control characters) ->
+  UNKNOWN -> policy DENY. `not detected` is never treated as `safe`.
+- **IMPLEMENTATION:** `simulation/security/risk_engine.py` (structural
+  content heuristics + path hardening + OPAQUE->UNKNOWN);
+  `simulation/security/risk_policy.py` (LOW/MEDIUM security assumption
+  documented); `tests/risk_regression_test.py` (MISSION-018A corpus + benign
+  negatives); `tests/risk_pipeline_test.py` (suspicious content requires
+  approval; opaque fails at risk stage; trivial assignments stay LOW);
+  `tests/security/adversarial_corpus_test.py` (A37-A50).
+- **MISSION-014 PRESERVED:** approval store / fingerprint / path / action /
+  attempt / object-identity binding / single-use / expiry / apply boundary
+  untouched; HIGH/CRITICAL valid-approval path and all forged/replay/wrong-
+  context DENY tests still pass.
+- **RECOVERY UNTOUCHED:** no recovery behavior changed (deferred to
+  MISSION-018B).
+- **REMAINING WORK:** MISSION-018B (RECOVERY approval boundary);
+  hosted CI run; default-on gate decision; MISSION-015 productization
+  assessment.
+
+### MISSION-018B — Recovery Approval Boundary
+- **STATUS:** IMPLEMENTED / VERIFIED-by-suite (working tree, no commit/push)
+- **EVIDENCE:** full suite **594 passed / 10 skipped** (+15: adversarial
+  corpus records A51-A65); adversarial corpus **69 passed / 1 skipped**;
+  `compileall` exit 0; `git diff --check` clean.
+- **ROOT CAUSE CLOSED:** `ApplyAuthorization.authorize` returned
+  `True` when `approval_store is None`, so the gate-off RECOVERY mode (and
+  any unbound assembly) mutated HIGH/CRITICAL/UNKNOWN patches with no risk
+  or approval evaluation (`Recovery -> ApplyAuthorization -> FileApplier`).
+- **ARCHITECTURAL DECISION (D-030):** the apply boundary is now
+  unconditionally fail-closed: risk is recomputed at the boundary and every
+  HIGH/CRITICAL/UNKNOWN apply requires a store-verified single-use approval
+  binding; a missing approval store is itself a denial. LOW/MEDIUM applies
+  keep the typed-decision + fingerprint contract (safe under MISSION-018A).
+  Each recovery retry is an independent PatchProposal with its own risk +
+  approval evaluation; attempt binding prevents old-approval inheritance.
+- **IMPLEMENTATION:** `simulation/agent/apply/apply_authorization.py`
+  (store-less HIGH/CRITICAL/UNKNOWN => DENY); `agent_run.py --recovery`
+  now wires risk gate + approval store + ledger (no interactive gateway;
+  pre-authorized autonomous retry); `tests/security/adversarial_corpus_test.py`
+  (A51-A65).
+- **MISSION-014 PRESERVED:** approval store / fingerprint / path / action /
+  attempt / risk / object-identity / single-use / expiry / apply boundary
+  unchanged and re-verified.
+- **MISSION-018A PRESERVED:** RiskEngine SAFE/SUSPICIOUS/OPAQUE and
+  OPAQUE->UNKNOWN->DENY hold in recovery too (A58/A59).
+- **RECOVERY BEHAVIOR PRESERVED:** cap 3, duplicate-fingerprint stop
+  (A65), verification-failure bounded retry (A62/A63), terminal
+  non-verification failures (A64), budget-is-not-authorization (A61).
+- **REMAINING WORK:** hosted CI run; default-on gate decision; MISSION-015
+  productization assessment.
+
+### MISSION-019 — Governance Boundary Consolidation & Crash-Consistency
+- **STATUS:** IMPLEMENTED / VERIFIED-by-suite (working tree, no commit/push)
+- **EVIDENCE:** full suite **648 passed / 10 skipped** (+54 over
+  MISSION-018B); adversarial corpus **76 passed / 1 skipped** (A01-A72);
+  `compileall` exit 0; `git diff --check` clean.
+- **GOAL (A):** eliminate divergence between the three risk-evaluation
+  points (pipeline gate / approval console / apply boundary) — single
+  `GovernanceEvaluator` (D-031), engine-identity bound into the apply
+  boundary (corpus A71).
+- **GOAL (B):** close the crash-consistency gap between file mutation and
+  durable outcome — `ApplyOutcomeJournal` (D-032, append-only hash-chained
+  lifecycle, fail-closed load) + detect-only `ReconciliationEngine`
+  (orphaned mutations / consumed approvals without terminal outcome),
+  wired through `build_recovery_agent`/`agent_run.py`; atomic snapshot
+  writes (D-033); all seven crash windows tested
+  (`tests/fault_injection_test.py`).
+- **GOAL (C):** `Kernel.dispatch` reducer-failure semantics documented and
+  tested (append persists; replay reproduces the failure — fail-closed).
+- **PLUS (D-034):** verification stdout/stderr redacted + length-bounded
+  before the next LLM retry prompt (corpus A72).
+- **PRESERVED:** MISSION-014 / MISSION-018A / MISSION-018B invariants,
+  bounded recovery, evidence-is-never-authority, default proposal-only
+  runtime. No test removed or weakened.
+- **REMAINING WORK:** hosted CI run; default-on gate decision; MISSION-015
+  productization assessment; decision on auto-repair of orphaned mutations
+  (kept out of scope by design — a mutation requiring explicit
+  authorization).
 
 ---
 
@@ -267,14 +378,16 @@ still outstanding at log time; since then MISSION-004..008 hardened it.
 ## UNKNOWN Missions / States
 
 - Exact intended scope of MISSION-015 (no design documents).
-- No missions beyond MISSION-015 are referenced anywhere; the next
-  mission number is inferred to be MISSION-016 if the sequence continues —
+- No missions beyond MISSION-017 are referenced anywhere; the next
+  mission number is inferred to be MISSION-018 if the sequence continues —
   **INFERRED, not verified.**
 - The historic (pre-numbered) MISSION_LOG records give status
   "IMPLEMENTED" without current test re-verification; behavior is covered by
   today's passing suite, so re-classified VERIFIED-by-suite where tests exist —
   **INFERRED.**
-- Whether the risk gate should become default-on in the shipped assembly
-  once a human-approval UX exists — **UNKNOWN** (D-021/D-022: gate stays
-  explicit opt-in; default-on is a productization decision, not an
-  implementation requirement).
+- Whether the risk gate should become default-on in the shipped assembly now
+  that a human-approval UX exists — **UNKNOWN** (D-021/D-022/D-028: gate
+  stays explicit opt-in; default-on is a productization decision, no longer
+  blocked on implementation).
+- Whether the MISSION-017 CI packaging smoke step passes on a hosted runner —
+  **UNKNOWN** (verified locally only).
