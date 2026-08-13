@@ -1,4 +1,5 @@
 import os
+import re
 
 from pathlib import Path
 
@@ -214,7 +215,10 @@ class PathPolicy:
         raw
     ):
 
-        return ".." in Path(raw).parts
+        return ".." in re.split(
+            r"[\\/]+",
+            raw
+        )
 
     def _canonical(
         self,

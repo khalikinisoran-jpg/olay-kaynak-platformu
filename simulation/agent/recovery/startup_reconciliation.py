@@ -377,4 +377,3 @@ class ReconciliationEngine:
                 seen[status.approval_id] = status.intent_id
 
         return anomalies
-

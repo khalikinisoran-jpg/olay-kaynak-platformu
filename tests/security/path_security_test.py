@@ -186,6 +186,70 @@ def test_path_policy_rejects_path_traversal(
     assert "traversal" in message
 
 
+@pytest.mark.parametrize(
+    "traversal_path",
+    [
+        "allowed\\..\\secret.txt",
+        "allowed/../secret.txt",
+        "allowed\\..\\nested\\file.txt",
+        "a\\..\\b.txt",
+        "a/..\\b.txt",
+        "a\\../b.txt",
+        "..\\secret.txt",
+        "..\\",
+        "allowed\\..\\..\\etc\\passwd",
+    ]
+)
+def test_path_policy_rejects_windows_style_traversal(
+    policy,
+    traversal_path
+):
+
+    ok, message = policy.check_scope(
+        traversal_path,
+        ("allowed/",)
+    )
+
+    assert ok is False
+
+    assert "traversal" in message
+
+
+def test_path_policy_classifies_separators_consistently(
+    policy
+):
+
+    for raw in (
+        "allowed/../secret.txt",
+        "allowed\\..\\secret.txt",
+    ):
+
+        ok, message = policy.check_scope(
+            raw,
+            ("allowed/",)
+        )
+
+        assert ok is False
+
+        assert "traversal" in message
+
+    assert policy._has_parent_component(
+        "a/../b"
+    ) is True
+
+    assert policy._has_parent_component(
+        "a\\..\\b"
+    ) is True
+
+    assert policy._has_parent_component(
+        "a/b.txt"
+    ) is False
+
+    assert policy._has_parent_component(
+        "a\\b.txt"
+    ) is False
+
+
 def test_path_policy_rejects_scope_traversal(
     policy
 ):
