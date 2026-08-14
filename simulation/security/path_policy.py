@@ -4,6 +4,11 @@ import re
 from pathlib import Path
 
 
+_SEPARATOR_RE = re.compile(
+    r"[\\/]+"
+)
+
+
 class PathPolicy:
 
     """Fail-closed patch path scope policy.
@@ -215,8 +220,17 @@ class PathPolicy:
         raw
     ):
 
-        return ".." in re.split(
-            r"[\\/]+",
+        """Return True when raw contains a '..' component.
+
+        The decision is purely lexical and OS-independent: '/' and '\\'
+        are both treated as path separators. A Windows-style traversal
+        string such as 'allowed\\..\\secret.txt' is therefore rejected on
+        every host, including POSIX where '\\' is a legal filename
+        character and Path(raw).parts would treat the whole string as a
+        single component and miss the '..' entirely.
+        """
+
+        return ".." in _SEPARATOR_RE.split(
             raw
         )
 

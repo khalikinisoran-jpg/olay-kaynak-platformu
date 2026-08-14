@@ -4,6 +4,8 @@ import sys
 
 import pytest
 
+from pathlib import PurePosixPath
+
 from simulation.security.path_policy import (
     PathPolicy
 )
@@ -169,6 +171,9 @@ def test_path_policy_rejects_null_byte_in_scope(
         "a/../b.txt",
         "..",
         "allowed\\..\\secret.txt",
+        "a\\..\\b.txt",
+        "mixed\\..\\path/file.txt",
+        "mixed/../path\\file.txt",
     ]
 )
 def test_path_policy_rejects_path_traversal(
@@ -248,6 +253,64 @@ def test_path_policy_classifies_separators_consistently(
     assert policy._has_parent_component(
         "a\\b.txt"
     ) is False
+
+
+def test_path_policy_benign_backslash_filename_not_traversal(
+    policy
+):
+
+    for raw in (
+        "allowed\\file.txt",
+        "notes\\about\\things.txt",
+        "foo..bar.txt",
+        "back\\slash.txt",
+    ):
+
+        assert policy._has_parent_component(
+            raw
+        ) is False
+
+
+def test_path_policy_rejects_traversal_under_posix_lexical_semantics(
+    policy,
+    monkeypatch
+):
+
+    raw = "allowed\\..\\secret.txt"
+
+    assert PurePosixPath(raw).parts == (
+        "allowed\\..\\secret.txt",
+    )
+
+    assert policy._has_parent_component(raw) is True
+
+    canonical_called = []
+
+    def fail_if_canonicalized(value):
+
+        canonical_called.append(value)
+
+        raise AssertionError(
+            "Traversal must be rejected before "
+            "any OS-dependent canonicalization."
+        )
+
+    monkeypatch.setattr(
+        policy,
+        "_canonical",
+        fail_if_canonicalized
+    )
+
+    ok, message = policy.check_scope(
+        raw,
+        ("allowed/",)
+    )
+
+    assert canonical_called == []
+
+    assert ok is False
+
+    assert "traversal" in message
 
 
 def test_path_policy_rejects_scope_traversal(
@@ -347,6 +410,8 @@ def test_path_policy_rejects_sibling_out_of_scope(
     assert ok is False
 
     assert "outside the allowed scope" in message
+
+    assert "traversal" not in message
 
 
 def test_path_policy_rejects_prefix_confusion(
