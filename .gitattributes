@@ -1,0 +1,35 @@
+# Deliberate line-ending policy.
+#
+# The repository stores all text files with LF line endings in the Git
+# object database.  On Windows the local system default is core.autocrlf=true;
+# without an explicit policy this produces mixed working-tree endings and
+# noisy diffs.  These rules make the behavior deterministic on every platform
+# (Linux CI, Windows CI, local Windows) without rewriting existing history.
+
+* text=auto
+
+# Source, tests, and config are normalized to LF in the working tree too,
+# so a checkout produces identical bytes on Windows and Linux.
+*.py   text eol=lf
+*.md   text eol=lf
+*.toml text eol=lf
+*.txt  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.cfg  text eol=lf
+*.ini  text eol=lf
+
+# Shell scripts must stay LF to remain executable on Linux CI.
+*.sh text eol=lf
+
+# Binary artifacts are never normalized.  None are tracked today; the
+# rules are defensive for future releases.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
+*.whl   binary
+*.gz    binary
