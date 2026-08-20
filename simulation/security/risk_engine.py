@@ -298,17 +298,23 @@ _BEARER_RE = re.compile(
 # accessed variable name must itself contain a credential keyword, so
 # os.environ["HOME"] stays benign.
 _ENV_SECRET_REFERENCE_RE = re.compile(
-    r"(?i)(?:os\.environ|process\.env|environ|getenv|env)"
-    r"(?:\.get|\.|\s*\(|\s*\[)"
-    r"\s*[\"']?(?:[^\"'\]\)]*(?:password|passwd|secret|token|api[_-]?key|"
+    r"(?i)(?:os\s*(?:\.\s*environ|\[\s*[\"']environ[\"']\s*\])|process\s*\.\s*env|environ|getenv|env)"
+    r"(?:\s*\.\s*get|\.|\s*\(|\s*\[)"
+    r"\s*\(?\s*[fFrRbBuU]*[\"']?(?:[^\"'\]\)]*(?:password|passwd|secret|token|api[_-]?key|"
     r"access[_-]?key|credential|auth[_-]?key|client[_-]?secret)"
     r"[^\"'\]\)]*)"
 )
 
 _SHELL_ENV_REFERENCE_RE = re.compile(
-    r"(?i)\$\{?\s*(?:secret|token|password|passwd|api[_-]?key|"
+    r"(?i)\$\{?\s*[\w]*?(?:secret|token|password|passwd|api[_-]?key|"
     r"access[_-]?key|credential|auth[_-]?key|client[_-]?secret|"
-    r"db_password)\s*\}?"
+    r"db_password)[\w]*\s*\}?"
+)
+
+# Generic alias-aware secret get (covers e.get("SECRET"), getattr(...).get, etc.)
+# Catches any .get("...SECRET...") even without os.environ prefix, to close alias dataflow gap.
+_GENERIC_GET_SECRET_RE = re.compile(
+    r"(?i)\.get\s*\(\s*[fFrRbBuU]*[\"'][^\"']*(?:secret|token|password|passwd|api[_-]?key|access[_-]?key|credential|auth[_-]?key|client[_-]?secret)[^\"']*[\"']"
 )
 
 _TRIVIAL_LITERALS = frozenset({
@@ -916,6 +922,7 @@ class RiskEngine:
         if (
             _ENV_SECRET_REFERENCE_RE.search(new_content)
             or _SHELL_ENV_REFERENCE_RE.search(new_content)
+            or _GENERIC_GET_SECRET_RE.search(new_content)
         ):
 
             signals.append(

@@ -74,6 +74,50 @@ class RecoveryEngine:
 
         print("Integrity OK")
 
+        # MISSION-N: when the event store carries an external keyed
+        # trust anchor, the recomputed chain head must match the
+        # anchored head exactly. This makes tail deletion / tail edit /
+        # hash-recomputed middle deletion and anchor rollback fail
+        # closed, which the unkeyed SHA-256 chain alone cannot do.
+        anchor = getattr(
+            self.event_store,
+            "chain_anchor",
+            None,
+        )
+
+        if anchor is not None:
+
+            tail_sequence = (
+                parsed_events[-1]["sequence"]
+                if parsed_events
+                else 0
+            )
+
+            tail_hash = (
+                parsed_events[-1].get(
+                    "current_hash",
+                    parsed_events[-1].get("hash"),
+                )
+                if parsed_events
+                else "GENESIS"
+            )
+
+            print()
+            print("Trust Anchor Check...")
+
+            if not anchor.verify(
+                tail_sequence,
+                tail_hash,
+            ):
+
+                raise RuntimeError(
+                    "Event chain trust anchor verification failed: "
+                    "the anchored chain head does not match the "
+                    "event tail."
+                )
+
+            print("Trust Anchor OK")
+
         try:
 
             snapshot = self.snapshot_store.load()

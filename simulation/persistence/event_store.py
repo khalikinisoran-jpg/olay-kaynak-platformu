@@ -5,6 +5,14 @@ import threading
 from pathlib import Path
 
 from simulation.core.event import Event
+from simulation.persistence.chain_anchor import (
+    ChainAnchor,
+    ChainAnchorError,
+)
+from simulation.persistence.process_lock import (
+    EventStoreBusyError,
+    _ProcessFileLock,
+)
 from simulation.security.hash_chain import HashChain
 
 
@@ -22,18 +30,33 @@ class EventStore:
     lock, and any caller-supplied ``event.sequence`` is ignored for
     allocation. This guarantees strictly unique, monotonically
     increasing, contiguous sequences and a valid hash chain even when
-    many writers share one store instance.
+    many threads share one store instance.
 
-    Appends are serialized with an internal lock so multiple threads
-    sharing one store instance cannot interleave
-    ``tail_hash``/``append`` and corrupt the chain. ``append`` returns
-    the authoritative sequence actually persisted so callers can keep
-    their in-memory copies consistent with the log.
+    MISSION-N trust anchor (optional): when ``anchor_path`` is provided,
+    every append also updates an external keyed ``ChainAnchor``. The
+    anchor makes tail deletion / tail edit / hash-recomputed middle
+    deletion detectable by recovery (FAIL CLOSED). With no anchor the
+    store behaves exactly as before (legacy unanchored mode).
+
+    MISSION-O single-writer enforcement: the append critical section
+    (read tail -> allocate -> write record -> update anchor) and the
+    construction tail-read are guarded by an OS-level advisory file
+    lock (``_ProcessFileLock``). A second OS process writing the same
+    store either waits briefly and then succeeds (serialized) or fails
+    closed with ``EventStoreBusyError`` when the holder does not
+    release within the timeout. The lock is released automatically by
+    the OS if the holder crashes (no stale lock, no permanent
+    deadlock). Cross-process single-writer is therefore enforced among
+    cooperating ``EventStore`` instances.
     """
 
     def __init__(
         self,
-        path="data/events.jsonl"
+        path="data/events.jsonl",
+        anchor_path=None,
+        anchor_key=None,
+        anchor_key_path=None,
+        writer_lock_timeout=_ProcessFileLock.DEFAULT_TIMEOUT
     ):
 
         self.path = Path(path)
@@ -49,7 +72,65 @@ class EventStore:
 
         self._lock = threading.Lock()
 
+        self._process_lock = _ProcessFileLock(
+            self.path,
+            timeout=writer_lock_timeout,
+        )
+
+        self.chain_anchor = None
+
+        with self._process_lock:
+
+            self._tail_record = self._read_tail()
+
+            self._file_size = self._snapshot_file_size()
+
+            if anchor_path is not None:
+
+                try:
+
+                    self.chain_anchor = ChainAnchor(
+                        path=anchor_path,
+                        anchor_key=anchor_key,
+                        anchor_key_path=anchor_key_path,
+                    )
+
+                except ChainAnchorError:
+
+                    raise
+
+    def _snapshot_file_size(self):
+
+        try:
+
+            return os.path.getsize(self.path)
+
+        except OSError:
+
+            return 0
+
+    def _sync_if_stale(self):
+
+        """Re-read the file tail when another writer grew the log.
+
+        Called UNDER the process lock, so the check-and-resync is atomic
+        with respect to every cooperating ``EventStore`` writer. In the
+        single-writer case the size never changes externally and this is
+        a single ``getsize`` no-op (O(1) fast path). When a second
+        writer appended, the cached tail is stale and the sequence /
+        previous_hash derived from it would collide, so it is re-read
+        from the file before allocation.
+        """
+
+        current_size = self._snapshot_file_size()
+
+        if current_size == self._file_size:
+
+            return
+
         self._tail_record = self._read_tail()
+
+        self._file_size = current_size
 
     def _read_tail(self):
 
@@ -77,33 +158,102 @@ class EventStore:
 
         with self._lock:
 
-            previous_hash = self.tail_hash()
+            with self._process_lock:
 
-            sequence = self.next_sequence()
+                self._sync_if_stale()
 
-            record = {
+                previous_hash = self.tail_hash()
 
-                "event_id": event.event_id,
+                sequence = self.next_sequence()
 
-                "event_type": event.event_type,
+                record = {
 
-                "payload": event.payload,
+                    "event_id": event.event_id,
 
-                "sequence": sequence,
+                    "event_type": event.event_type,
 
-                "previous_hash": previous_hash
+                    "payload": event.payload,
 
-            }
+                    "sequence": sequence,
 
-            record["current_hash"] = HashChain.calculate(
-                record
-            )
+                    "previous_hash": previous_hash
 
-            self._write_record(record)
+                }
 
-            self._tail_record = record
+                record["current_hash"] = HashChain.calculate(
+                    record
+                )
+
+                self._write_record(record)
+
+                self._tail_record = record
+
+                self._file_size = self._snapshot_file_size()
+
+                if self.chain_anchor is not None:
+
+                    # MISSION-N: the anchor is updated AFTER the event
+                    # record is durably fsynced. A crash between the two
+                    # leaves events beyond the anchored head, which the next
+                    # recovery rejects (FAIL CLOSED) instead of silently
+                    # trusting a partially-anchored tail.
+                    self.chain_anchor.anchor(
+                        sequence,
+                        record["current_hash"],
+                    )
 
         return sequence
+
+    def verify_tail_anchor(self):
+
+        """Verify the anchored chain head against the current tail.
+
+        Returns True when no anchor is configured (legacy unanchored
+        mode) or when the anchor matches the tail read from the file
+        right now. The on-disk tail is re-read instead of trusting the
+        in-memory cache so an external mutation after construction is
+        detected (TOCTOU robustness). Raises ``ChainAnchorError`` on
+        mismatch so callers fail closed instead of silently trusting a
+        truncated or edited history.
+        """
+
+        if self.chain_anchor is None:
+
+            return True
+
+        live_tail = self._read_tail()
+
+        if live_tail is None:
+
+            tail_sequence = 0
+
+            tail_hash = "GENESIS"
+
+        else:
+
+            tail_sequence = live_tail.get(
+                "sequence",
+                0,
+            )
+
+            tail_hash = live_tail.get(
+                "current_hash",
+                "GENESIS",
+            )
+
+        if not self.chain_anchor.verify(
+            tail_sequence,
+            tail_hash,
+        ):
+
+            raise ChainAnchorError(
+                "Event chain trust anchor verification failed: "
+                "the anchored chain head does not match the event "
+                "tail (tail deletion, edit, or anchor rollback "
+                "detected)."
+            )
+
+        return True
 
     def _write_record(self, record):
 

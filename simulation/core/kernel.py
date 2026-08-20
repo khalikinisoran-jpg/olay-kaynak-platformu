@@ -1,10 +1,13 @@
 from simulation.core.reducer import Reducer
 from simulation.core.event import Event
 
+from simulation.persistence.snapshot import SnapshotStore
 from simulation.persistence.snapshot_manager import SnapshotManager
 from simulation.recovery.recovery_engine import RecoveryEngine
 
 from simulation.decision.decision_trace import DecisionTrace
+
+from pathlib import Path
 
 
 class Kernel:
@@ -15,11 +18,39 @@ class Kernel:
 
         self.event_store = event_store
 
-        self.snapshot_manager = (
-            snapshot_manager
-            if snapshot_manager is not None
-            else SnapshotManager()
-        )
+        if snapshot_manager is not None:
+
+            self.snapshot_manager = snapshot_manager
+
+        else:
+
+            # RELEASE-03: derive the default snapshot path from the event
+            # store so a Kernel whose store lives outside ``data/`` writes
+            # its auto-snapshot beside that store instead of racing other
+            # processes on the CWD-relative ``data/snapshot.json``. The
+            # default single-process layout (data/events.jsonl ->
+            # data/snapshot.json) is unchanged.
+            store_path = getattr(
+                self.event_store,
+                "path",
+                None,
+            )
+
+            if store_path is not None:
+
+                snapshot_path = (
+                    Path(store_path).parent / "snapshot.json"
+                )
+
+            else:
+
+                snapshot_path = "data/snapshot.json"
+
+            self.snapshot_manager = SnapshotManager(
+                snapshot_store=SnapshotStore(
+                    path=str(snapshot_path)
+                )
+            )
 
         self.decision_trace = DecisionTrace()
 
