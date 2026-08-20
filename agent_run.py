@@ -91,6 +91,21 @@ def main():
     )
 
     parser.add_argument(
+        "--approval-ledger-anchor-path",
+        default=None,
+        help=(
+            "MISSION-N1 trust anchor file for the approval ledger. "
+            "Enables keyed HMAC chain-head anchoring so truncation / "
+            "modification / forgery of the approval ledger fails "
+            "closed at reload (a forged or replayed consumed approval "
+            "cannot be resurrected). The key is the same CHAIN_ANCHOR_KEY "
+            "environment variable or --anchor-key-path used by the event "
+            "store anchor. Fail-closed: enabling this without a key "
+            "refuses to start."
+        ),
+    )
+
+    parser.add_argument(
         "--apply-journal",
         default="data/apply_journal.jsonl",
         help=(
@@ -100,6 +115,31 @@ def main():
             "and the evidence event is detectable after restart. A "
             "corrupted journal fails closed at startup. Never an "
             "authorization input."
+        ),
+    )
+
+    parser.add_argument(
+        "--anchor-path",
+        default=None,
+        help=(
+            "MISSION-N trust anchor file for the event store. Enables "
+            "keyed HMAC chain-head anchoring so tail deletion / tail "
+            "edit / hash-recomputed middle deletion fail closed at "
+            "recovery. The key is read from the CHAIN_ANCHOR_KEY "
+            "environment variable or from --anchor-key-path. The key "
+            "must NEVER be stored in the repository, snapshots or "
+            "logs. Fail-closed: enabling the anchor without a key "
+            "refuses to start."
+        ),
+    )
+
+    parser.add_argument(
+        "--anchor-key-path",
+        default=None,
+        help=(
+            "Read the trust-anchor key from this file (operator "
+            "managed, outside the repository). Mutually exclusive "
+            "with CHAIN_ANCHOR_KEY; the key must be at least 32 bytes."
         ),
     )
 
@@ -116,9 +156,37 @@ def main():
             "(fail-closed: no mutation scope)."
         )
 
+    if args.recovery and not args.allowed_path:
+
+        parser.error(
+            "--recovery requires at least one --allowed-path "
+            "(fail-closed: no mutation scope)."
+        )
+
     kernel = Kernel(
-        EventStore()
+        EventStore(
+            anchor_path=args.anchor_path,
+            anchor_key_path=args.anchor_key_path,
+        )
     )
+
+    if args.anchor_path is None:
+
+        print(
+            "\n[event store] UNANCHORED: no --anchor-path given. "
+            "Tail deletion / tail edit of the event log is NOT "
+            "detected. For a security-sensitive deployment pass "
+            "--anchor-path (key via CHAIN_ANCHOR_KEY or "
+            "--anchor-key-path)."
+        )
+
+    else:
+
+        print(
+            "[event store] ANCHORED: event-log tail integrity is "
+            "verified against the keyed chain-head trust anchor "
+            "on every recovery."
+        )
 
     if args.governed:
 
@@ -129,7 +197,11 @@ def main():
         approval_store = ApprovalStore(
             evidence_recorder=recorder,
             ledger=ApprovalLedger(
-                path=args.approval_ledger
+                path=args.approval_ledger,
+                anchor_path=(
+                    args.approval_ledger_anchor_path
+                ),
+                anchor_key_path=args.anchor_key_path,
             ),
         )
 
@@ -172,6 +244,26 @@ def main():
             f"[governed mode] approval ledger: {args.approval_ledger}"
         )
 
+        if args.approval_ledger_anchor_path is None:
+
+            print(
+                "\n[approval ledger] UNANCHORED: no "
+                "--approval-ledger-anchor-path given. The ledger's "
+                "unkeyed chain can be truncated/forged by a data-dir "
+                "writer (a consumed approval could be resurrected). "
+                "For a security-sensitive deployment pass "
+                "--approval-ledger-anchor-path (key via "
+                "CHAIN_ANCHOR_KEY or --anchor-key-path)."
+            )
+
+        else:
+
+            print(
+                "[approval ledger] ANCHORED: ledger tail integrity is "
+                "verified against the keyed chain-head trust anchor "
+                "on every reload."
+            )
+
         print(
             f"[governed mode] apply journal: {args.apply_journal}"
         )
@@ -196,7 +288,11 @@ def main():
         approval_store = ApprovalStore(
             evidence_recorder=recorder,
             ledger=ApprovalLedger(
-                path=args.approval_ledger
+                path=args.approval_ledger,
+                anchor_path=(
+                    args.approval_ledger_anchor_path
+                ),
+                anchor_key_path=args.anchor_key_path,
             ),
         )
 
@@ -229,6 +325,26 @@ def main():
             "require a pre-granted ledger approval and fail "
             "closed otherwise)."
         )
+
+        if args.approval_ledger_anchor_path is None:
+
+            print(
+                "\n[approval ledger] UNANCHORED: no "
+                "--approval-ledger-anchor-path given. The ledger's "
+                "unkeyed chain can be truncated/forged by a data-dir "
+                "writer (a consumed approval could be resurrected). "
+                "For a security-sensitive deployment pass "
+                "--approval-ledger-anchor-path (key via "
+                "CHAIN_ANCHOR_KEY or --anchor-key-path)."
+            )
+
+        else:
+
+            print(
+                "[approval ledger] ANCHORED: ledger tail integrity is "
+                "verified against the keyed chain-head trust anchor "
+                "on every reload."
+            )
 
     else:
 

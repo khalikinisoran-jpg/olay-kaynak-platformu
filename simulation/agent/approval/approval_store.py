@@ -4,6 +4,10 @@ from simulation.agent.approval.approval_ledger import (
     ApprovalLedger,
 )
 
+from simulation.persistence.process_lock import (
+    EventStoreBusyError,
+)
+
 
 class ApprovalStore:
 
@@ -113,6 +117,14 @@ class ApprovalStore:
                     record["approval_id"]
                 )
 
+            elif record_type == (
+                ApprovalLedger.TYPE_ANCHORED
+            ):
+
+                # MISSION-N2: in-chain anchoring marker. Metadata only;
+                # never an authorization input.
+                continue
+
             else:
 
                 raise RuntimeError(
@@ -177,6 +189,65 @@ class ApprovalStore:
 
         return approval
 
+    def _sync_consumed_from_ledger(self):
+
+        """Refresh _consumed/_applied/_approvals from ledger file (call UNDER process lock)."""
+
+        if self.ledger is None:
+
+            return
+
+        try:
+
+            records = self.ledger._read_verified()
+
+        except RuntimeError:
+
+            # Verification failure is fail-closed at load time; here treat as no sync
+            return
+
+        for record in records:
+
+            record_type = record.get("record_type")
+
+            if record_type == ApprovalLedger.TYPE_GRANT:
+
+                approval_id = record.get("approval_id")
+
+                if approval_id not in self._approvals:
+
+                    try:
+
+                        approval = Approval(
+                            approval_id=record["approval_id"],
+                            patch_fingerprint=record["patch_fingerprint"],
+                            path=record["path"],
+                            action=record["action"],
+                            risk_level=record["risk_level"],
+                            attempt=record["attempt"],
+                            authorizer=record["authorizer"],
+                            created_at=record["created_at"],
+                            expires_at=record.get("expires_at", ""),
+                        )
+
+                        self._approvals[approval_id] = approval
+
+                        self._by_fingerprint.setdefault(
+                            approval.patch_fingerprint, []
+                        ).append(approval_id)
+
+                    except Exception:
+
+                        continue
+
+            elif record_type == ApprovalLedger.TYPE_CONSUMED:
+
+                self._consumed.add(record.get("approval_id"))
+
+            elif record_type == ApprovalLedger.TYPE_APPLIED:
+
+                self._applied.add(record.get("approval_id"))
+
     def find_valid(
         self,
         fingerprint,
@@ -201,6 +272,13 @@ class ApprovalStore:
         later requires that same object, so an approval consumed for
         one patch object can never authorize a different object with
         identical-looking metadata.
+
+        MISSION-N6: when a ledger is present, the check + consume +
+        append is guarded by the ledger's OS-level process lock and
+        the in-memory _consumed set is refreshed from the file before
+        the check, so two OS processes cannot both consume the same
+        approval (single-use across processes). A lock timeout fails
+        closed (None).
         """
 
         if not fingerprint:
@@ -216,51 +294,108 @@ class ApprovalStore:
 
             return None
 
-        for approval_id in self._by_fingerprint.get(
-            fingerprint,
-            (),
-        ):
+        # Fast path without ledger: in-process only
+        if self.ledger is None:
 
-            if approval_id in self._consumed:
+            for approval_id in self._by_fingerprint.get(
+                fingerprint,
+                (),
+            ):
 
-                continue
+                if approval_id in self._consumed:
 
-            approval = self._approvals[approval_id]
+                    continue
 
-            if approval.is_expired():
+                approval = self._approvals[approval_id]
 
-                continue
+                if approval.is_expired():
 
-            if approval.path != path:
+                    continue
 
-                continue
+                if approval.path != path:
 
-            if approval.action != action:
+                    continue
 
-                continue
+                if approval.action != action:
 
-            if approval.risk_level != risk_level:
+                    continue
 
-                continue
+                if approval.risk_level != risk_level:
 
-            if approval.attempt != attempt:
+                    continue
 
-                continue
+                if approval.attempt != attempt:
 
-            self._consumed.add(approval_id)
+                    continue
 
-            if patch is not None:
+                self._consumed.add(approval_id)
 
-                self._bindings[approval_id] = patch
+                if patch is not None:
 
-            if self.ledger is not None:
+                    self._bindings[approval_id] = patch
 
-                self.ledger.append_consumed(
-                    approval_id,
+                return approval
+
+            return None
+
+        # Ledger-backed: process-safe single-use
+        try:
+
+            with self.ledger._process_lock:
+
+                # Refresh stale consumed/applied from file before check
+                self.ledger._sync_if_stale()
+
+                self._sync_consumed_from_ledger()
+
+                for approval_id in self._by_fingerprint.get(
                     fingerprint,
-                )
+                    (),
+                ):
 
-            return approval
+                    if approval_id in self._consumed:
+
+                        continue
+
+                    approval = self._approvals[approval_id]
+
+                    if approval.is_expired():
+
+                        continue
+
+                    if approval.path != path:
+
+                        continue
+
+                    if approval.action != action:
+
+                        continue
+
+                    if approval.risk_level != risk_level:
+
+                        continue
+
+                    if approval.attempt != attempt:
+
+                        continue
+
+                    self._consumed.add(approval_id)
+
+                    if patch is not None:
+
+                        self._bindings[approval_id] = patch
+
+                    self.ledger.append_consumed(
+                        approval_id,
+                        fingerprint,
+                    )
+
+                    return approval
+
+        except EventStoreBusyError:
+
+            # Lock contention → fail closed (deny, no side effect)
+            return None
 
         return None
 
@@ -283,56 +418,111 @@ class ApprovalStore:
 
         On success the approval is consumed for apply, so it can never
         authorize a second execution.
+
+        MISSION-N6: when a ledger is present, the final single-use
+        check is guarded by the ledger process lock and stale state
+        is refreshed, so two processes cannot both authorize the same
+        approval for different patch objects.
         """
 
         if not isinstance(approval_id, str) or not approval_id:
 
             return False
 
-        if approval_id not in self._approvals:
+        if self.ledger is None:
+
+            if approval_id not in self._approvals:
+
+                return False
+
+            approval = self._approvals[approval_id]
+
+            if approval_id not in self._consumed:
+
+                return False
+
+            if approval_id in self._applied:
+
+                return False
+
+            if self._bindings.get(approval_id) is not patch:
+
+                return False
+
+            if approval.is_expired():
+
+                return False
+
+            if approval.patch_fingerprint != patch.fingerprint():
+
+                return False
+
+            if approval.path != patch.path:
+
+                return False
+
+            if approval.action != patch.action:
+
+                return False
+
+            self._applied.add(approval_id)
+
+            return True
+
+        try:
+
+            with self.ledger._process_lock:
+
+                self.ledger._sync_if_stale()
+
+                self._sync_consumed_from_ledger()
+
+                if approval_id not in self._approvals:
+
+                    return False
+
+                approval = self._approvals[approval_id]
+
+                if approval_id not in self._consumed:
+
+                    return False
+
+                if approval_id in self._applied:
+
+                    return False
+
+                if self._bindings.get(approval_id) is not patch:
+
+                    return False
+
+                if approval.is_expired():
+
+                    return False
+
+                if approval.patch_fingerprint != patch.fingerprint():
+
+                    return False
+
+                if approval.path != patch.path:
+
+                    return False
+
+                if approval.action != patch.action:
+
+                    return False
+
+                self._applied.add(approval_id)
+
+                self.ledger.append_applied(
+                    approval_id,
+                    patch.fingerprint(),
+                )
+
+                return True
+
+        except EventStoreBusyError:
 
             return False
-
-        approval = self._approvals[approval_id]
-
-        if approval_id not in self._consumed:
-
-            return False
-
-        if approval_id in self._applied:
-
-            return False
-
-        if self._bindings.get(approval_id) is not patch:
-
-            return False
-
-        if approval.is_expired():
-
-            return False
-
-        if approval.patch_fingerprint != patch.fingerprint():
-
-            return False
-
-        if approval.path != patch.path:
-
-            return False
-
-        if approval.action != patch.action:
-
-            return False
-
-        self._applied.add(approval_id)
-
-        if self.ledger is not None:
-
-            self.ledger.append_applied(
-                approval_id,
-                patch.fingerprint(),
-            )
-
-        return True
 
     def is_consumed(self, approval) -> bool:
 

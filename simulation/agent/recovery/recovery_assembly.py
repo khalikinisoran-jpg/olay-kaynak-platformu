@@ -66,9 +66,13 @@ def build_recovery_agent(
     risk_policy=None,
     approval_store=None,
     approval_ledger_path=None,
+    approval_ledger_anchor_path=None,
+    approval_ledger_anchor_key=None,
+    approval_ledger_anchor_key_path=None,
     approval_gateway=None,
     governance=None,
     apply_journal=None,
+    scope=None,
 ) -> Agent:
 
     """Explicit production assembly for bounded recovery.
@@ -102,6 +106,14 @@ def build_recovery_agent(
     - ``apply_journal`` wires an ``ApplyOutcomeJournal`` into the apply
       executor and the apply/verify pipeline so every apply intent and
       its terminal outcome is durably recorded and restart-reconcilable.
+
+    MISSION-J fail-closed scope:
+
+    The assembly is apply-capable only when an authoritative scope can
+    be derived (explicit ``scope`` or ``worker_executor.allowed_paths``).
+    When no non-empty scope can be derived, construction raises
+    ``ValueError`` -- it never silently creates an apply-capable
+    unscoped runtime.
     """
 
     recorder = (
@@ -109,6 +121,27 @@ def build_recovery_agent(
         if evidence_recorder is not None
         else WorkerEvidenceRecorder(kernel=kernel)
     )
+
+    authoritative_scope = (
+        tuple(scope)
+        if scope is not None
+        else tuple(
+            getattr(
+                worker_executor,
+                "allowed_paths",
+                (),
+            )
+        )
+    )
+
+    if not authoritative_scope:
+
+        raise ValueError(
+            "build_recovery_agent requires a non-empty "
+            "authoritative scope; provide scope= or a "
+            "worker_executor that exposes non-empty "
+            "allowed_paths."
+        )
 
     if governance is not None:
 
@@ -132,7 +165,12 @@ def build_recovery_agent(
         if approval_ledger_path is not None:
 
             ledger = ApprovalLedger(
-                path=approval_ledger_path
+                path=approval_ledger_path,
+                anchor_path=approval_ledger_anchor_path,
+                anchor_key=approval_ledger_anchor_key,
+                anchor_key_path=(
+                    approval_ledger_anchor_key_path
+                ),
             )
 
         store = ApprovalStore(
@@ -170,6 +208,7 @@ def build_recovery_agent(
         approval_gateway=approval_gateway,
         governance=governance,
         apply_journal=apply_journal,
+        scope=authoritative_scope,
     )
 
     recovery_engine = BoundedRecoveryEngine(
