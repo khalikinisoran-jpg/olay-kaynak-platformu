@@ -6,11 +6,28 @@
 # Token / secret files
 ghp_*
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+service-account*.json
+secrets/
+.secrets/
 
 # Python cache
 __pycache__/
 *.pyc
 **/__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # IDE and editor files
 .vscode/

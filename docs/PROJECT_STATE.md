@@ -14,11 +14,11 @@ results > documentation.
 |-------|-------|----------------|
 | Project Name | Event-Sourced AI Runtime | VERIFIED (docs) |
 | Status | Active Development | VERIFIED (git activity) |
-| Last Updated | 2026-08-13 | VERIFIED |
+| Last Updated | 2026-08-16 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch`) |
-| Branch HEAD | `a8de82e` ("Harden event store and snapshot integrity"); MISSION-017 sprint changes uncommitted | VERIFIED (`git rev-parse HEAD`) |
+| Branch HEAD | `1f9088f` ("Expand cross-platform path traversal coverage"); MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 (secret guard, snapshot path isolation) changes uncommitted | VERIFIED (`git rev-parse HEAD`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 17 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is 20 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
 | Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`) |
@@ -247,33 +247,40 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-13 (MISSION-019 close-out):
+Authoritative run on 2026-08-17 (MISSION-H / J / J.1 / J.2 / J.3 / J.3.1 +
+RELEASE-03, MISSION-M, MISSION-N, MISSION-N.1, MISSION-O):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
-648 passed, 10 skipped in ~14s
+902 passed, 12 skipped in ~60s
 ```
 
-- 10 skipped: 3 opt-in `live_llm` integration tests (never run in the
-  normal suite) + 7 symlink-dependent tests that skip where the OS denies
-  symlink creation (junction variants pass on this Windows environment).
-- The 648-passed count is +54 over the MISSION-018B close-out (594):
-  MISSION-019 added the governance-evaluator suite (8), the apply-outcome
-  journal suite (11), the startup-reconciliation suite (10), the
-  fault-injection crash-window suite (9), the secret retry-boundary suite
-  (5), the property invariant suite (4, under `tests/property/`) and
-  adversarial corpus records A66-A72.
+- 12 skipped: 3 opt-in `live_llm` integration tests (never run in the
+  normal suite) + 9 symlink-dependent tests that skip where the OS denies
+  symlink creation (junction variants pass on this Windows environment;
+  the symlink records run in CI on ubuntu-latest).
+- The 902-passed count is +21 over the MISSION-N.1 close-out (881):
+  MISSION-O added the key-leakage corpus
+  (tests/security/key_leakage_test.py, 6), the single-writer /
+  multi-process prevention suite (tests/security/multiprocess_concurrency_test.py,
+  5), the crash-consistency corpus
+  (tests/security/crash_consistency_test.py, 5), the in-process
+  process-lock safety suite (tests/security/process_lock_test.py, 7)
+  and the anchored + governed runtime corpus
+  (tests/runtime_anchored_governed_test.py, 7), offset by the legacy
+  two-process reproduction assertions that were replaced by
+  prevention assertions.
 - Gated live run (real provider): `RUN_LIVE_LLM=1 python -m pytest -m
-  live_llm tests/live_llm_e2e_test.py -q` → **1 passed** (2026-08-12).
+  live_llm tests/live_llm_e2e_test.py -q` → opt-in; skipped in normal suite.
 
 Coverage by module (test counts, VERIFIED by `pytest --collect-only` on
-2026-08-13):
+2026-08-16):
 
 | Test module | Count |
 |-------------|-------|
 | tests/approval_boundary_test.py | 48 |
 | tests/structured_analysis_test.py | 41 |
-| tests/security/adversarial_corpus_test.py | 76 (A01-A72) |
+| tests/security/adversarial_corpus_test.py | 80 (A01-A75 + summary) |
 | tests/recovery_engine_test.py | 33 |
 | tests/worker_contract_test.py | 31 |
 | tests/security/path_security_test.py | 31 |
@@ -288,7 +295,7 @@ Coverage by module (test counts, VERIFIED by `pytest --collect-only` on
 | tests/worker_evidence_test.py | 13 |
 | tests/runtime_mode_test.py | 12 |
 | tests/apply_outcome_journal_test.py | 11 |
-| tests/worker_action_pipeline_test.py | 11 |
+| tests/worker_action_pipeline_test.py | 9 |
 | tests/startup_reconciliation_test.py | 10 |
 | tests/apply_verify_pipeline_test.py | 9 |
 | tests/fault_injection_test.py | 9 |
@@ -302,6 +309,16 @@ Coverage by module (test counts, VERIFIED by `pytest --collect-only` on
 | tests/llm_provider_integration_test.py | 2 (gated, skipped) |
 | tests/planner_contract_test.py | 1 |
 | recovery_test.py (root) | 1 |
+| tests/mission_h_security_test.py | 25 (MISSION-H) |
+| tests/mission_j2_rollback_test.py | 18 (MISSION-J.2 + J.3) |
+| tests/mission_j31_rollback_authority_test.py | 18 (MISSION-J.3.1) |
+| tests/mission_j_scope_test.py | 9 (MISSION-J/J.1) |
+| tests/mission_j3_hardening_test.py | 4 (MISSION-J.3) |
+| tests/replay_engine_test.py | 6 (replay suite) |
+| tests/security/secret_guard_test.py | 39 (RELEASE-03 secret-guard corpus) |
+| tests/snapshot_concurrency_test.py | 4 (RELEASE-03 snapshot isolation) |
+| tests/security/memory_security_test.py | 34 (MISSION-M, concurrent) |
+| tests/property/memory_property_test.py | 4 (MISSION-M, concurrent) |
 
 Not collected by pytest (script-style files): calculator_test.py,
 context_test.py, decision_trace_test.py, hash_test.py, loop_test.py,
@@ -319,32 +336,37 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              a8de82e (2026-08-13, "Harden event store and snapshot integrity")
-Working tree:      MISSION-017/018A/018B/019 changes uncommitted
-                   (approval console, risk hardening, recovery approval
-                   boundary, GovernanceEvaluator, apply-outcome journal,
-                   startup reconciliation, atomic snapshots, retry redaction,
-                   corpus A66-A72, new test suites, doc sync)
-Untracked files:   simulation/agent/approval/approval_console.py,
-                   simulation/security/governance_evaluator.py,
-                   simulation/agent/apply/apply_outcome_journal.py,
-                   simulation/agent/recovery/startup_reconciliation.py,
-                   benchmarks/{approval_lookup_benchmark.governance_benchmark.py},
-                   tests/approval_console_test.py, tests/runtime_mode_test.py,
-                   tests/governance_evaluator_test.py,
-                   tests/apply_outcome_journal_test.py,
-                   tests/startup_reconciliation_test.py,
-                   tests/fault_injection_test.py,
-                   tests/secret_retry_boundary_test.py,
-                   tests/property/governance_property_test.py
-.gitignore:        cleaned (junk entries removed), still excludes .env, .venv/,
-                   data/, __pycache__/, *.pyc
-Local env:         .env present with OPENROUTER_API_KEY (untracked; len 73)
+HEAD:              1f9088f (2026-08-16, "Expand cross-platform path traversal coverage")
+Working tree:      MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes
+                   uncommitted (authoritative-scope enforcement, rollback
+                   authority, governed retry budget, risk evidence, replay
+                   tests; RELEASE-03: repo-local secret guard + pre-commit
+                   hook + CI secret scan, snapshot path isolation, hardened
+                   .gitignore, doc sync)
+Untracked files:   tests/mission_h_security_test.py,
+                   tests/mission_j_scope_test.py,
+                   tests/mission_j2_rollback_test.py,
+                   tests/mission_j3_hardening_test.py,
+                   tests/mission_j31_rollback_authority_test.py,
+                   tests/replay_engine_test.py,
+                   tests/security/secret_guard_test.py,
+                   tests/snapshot_concurrency_test.py,
+                   .gitattributes,
+                   .env.example,
+                   scripts/secret_guard.py,
+                   scripts/install_hooks.py,
+                   githooks/pre-commit
+.gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
+                   secrets/, .venv/, data/, __pycache__/, *.pyc,
+                   .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
+                   (with !.env.example exception)
+Local env:         .env present with OPENROUTER_API_KEY (untracked; ignored;
+                   not part of any release snapshot)
 CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step)
-Packaging:         pyproject.toml (pip install -e . verified locally 2026-08-13)
+Packaging:         pyproject.toml (pip install -e . verified locally)
 ```
 
-`main` is 17 commits behind `worker-action-pipeline`. No release tag exists
+`main` is 20 commits behind `worker-action-pipeline`. No release tag exists
 after v0.5.0 for the worker-action-pipeline work.
 
 ---

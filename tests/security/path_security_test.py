@@ -729,7 +729,8 @@ def test_patch_validator_rejects_traversal_path(
     validator = PatchValidator()
 
     ok, message = validator.validate(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is False
@@ -785,7 +786,8 @@ def test_patch_validator_rejects_symlink_escape(
     validator = PatchValidator()
 
     ok, message = validator.validate(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is False
@@ -836,7 +838,8 @@ def test_file_applier_rejects_traversal_path(
     applier = FileApplier()
 
     ok, message = applier.apply(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is False
@@ -876,7 +879,10 @@ def test_file_applier_rejects_scope_with_traversal(
     applier = FileApplier()
 
     ok, message = applier.apply(
-        patch
+        patch,
+        scope=(
+            str(tmp_path / ".." / "target.txt"),
+        ),
     )
 
     assert ok is False
@@ -932,7 +938,8 @@ def test_file_applier_rejects_symlink_escape(
     applier = FileApplier()
 
     ok, message = applier.apply(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is False
@@ -985,7 +992,8 @@ def test_patch_validator_rejects_junction_escape(
     validator = PatchValidator()
 
     ok, message = validator.validate(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is False
@@ -1038,7 +1046,8 @@ def test_file_applier_rejects_junction_escape(
     applier = FileApplier()
 
     ok, message = applier.apply(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is False
@@ -1082,7 +1091,8 @@ def test_file_applier_still_writes_inside_scope(
     applier = FileApplier()
 
     ok, message = applier.apply(
-        patch
+        patch,
+        scope=(str(scope),),
     )
 
     assert ok is True

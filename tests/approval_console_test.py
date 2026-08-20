@@ -84,6 +84,10 @@ class FixedPatchWorker:
 
         self.calls = 0
 
+        self.allowed_paths = tuple(
+            patch.allowed_paths
+        )
+
     def execute(
         self,
         agent,

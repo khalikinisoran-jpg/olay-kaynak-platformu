@@ -20,12 +20,25 @@ The current system has:
 
 Current verified baseline:
 
-- Full test suite: 210 passed, 9 skipped
-- Working tree verified clean
+- Full test suite: 902 passed, 12 skipped (2026-08-17)
+- Working tree carries uncommitted MISSION-H/J/J.1/J.2/J.3/J.3.1
+  changes (authoritative-scope enforcement, rollback authority, risk
+  evidence, replay) plus MISSION-M/N/N.1/O hardening (memory security,
+  external keyed chain-head trust anchor, memory provenance,
+  anchored-runtime adoption, single-writer enforcement) awaiting
+  commit; no whitespace errors (`git diff --check` clean)
 - Worker contract tests isolated from the live LLM
 - Main branch synchronized with origin
 - Worker Action Pipeline + Bounded Recovery + Decision Trace Evidence
   (MISSION-003/004) on branch worker-action-pipeline
+- MISSION-N: optional external keyed chain-head trust anchor
+  (`ChainAnchor`) makes tail deletion / tail edit / hash-recomputed
+  middle deletion fail closed at recovery (N-01..N-28 corpus);
+  MISSION-N.1 wires anchoring into the shipped runtime
+  (`agent_run.py --anchor-path`, UNANCHORED warning) and verifies it
+  with real-subprocess tests; MISSION-O prevents multi-process
+  corruption with an OS-level writer lock + tail re-sync, verifies no
+  key leakage, and runs the anchored + governed runtime end-to-end
 - Security Kernel hardening (MISSION-005..MISSION-008): security baseline
   audit (docs/SECURITY_BASELINE.md), worker task action scope enforcement,
   patch integrity boundary (canonical write + read-back + restore), typed

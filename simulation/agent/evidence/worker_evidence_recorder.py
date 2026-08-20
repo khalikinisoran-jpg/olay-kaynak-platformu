@@ -122,6 +122,94 @@ class WorkerEvidenceRecorder:
             ),
         )
 
+    def record_risk_assessed(
+        self,
+        task_id,
+        patch,
+        governance_decision
+    ):
+
+        """Record the deterministic governance decision for a proposal.
+
+        Makes the risk assessment / policy decision reconstructable
+        from the event stream (MISSION-H H-003). The payload carries
+        only deterministic metadata -- the assigned risk level, the
+        deterministic reason, the allowed/approval/auto-apply verdicts,
+        the enforced retry budget and the verification depth. Patch
+        content (old/new), secrets, LLM output and verification
+        stdout/stderr are never stored.
+        """
+
+        payload = {
+            "task_id": task_id,
+            "patch_fingerprint": patch.fingerprint(),
+            "path": patch.path,
+            "action": patch.action,
+            "risk_level": (
+                governance_decision.risk_level.value
+            ),
+            "reason": governance_decision.reason,
+            "assessment_reason": (
+                governance_decision.assessment.reason
+            ),
+            "allowed": bool(
+                governance_decision.allowed
+            ),
+            "requires_human_approval": bool(
+                governance_decision.requires_human_approval
+            ),
+            "allow_auto_apply": bool(
+                governance_decision.allow_auto_apply
+            ),
+            "max_attempts": governance_decision.max_attempts,
+            "verification_depth": (
+                governance_decision.verification_depth
+            ),
+        }
+
+        signals = getattr(
+            governance_decision.assessment,
+            "signals",
+            (),
+        )
+
+        if signals:
+
+            payload["signals"] = tuple(
+                (name, value)
+                for name, value in signals
+            )
+
+        advisory = getattr(
+            governance_decision.assessment,
+            "advisory_risk",
+            None,
+        )
+
+        if advisory is not None:
+
+            payload["advisory_risk"] = advisory.value
+
+        confidence = getattr(
+            governance_decision.assessment,
+            "advisory_confidence",
+            None,
+        )
+
+        if confidence is not None:
+
+            payload["advisory_confidence"] = confidence
+
+        self._emit(
+            WorkerEventType.RISK_ASSESSED,
+            payload,
+            trace_message=(
+                f"Risk assessed as "
+                f"{governance_decision.risk_level.value}; "
+                f"allowed={governance_decision.allowed}."
+            ),
+        )
+
     def record_controller_decision(
         self,
         task_id,

@@ -303,7 +303,7 @@ class StubApprovalStore:
         return self.approval
 
 
-def make_gated_pipeline(approval_store):
+def make_gated_pipeline(approval_store, scope=()):
 
     return WorkerActionPipeline(
         patch_validator=PatchValidator(),
@@ -315,6 +315,7 @@ def make_gated_pipeline(approval_store):
         risk_engine=RiskEngine(),
         risk_policy=RiskPolicy(),
         approval_store=approval_store,
+        scope=scope,
     )
 
 
@@ -342,7 +343,10 @@ def run_gated_attack(tmp_path, filename, new_content):
         (str(target),),
     )
 
-    pipeline = make_gated_pipeline(ApprovalStore())
+    pipeline = make_gated_pipeline(
+        ApprovalStore(),
+        scope=(str(tmp_path),),
+    )
 
     result = pipeline.execute(make_worker_result(patch))
 
@@ -457,7 +461,8 @@ def consume_for(store, patch, attempt, risk_level="HIGH"):
 def build_governed_recovery_engine(
     store,
     worker,
-    verification_results
+    verification_results,
+    scope=(),
 ):
 
     """GOVERNED pipeline (risk gate ON, store-backed) + bounded recovery.
@@ -480,6 +485,7 @@ def build_governed_recovery_engine(
         risk_engine=RiskEngine(),
         risk_policy=RiskPolicy(),
         approval_store=store,
+        scope=scope,
     )
 
     return BoundedRecoveryEngine(
@@ -569,7 +575,10 @@ def test_a01_path_traversal_is_denied(corpus, tmp_path):
         (str(scope),),
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(scope),),
+    )
 
     actual = "ALLOWED" if ok else message
 
@@ -613,7 +622,10 @@ def test_a02_absolute_path_outside_scope_is_denied(corpus, tmp_path):
         (str(scope),),
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(scope),),
+    )
 
     actual = "ALLOWED" if ok else message
 
@@ -663,7 +675,10 @@ def test_a03_symlink_escape_is_denied(corpus, tmp_path):
         (str(scope),),
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(scope),),
+    )
 
     actual = "ALLOWED" if ok else message
 
@@ -713,7 +728,10 @@ def test_a03b_junction_escape_is_denied(corpus, tmp_path):
         (str(scope),),
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(scope),),
+    )
 
     actual = "ALLOWED" if ok else message
 
@@ -763,7 +781,10 @@ def test_a04_unauthorized_path_is_denied(corpus, tmp_path):
         (str(allowed),),
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(allowed),),
+    )
 
     actual = "ALLOWED" if ok else message
 
@@ -974,7 +995,10 @@ def test_a07_stale_patch_is_denied(corpus, tmp_path):
         encoding="utf-8"
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(target),),
+    )
 
     actual = "ALLOWED" if ok else message
 
@@ -1037,6 +1061,7 @@ def test_a08_apply_success_is_not_verification_success(corpus, tmp_path):
     result = pipeline.execute(
         patch,
         decision,
+        scope=(str(tmp_path),),
     )
 
     passed = (
@@ -1102,7 +1127,10 @@ def test_a08b_fake_write_detected_by_read_back(corpus, tmp_path, monkeypatch):
         corrupting_replace,
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(tmp_path),),
+    )
 
     passed = (
         ok is False
@@ -1179,6 +1207,7 @@ def test_a09_verification_status_cannot_be_forged(corpus, tmp_path):
             apply_executor=ApplyExecutor(),
             verification_executor=executor,
         ),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(worker_result)
@@ -1267,6 +1296,7 @@ def test_a10_retry_budget_cannot_be_exhausted(corpus, tmp_path):
                 ] * 10,
             ),
         ),
+        scope=(str(tmp_path),),
     )
 
     engine = BoundedRecoveryEngine(
@@ -1429,6 +1459,7 @@ def test_a12_fingerprint_boundary_cannot_be_crossed(corpus, tmp_path):
     result = ApplyExecutor().apply(
         smuggled,
         decision,
+        scope=(str(tmp_path),),
     )
 
     passed = (
@@ -1735,7 +1766,10 @@ def test_a16_forged_approval_metadata_is_denied(corpus, tmp_path):
                 "attempt": attempt,
             }
 
-    pipeline = make_gated_pipeline(ForgingStore())
+    pipeline = make_gated_pipeline(
+        ForgingStore(),
+        scope=(str(tmp_path),),
+    )
 
     result = pipeline.execute(
         make_worker_result(patch)
@@ -1924,7 +1958,8 @@ def test_a19_approval_path_substitution_is_denied(corpus, tmp_path):
     )
 
     pipeline = make_gated_pipeline(
-        StubApprovalStore(forged)
+        StubApprovalStore(forged),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -1991,7 +2026,10 @@ def test_a20_approval_gate_without_authority_is_denied(corpus, tmp_path):
         "FORGED-AGENT-TOKEN",
     )
 
-    pipeline = make_gated_pipeline(None)
+    pipeline = make_gated_pipeline(
+        None,
+        scope=(str(tmp_path),),
+    )
 
     result = pipeline.execute(
         make_worker_result(patch)
@@ -2065,6 +2103,7 @@ def test_a21_verification_failure_rolls_back_patch(corpus, tmp_path):
     result = pipeline.execute(
         patch,
         decision,
+        scope=(str(tmp_path),),
     )
 
     content = target.read_text(encoding="utf-8")
@@ -2114,7 +2153,7 @@ def test_a22_rollback_failure_is_terminal(corpus, tmp_path):
 
     class FailingRollbackExecutor(ApplyExecutor):
 
-        def rollback(self, patch):
+        def rollback(self, patch, scope=None):
 
             return (
                 False,
@@ -2134,6 +2173,7 @@ def test_a22_rollback_failure_is_terminal(corpus, tmp_path):
                 ]
             ),
         ),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -2633,7 +2673,10 @@ def test_a30_direct_file_applier_scope_still_enforced(
         (str(scope),),
     )
 
-    ok, message = FileApplier().apply(patch)
+    ok, message = FileApplier().apply(
+        patch,
+        scope=(str(scope),),
+    )
 
     passed = (
         ok is False
@@ -2709,6 +2752,7 @@ def test_a31_hostile_store_fake_approval_object_is_denied(
         risk_policy=RiskPolicy(),
         approval_store=ApprovalStore(),
         approval_gateway=FabricatingGateway(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -2790,7 +2834,11 @@ def test_a32_forged_operator_identity_is_not_authority(
 
     result = ApplyExecutor(
         approval_store=store,
-    ).apply(patch, decision)
+    ).apply(
+        patch,
+        decision,
+        scope=(str(tmp_path),),
+    )
 
     passed = (
         released is not None
@@ -3087,36 +3135,41 @@ def test_a36_governed_without_allowed_path_fails_closed(
 
     from tests.fake_worker_analyzer import FakeWorkerAnalyzer
 
-    agent = build_recovery_agent(
-        kernel,
-        worker_executor=WorkerExecutor(
-            worker=WorkerAgent(
-                analyzer=FakeWorkerAnalyzer()
-            ),
-        ),
-        provider=StubProvider(),
-        risk_engine=RiskEngine(),
-        risk_policy=RiskPolicy(),
-        evidence_recorder=WorkerEvidenceRecorder(kernel=kernel),
-    )
+    raised = False
 
-    result = agent.chat("worker: governed no allowed path")
+    try:
+
+        build_recovery_agent(
+            kernel,
+            worker_executor=WorkerExecutor(
+                worker=WorkerAgent(
+                    analyzer=FakeWorkerAnalyzer()
+                ),
+            ),
+            provider=StubProvider(),
+            risk_engine=RiskEngine(),
+            risk_policy=RiskPolicy(),
+            evidence_recorder=WorkerEvidenceRecorder(kernel=kernel),
+        )
+
+    except ValueError:
+
+        raised = True
 
     passed = (
-        result.success is False
-        and result.failure_stage == "worker"
-        and "No allowed paths" in str(result)
+        raised is True
     )
 
     actual = (
-        f"success={result.success} "
-        f"stage={result.failure_stage}"
+        "ValueError raised (fail-closed)"
+        if raised
+        else "apply-capable runtime created"
     )
 
     corpus.record(
         "A36",
         "governed mode invoked with an empty allowed-path scope",
-        "worker fails closed; no mutation scope exists",
+        "assembly fails closed; no apply-capable unscoped runtime exists",
         actual,
         passed,
     )
@@ -3494,21 +3547,30 @@ def test_a51_second_attempt_high_without_new_approval_denied(
     corpus, tmp_path
 ):
 
-    target = tmp_path / "settings.secret.txt"
+    medium_target = tmp_path / "app.py"
 
-    patch_a = make_high_patch(
-        target,
-        "value = 2\n",
+    medium_target.write_text(
+        "value = 1\n",
+        encoding="utf-8"
     )
 
+    patch_a = PatchProposal(
+        path=str(medium_target),
+        action="modify",
+        reason="Recovery MEDIUM probe.",
+        old_content="value = 1\n",
+        new_content="value = 2\n",
+        allowed_paths=(str(medium_target),),
+    )
+
+    high_target = tmp_path / "settings.secret.txt"
+
     patch_b = make_high_patch(
-        target,
+        high_target,
         "value = 3\n",
     )
 
     store = ApprovalStore()
-
-    grant_for(store, patch_a, attempt=1)
 
     engine = build_governed_recovery_engine(
         store,
@@ -3521,6 +3583,7 @@ def test_a51_second_attempt_high_without_new_approval_denied(
             exit_code=2,
             failure_reason="always fails",
         )],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -3529,12 +3592,12 @@ def test_a51_second_attempt_high_without_new_approval_denied(
         result.terminal_failure is True
         and result.attempts_used == 2
         and result.failure_stage == "approval"
-        and target.read_text(encoding="utf-8") == "value = 1\n"
+        and high_target.read_text(encoding="utf-8") == "value = 1\n"
     )
 
     corpus.record(
         "A51",
-        "attempt 1 HIGH approved + verify FAIL; attempt 2 HIGH patch "
+        "MEDIUM attempt 1 verify FAIL; attempt 2 HIGH patch "
         "without a new approval",
         "DENY at approval stage; no write",
         f"stage={result.failure_stage} attempts={result.attempts_used}",
@@ -3588,6 +3651,7 @@ def test_a52_old_attempt_approval_cannot_authorize_critical_retry(
             exit_code=2,
             failure_reason="always fails",
         )],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -3651,6 +3715,7 @@ def test_a53_old_high_approval_not_inherited_by_low_retry(
             ),
             make_verification_result(),
         ],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -3664,19 +3729,21 @@ def test_a53_old_high_approval_not_inherited_by_low_retry(
     )
 
     passed = (
-        result.success is True
-        and result.attempts_used == 2
+        result.terminal_failure is True
+        and result.attempts_used == 1
+        and result.failure_stage == "verification"
         and store.is_consumed(approval_a) is True
         and replay is None
     )
 
     corpus.record(
         "A53",
-        "attempt 1 HIGH approved; attempt 2 LOW must not inherit the "
-        "old HIGH approval",
-        "attempt 2 evaluated independently (LOW auto-apply); old "
-        "approval single-use consumed; replay DENY",
-        f"success={result.success} replay={replay is None}",
+        "HIGH attempt 1 approved + verify FAIL; a LOW patch would "
+        "otherwise auto-apply on attempt 2",
+        "governed budget 1 -> no second attempt; old approval "
+        "single-use consumed; replay DENY",
+        f"success={result.success} attempts={result.attempts_used} "
+        f"replay={replay is None}",
         passed,
     )
 
@@ -3775,9 +3842,17 @@ def test_a55_same_fingerprint_replay_denied(corpus, tmp_path):
 
     executor = ApplyExecutor(approval_store=store)
 
-    first = executor.apply(patch, decision)
+    first = executor.apply(
+        patch,
+        decision,
+        scope=(str(tmp_path),),
+    )
 
-    second = executor.apply(patch, decision)
+    second = executor.apply(
+        patch,
+        decision,
+        scope=(str(tmp_path),),
+    )
 
     passed = (
         again is None
@@ -3914,6 +3989,7 @@ def test_a58_unknown_retry_patch_denied(corpus, tmp_path):
             exit_code=2,
             failure_reason="first fails",
         )],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -3959,7 +4035,10 @@ def test_a59_opaque_retry_cannot_be_approved_into_apply(corpus, tmp_path):
         risk_level="HIGH",
     )
 
-    pipeline = make_gated_pipeline(store)
+    pipeline = make_gated_pipeline(
+        store,
+        scope=(str(tmp_path),),
+    )
 
     result = pipeline.execute(
         make_worker_result(opaque_patch)
@@ -4000,6 +4079,7 @@ def test_a60_no_store_recovery_never_mutates_high(corpus, tmp_path):
                 [make_verification_result()]
             ),
         ),
+        scope=(str(tmp_path),),
     )
 
     engine = BoundedRecoveryEngine(
@@ -4058,6 +4138,7 @@ def test_a61_retry_budget_never_substitutes_authorization(
                 failure_reason="fails",
             ),
         ],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -4114,21 +4195,26 @@ def test_a62_valid_newly_approved_retry_allows(corpus, tmp_path):
             ),
             make_verification_result(),
         ],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
 
     passed = (
-        result.success is True
-        and result.attempts_used == 2
-        and target.read_text(encoding="utf-8") == "value = 3\n"
+        result.terminal_failure is True
+        and result.attempts_used == 1
+        and result.failure_stage == "verification"
+        and target.read_text(encoding="utf-8") == "value = 1\n"
     )
 
     corpus.record(
         "A62",
-        "attempt 2 HIGH patch with a fresh approval granted for attempt 2",
-        "ALLOW (new patch = new approval)",
-        f"success={result.success} attempts={result.attempts_used}",
+        "HIGH attempt 1 approved + verify FAIL; attempt 2 HIGH carries "
+        "a fresh approval",
+        "DENY: governed budget 1 forbids a second HIGH attempt; "
+        "approval cannot raise the policy budget",
+        f"success={result.success} attempts={result.attempts_used} "
+        f"stage={result.failure_stage}",
         passed,
     )
 
@@ -4137,21 +4223,23 @@ def test_a62_valid_newly_approved_retry_allows(corpus, tmp_path):
 
 def test_a63_bounded_retry_works_when_authorized(corpus, tmp_path):
 
-    target = tmp_path / "settings.secret.txt"
+    target = tmp_path / "notes.txt"
+
+    target.write_text("value = 1\n", encoding="utf-8")
 
     patches = [
-        make_high_patch(
-            target,
-            f"value = {index + 2}\n",
+        PatchProposal(
+            path=str(target),
+            action="modify",
+            reason="Recovery LOW retry.",
+            old_content="value = 1\n",
+            new_content=f"value = {index + 2}\n",
+            allowed_paths=(str(target),),
         )
         for index in range(3)
     ]
 
     store = ApprovalStore()
-
-    for attempt, patch in enumerate(patches, start=1):
-
-        grant_for(store, patch, attempt=attempt)
 
     engine = build_governed_recovery_engine(
         store,
@@ -4167,6 +4255,7 @@ def test_a63_bounded_retry_works_when_authorized(corpus, tmp_path):
             )
             for index in range(2)
         ] + [make_verification_result()],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -4179,9 +4268,8 @@ def test_a63_bounded_retry_works_when_authorized(corpus, tmp_path):
 
     corpus.record(
         "A63",
-        "three attempts, each HIGH with its own approval, verify FAIL FAIL "
-        "PASS",
-        "ALLOW (bounded retry preserved when authorization is satisfied)",
+        "three LOW attempts, verify FAIL FAIL PASS",
+        "ALLOW (bounded retry preserved when the policy budget allows)",
         f"success={result.success} attempts={result.attempts_used}",
         passed,
     )
@@ -4206,6 +4294,7 @@ def test_a64_non_verification_failure_stays_terminal(corpus, tmp_path):
             make_worker_result(patch),
         ]),
         [make_verification_result()],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -4231,16 +4320,20 @@ def test_a64_non_verification_failure_stays_terminal(corpus, tmp_path):
 
 def test_a65_duplicate_fingerprint_stops_retry(corpus, tmp_path):
 
-    target = tmp_path / "settings.secret.txt"
+    target = tmp_path / "app.py"
 
-    patch = make_high_patch(
-        target,
-        "value = 2\n",
+    target.write_text("value = 1\n", encoding="utf-8")
+
+    patch = PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="Recovery MEDIUM probe.",
+        old_content="value = 1\n",
+        new_content="value = 2\n",
+        allowed_paths=(str(target),),
     )
 
     store = ApprovalStore()
-
-    grant_for(store, patch, attempt=1)
 
     engine = build_governed_recovery_engine(
         store,
@@ -4253,6 +4346,7 @@ def test_a65_duplicate_fingerprint_stops_retry(corpus, tmp_path):
             exit_code=2,
             failure_reason="first fails",
         )],
+        scope=(str(tmp_path),),
     )
 
     result = engine.execute(None, "probe")
@@ -4265,7 +4359,7 @@ def test_a65_duplicate_fingerprint_stops_retry(corpus, tmp_path):
 
     corpus.record(
         "A65",
-        "same HIGH patch proposed again on the retry",
+        "same MEDIUM patch proposed again on the retry",
         "duplicate fingerprint stops the retry; no blind reapply",
         f"attempts={result.attempts_used}",
         passed,
@@ -4363,7 +4457,11 @@ def test_a67_orphaned_apply_detected_on_restart(corpus, tmp_path):
     )
 
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, decision)
+    result = executor.apply(
+        patch,
+        decision,
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     report = ReconciliationEngine(
@@ -4621,6 +4719,225 @@ class FakeEvidenceRecordForCorpus:
         self.exit_code = exit_code
         self.stdout = stdout
         self.stderr = stderr
+
+
+# ---------------------------------------------------------------------------
+# MISSION-H records (A73-A75): authoritative scope, policy retry budget,
+# replayable governance evidence.
+# ---------------------------------------------------------------------------
+
+def test_a73_scope_authority_confusion_is_denied(corpus, tmp_path):
+
+    scope_dir = tmp_path / "scope"
+
+    scope_dir.mkdir()
+
+    victim = tmp_path / "victim.txt"
+
+    victim.write_text("ORIGINAL\n", encoding="utf-8")
+
+    patch = make_patch(
+        victim,
+        "ORIGINAL\n",
+        "TAMPERED\n",
+        (str(victim),),
+    )
+
+    pipeline = WorkerActionPipeline(
+        patch_validator=PatchValidator(),
+        controller=Controller(),
+        apply_verify_pipeline=ApplyVerifyPipeline(
+            apply_executor=ApplyExecutor(),
+            verification_executor=FakeVerificationExecutor(),
+        ),
+        scope=(str(scope_dir),),
+    )
+
+    result = pipeline.execute(
+        make_worker_result(patch)
+    )
+
+    passed = (
+        result.success is False
+        and result.failure_stage == "validation"
+        and result.apply_success is False
+        and victim.read_text(encoding="utf-8") == "ORIGINAL\n"
+    )
+
+    corpus.record(
+        "A73",
+        "malicious proposal self-declares allowed_paths that include a "
+        "victim outside the authoritative scope",
+        "DENY: authoritative scope wins; victim untouched",
+        f"stage={result.failure_stage} apply={result.apply_success}",
+        passed,
+    )
+
+    assert passed
+
+
+def test_a74_policy_retry_budget_cannot_be_bypassed(corpus, tmp_path):
+
+    target = tmp_path / "app.py"
+
+    target.write_text("value = 1\n", encoding="utf-8")
+
+    store = ApprovalStore()
+
+    engine = build_governed_recovery_engine(
+        store,
+        MarkerRecoveryWorker(target),
+        [
+            make_verification_result(
+                status=FAIL,
+                exit_code=2,
+                failure_reason="always fails",
+            )
+            for _ in range(6)
+        ],
+        scope=(str(tmp_path),),
+    )
+
+    result = engine.execute(None, "probe")
+
+    passed = (
+        result.terminal_failure is True
+        and result.attempts_used == 2
+        and engine.worker.calls == 2
+    )
+
+    corpus.record(
+        "A74",
+        "governed MEDIUM retry with a 3-attempt generic default",
+        "policy budget 2 wins; the engine default cannot raise it",
+        f"attempts={result.attempts_used} worker_calls={engine.worker.calls}",
+        passed,
+    )
+
+    assert passed
+
+
+def test_a75_governance_evidence_is_replayable(corpus, tmp_path):
+
+    from simulation.agent.evidence.worker_events import (
+        WorkerEventType,
+    )
+    from simulation.agent.evidence.worker_evidence_recorder import (
+        WorkerEvidenceRecorder,
+    )
+    from simulation.core.kernel import Kernel
+    from simulation.persistence.event_store import EventStore
+    from simulation.persistence.snapshot import SnapshotStore
+    from simulation.persistence.snapshot_manager import SnapshotManager
+
+    target = tmp_path / "notes.txt"
+
+    target.write_text("value = 1\n", encoding="utf-8")
+
+    patch = make_patch(
+        target,
+        "value = 1\n",
+        "value = 2\n",
+        (str(target),),
+    )
+
+    store = EventStore(
+        path=tmp_path / "events.jsonl"
+    )
+
+    kernel = Kernel(
+        store,
+        snapshot_manager=SnapshotManager(
+            snapshot_store=SnapshotStore(
+                path=tmp_path / "snapshot.json"
+            )
+        ),
+    )
+
+    recorder = WorkerEvidenceRecorder(kernel=kernel)
+
+    pipeline = WorkerActionPipeline(
+        patch_validator=PatchValidator(),
+        controller=Controller(),
+        apply_verify_pipeline=ApplyVerifyPipeline(
+            apply_executor=ApplyExecutor(),
+            verification_executor=FakeVerificationExecutor(),
+        ),
+        evidence_recorder=recorder,
+        risk_engine=RiskEngine(),
+        risk_policy=RiskPolicy(),
+        scope=(str(target),),
+    )
+
+    result = pipeline.execute(
+        make_worker_result(patch)
+    )
+
+    assert result.success is True
+
+    persisted = []
+
+    for line in store.path.read_text(
+        encoding="utf-8"
+    ).splitlines():
+
+        if not line.strip():
+
+            continue
+
+        record = json.loads(line)
+
+        if (
+            record["event_type"]
+            == WorkerEventType.RISK_ASSESSED
+        ):
+
+            persisted.append(record["payload"])
+
+    fresh = Kernel(
+        EventStore(
+            path=store.path
+        ),
+        snapshot_manager=SnapshotManager(
+            snapshot_store=SnapshotStore(
+                path=tmp_path / "snapshot.json"
+            )
+        ),
+    )
+
+    trace = fresh.get_state().worker_trace
+
+    replayed = [
+        record
+        for record in trace
+        if record["event_type"]
+        == WorkerEventType.RISK_ASSESSED
+    ]
+
+    passed = (
+        len(persisted) == 1
+        and len(replayed) == 1
+        and replayed[0]["payload"]["risk_level"] == "LOW"
+        and replayed[0]["payload"]["max_attempts"] == 3
+        and replayed[0]["payload"]["allowed"] is True
+    )
+
+    corpus.record(
+        "A75",
+        "governance decision exists only in-memory / not replayable",
+        "WorkerRiskAssessed is durable in the event store and "
+        "reconstructable from replay",
+        (
+            f"persisted={len(persisted)} "
+            f"replayed={len(replayed)} "
+            f"risk={replayed[0]['payload']['risk_level']}"
+            if replayed
+            else "missing"
+        ),
+        passed,
+    )
+
+    assert passed
 
 
 # ---------------------------------------------------------------------------

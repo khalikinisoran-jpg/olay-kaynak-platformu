@@ -115,6 +115,9 @@ class WorkerPipelineResult:
     )
     verification_ran: bool = False
     failure_stage: str = ""
+    governance_decisions: tuple = field(
+        default_factory=tuple
+    )
 
     @property
     def apply_success(self) -> bool:
@@ -162,6 +165,11 @@ class WorkerActionPipeline:
     Security contract, enforced per proposal in the exact order of the
     WorkerResult:
 
+    0. Fail-closed scope (MISSION-J): the pipeline is apply-capable
+       ONLY when constructed with a non-empty authoritative ``scope``.
+       Without one every proposal is denied at validation, so an
+       unscoped pipeline can never reach Apply. The proposal's own
+       ``allowed_paths`` is never treated as authority.
     1. Worker only proposes; it never applies by itself.
     2. PatchValidator must pass before Controller is consulted.
     3. Controller approval is required before apply runs.
@@ -188,8 +196,11 @@ class WorkerActionPipeline:
         approval_store=None,
         approval_gateway=None,
         governance=None,
-        apply_journal=None
+        apply_journal=None,
+        scope=()
     ):
+
+        self.authoritative_scope = tuple(scope)
 
         self.patch_validator = (
             patch_validator
@@ -389,6 +400,10 @@ class WorkerActionPipeline:
 
         verification_ran = False
 
+        governance_decisions = []
+
+        effective_scope = self.authoritative_scope
+
         verification_depth = (
             ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
         )
@@ -406,7 +421,8 @@ class WorkerActionPipeline:
 
             valid, message = (
                 self.patch_validator.validate(
-                    patch
+                    patch,
+                    scope=effective_scope,
                 )
             )
 
@@ -437,6 +453,18 @@ class WorkerActionPipeline:
                 governance_decision = self.governance.evaluate(
                     patch
                 )
+
+                governance_decisions.append(
+                    governance_decision
+                )
+
+                if recorder is not None:
+
+                    recorder.record_risk_assessed(
+                        worker_result.task_id,
+                        patch,
+                        governance_decision,
+                    )
 
                 if governance_decision.allowed is not True:
 
@@ -596,6 +624,7 @@ class WorkerActionPipeline:
                 test_targets=test_targets,
                 verification_depth=verification_depth,
                 attempt=attempt_context,
+                scope=effective_scope,
             )
 
             if recorder is not None:
@@ -682,6 +711,9 @@ class WorkerActionPipeline:
             ),
             evidence=evidence,
             verification_ran=verification_ran,
+            governance_decisions=tuple(
+                governance_decisions
+            ),
         )
 
     @staticmethod

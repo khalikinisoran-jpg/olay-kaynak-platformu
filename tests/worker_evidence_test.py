@@ -147,7 +147,8 @@ def make_worker_result(patch, success=True):
 def build_traced_pipeline(
     recorder,
     verification_executor=None,
-    apply_executor=None
+    apply_executor=None,
+    scope=(),
 ):
 
     return WorkerActionPipeline(
@@ -168,6 +169,7 @@ def build_traced_pipeline(
             ),
         ),
         evidence_recorder=recorder,
+        scope=scope,
     )
 
 
@@ -213,7 +215,7 @@ def test_recorder_records_lifecycle_events_in_order(tmp_path):
 
     recorder = WorkerEvidenceRecorder(kernel=kernel)
 
-    pipeline = build_traced_pipeline(recorder)
+    pipeline = build_traced_pipeline(recorder, scope=(str(tmp_path),))
 
     result = pipeline.execute(
         make_worker_result(patch)
@@ -259,7 +261,7 @@ def test_recorder_records_decision_trace_steps(tmp_path):
 
     recorder = WorkerEvidenceRecorder(kernel=kernel)
 
-    pipeline = build_traced_pipeline(recorder)
+    pipeline = build_traced_pipeline(recorder, scope=(str(tmp_path),))
 
     pipeline.execute(
         make_worker_result(patch)
@@ -297,7 +299,7 @@ def test_validation_failure_records_no_apply_or_verification(tmp_path):
 
     recorder = WorkerEvidenceRecorder(kernel=kernel)
 
-    pipeline = build_traced_pipeline(recorder)
+    pipeline = build_traced_pipeline(recorder, scope=(str(tmp_path),))
 
     result = pipeline.execute(
         make_worker_result(patch)
@@ -364,6 +366,7 @@ def test_controller_rejection_records_rejected_no_apply(tmp_path):
             ),
         ),
         evidence_recorder=recorder,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -412,7 +415,7 @@ def test_apply_failure_records_apply_failed_no_verification(tmp_path):
 
     class FailingApplyExecutor:
 
-        def apply(self, patch, decision, attempt=None):
+        def apply(self, patch, decision, attempt=None, scope=None):
 
             from simulation.agent.apply.apply_result import (
                 ApplyResult,
@@ -438,6 +441,7 @@ def test_apply_failure_records_apply_failed_no_verification(tmp_path):
             ),
         ),
         evidence_recorder=recorder,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -500,6 +504,7 @@ def test_verification_failure_records_verification_failed(tmp_path):
                 ),
             ]
         ),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -576,6 +581,7 @@ def test_payloads_never_contain_patch_content_or_command_output(
                 ),
             ]
         ),
+        scope=(str(tmp_path),),
     )
 
     pipeline.execute(
@@ -707,7 +713,7 @@ def test_hash_chain_integrity_after_pipeline_run(tmp_path):
 
     recorder = WorkerEvidenceRecorder(kernel=kernel)
 
-    pipeline = build_traced_pipeline(recorder)
+    pipeline = build_traced_pipeline(recorder, scope=(str(tmp_path),))
 
     pipeline.execute(
         make_worker_result(patch)
@@ -766,7 +772,7 @@ def test_replay_reconstructs_worker_trace(tmp_path):
 
     recorder = WorkerEvidenceRecorder(kernel=kernel)
 
-    pipeline = build_traced_pipeline(recorder)
+    pipeline = build_traced_pipeline(recorder, scope=(str(tmp_path),))
 
     pipeline.execute(
         make_worker_result(patch)
@@ -896,6 +902,7 @@ def test_recovery_records_attempts_and_final_outcome(tmp_path):
         verification_executor=FakeVerificationExecutor(
             [fail_result, pass_result]
         ),
+        scope=(str(tmp_path),),
     )
 
     engine = BoundedRecoveryEngine(

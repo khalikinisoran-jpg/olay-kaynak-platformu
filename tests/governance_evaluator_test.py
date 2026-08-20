@@ -262,6 +262,7 @@ def test_pipeline_with_custom_engine_requires_approval_for_high(tmp_path):
         risk_engine=custom_engine,
         risk_policy=RiskPolicy(),
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(

@@ -134,6 +134,13 @@ def build_agent(
                 verification_result
             ),
         ),
+        scope=tuple(
+            getattr(
+                worker_executor,
+                "allowed_paths",
+                (),
+            )
+        ),
     )
 
     dispatcher = StrategyDispatcher(

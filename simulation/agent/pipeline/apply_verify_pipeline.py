@@ -86,13 +86,15 @@ class ApplyVerifyPipeline:
         verify_paths=None,
         test_targets=(),
         verification_depth=VERIFICATION_DEPTH_COMPILE_TESTS,
-        attempt=None
+        attempt=None,
+        scope=None
     ) -> ApplyVerifyResult:
 
         apply_result = self.apply_executor.apply(
             patch,
             decision,
             attempt=attempt,
+            scope=scope,
         )
 
         if not apply_result.success:
@@ -150,6 +152,7 @@ class ApplyVerifyPipeline:
             patch,
             verify_paths,
             apply_result.intent_id,
+            scope,
         )
 
         return ApplyVerifyResult(
@@ -197,6 +200,7 @@ class ApplyVerifyPipeline:
         patch: PatchProposal,
         verify_paths,
         intent_id,
+        scope=None,
     ):
 
         rollback_fn = getattr(
@@ -215,7 +219,10 @@ class ApplyVerifyPipeline:
                 intent_id
             )
 
-        ok, message = rollback_fn(patch)
+        ok, message = rollback_fn(
+            patch,
+            scope=scope,
+        )
 
         rollback = RollbackResult(
             success=ok,

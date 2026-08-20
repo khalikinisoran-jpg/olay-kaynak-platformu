@@ -303,6 +303,8 @@ def test_governed_mode_high_without_approval_denies(tmp_path):
 
     class FixedPatchWorker:
 
+        allowed_paths = (str(target),)
+
         def execute(
             self,
             agent,

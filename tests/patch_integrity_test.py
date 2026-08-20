@@ -98,7 +98,10 @@ def test_file_applier_denies_concurrent_modification_between_validation_and_appl
 
     validator = PatchValidator()
 
-    valid, _ = validator.validate(patch)
+    valid, _ = validator.validate(
+        patch,
+        scope=(str(target),),
+    )
 
     assert valid is True
 
@@ -109,7 +112,10 @@ def test_file_applier_denies_concurrent_modification_between_validation_and_appl
 
     applier = FileApplier()
 
-    ok, message = applier.apply(patch)
+    ok, message = applier.apply(
+        patch,
+        scope=(str(target),),
+    )
 
     assert ok is False
 
@@ -147,7 +153,10 @@ def test_second_stale_patch_to_same_file_is_denied(
 
     applier = FileApplier()
 
-    ok, _ = applier.apply(first)
+    ok, _ = applier.apply(
+        first,
+        scope=(str(target),),
+    )
 
     assert ok is True
 
@@ -158,7 +167,10 @@ def test_second_stale_patch_to_same_file_is_denied(
         (str(target),)
     )
 
-    ok, message = applier.apply(stale)
+    ok, message = applier.apply(
+        stale,
+        scope=(str(target),),
+    )
 
     assert ok is False
 
@@ -207,7 +219,10 @@ def test_file_applier_writes_through_in_scope_symlink_to_real_target(
 
     applier = FileApplier()
 
-    ok, message = applier.apply(patch)
+    ok, message = applier.apply(
+        patch,
+        scope=(str(scope),),
+    )
 
     assert ok is True
 
@@ -270,7 +285,10 @@ def test_file_applier_detects_corrupted_write_and_restores(
 
     applier = FileApplier()
 
-    ok, message = applier.apply(patch)
+    ok, message = applier.apply(
+        patch,
+        scope=(str(target),),
+    )
 
     assert ok is False
 
@@ -325,6 +343,7 @@ def test_approved_fingerprint_matches_applied_content(
     result = pipeline.execute(
         patch,
         decision,
+        scope=(str(tmp_path),),
     )
 
     assert result.apply_success is True
@@ -379,6 +398,7 @@ def test_apply_executor_denies_fingerprint_mismatch_before_write(
     result = executor.apply(
         patch,
         decision,
+        scope=(str(target),),
     )
 
     assert result.success is False

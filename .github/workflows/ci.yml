@@ -38,6 +38,9 @@ jobs:
       - name: Compile all packages
         run: python -m compileall -q simulation tests
 
+      - name: Secret scan (repo-local guard)
+        run: python scripts/secret_guard.py
+
       - name: Run the full test suite
         run: python -m pytest -q
 

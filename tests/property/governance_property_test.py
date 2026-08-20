@@ -100,7 +100,7 @@ def _make_patch(tmp_path, name, new_content):
     )
 
 
-def _governed_pipeline(approval_store=None):
+def _governed_pipeline(approval_store=None, scope=()):
     return WorkerActionPipeline(
         patch_validator=PatchValidator(),
         controller=Controller(),
@@ -113,6 +113,7 @@ def _governed_pipeline(approval_store=None):
         risk_engine=RiskEngine(),
         risk_policy=RiskPolicy(),
         approval_store=approval_store,
+        scope=scope,
     )
 
 
@@ -131,7 +132,10 @@ def test_property_no_approval_never_mutates_high_or_unknown(tmp_path):
 
             continue
 
-        pipeline = _governed_pipeline(approval_store=None)
+        pipeline = _governed_pipeline(
+            approval_store=None,
+            scope=(str(tmp_path),),
+        )
 
         result = pipeline.execute(
             WorkerResult(
@@ -182,7 +186,10 @@ def test_property_high_requires_store_approval_before_write(tmp_path):
             expires_at=3600,
         )
 
-        pipeline = _governed_pipeline(approval_store=store)
+        pipeline = _governed_pipeline(
+            approval_store=store,
+            scope=(str(tmp_path),),
+        )
 
         result = pipeline.execute(
             WorkerResult(
@@ -287,7 +294,10 @@ def test_property_retry_cannot_reuse_old_approval(tmp_path):
             expires_at=3600,
         )
 
-        pipeline = _governed_pipeline(approval_store=store)
+        pipeline = _governed_pipeline(
+            approval_store=store,
+            scope=(str(tmp_path),),
+        )
 
         result = pipeline.execute(
             WorkerResult(

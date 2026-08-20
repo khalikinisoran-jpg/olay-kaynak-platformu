@@ -102,7 +102,7 @@ def test_full_success_lifecycle_is_durable(tmp_path):
         journal=journal,
     )
 
-    result = pipeline.execute(patch, decision)
+    result = pipeline.execute(patch, decision, scope=(str(tmp_path),))
 
     assert result.success is True
 
@@ -138,7 +138,7 @@ def test_rollback_lifecycle_is_durable(tmp_path):
         journal=journal,
     )
 
-    result = pipeline.execute(patch, decision)
+    result = pipeline.execute(patch, decision, scope=(str(tmp_path),))
 
     assert result.success is False
     assert result.rollback is not None
@@ -173,7 +173,7 @@ def test_apply_denied_records_apply_failed(tmp_path):
 
     executor = ApplyExecutor(journal=journal)
 
-    result = executor.apply(patch, forged)
+    result = executor.apply(patch, forged, scope=(str(tmp_path),))
 
     assert result.success is False
 
@@ -193,7 +193,7 @@ def test_journal_records_do_not_contain_patch_content(tmp_path):
 
     decision = approved_decision(patch)
 
-    result = executor.apply(patch, decision)
+    result = executor.apply(patch, decision, scope=(str(tmp_path),))
 
     assert result.success is True
 
@@ -217,7 +217,7 @@ def test_corrupted_json_fails_closed(tmp_path):
     )
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    executor.apply(patch, approved_decision(patch))
+    executor.apply(patch, approved_decision(patch), scope=(str(tmp_path),))
 
     journal.path.write_text(
         "NOT JSON\n",
@@ -236,7 +236,7 @@ def test_tampered_hash_fails_closed(tmp_path):
     )
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    executor.apply(patch, approved_decision(patch))
+    executor.apply(patch, approved_decision(patch), scope=(str(tmp_path),))
 
     records = [
         json.loads(line)
@@ -374,7 +374,11 @@ def test_chain_verifies_after_full_lifecycle(tmp_path):
 
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     journal.record_verified(result.intent_id)
@@ -405,7 +409,7 @@ def test_rollback_failure_is_terminal_in_journal(tmp_path):
 
     class NoRestoreExecutor(ApplyExecutor):
 
-        def rollback(self, patch):
+        def rollback(self, patch, scope=None):
             return False, "restore failed"
 
     pipeline = ApplyVerifyPipeline(
@@ -417,6 +421,7 @@ def test_rollback_failure_is_terminal_in_journal(tmp_path):
     result = pipeline.execute(
         patch,
         approved_decision(patch),
+        scope=(str(tmp_path),),
     )
 
     assert result.rollback is not None

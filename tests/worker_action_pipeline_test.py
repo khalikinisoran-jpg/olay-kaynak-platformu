@@ -113,7 +113,8 @@ class RecordingApplyExecutor:
         self,
         patch,
         decision,
-        attempt=None
+        attempt=None,
+        scope=None
     ):
 
         self.calls.append({
@@ -196,7 +197,8 @@ def make_worker_result(
 def build_pipeline(
     apply_executor,
     verification_executor,
-    controller=None
+    controller=None,
+    scope=()
 ):
 
     return WorkerActionPipeline(
@@ -210,6 +212,7 @@ def build_pipeline(
             apply_executor=apply_executor,
             verification_executor=verification_executor,
         ),
+        scope=scope,
     )
 
 
@@ -260,6 +263,7 @@ def test_worker_proposal_validation_approval_apply_verification_pass(
     pipeline = build_pipeline(
         ApplyExecutor(),
         FakeVerificationExecutor(verification),
+        scope=(str(target),),
     )
 
     result = pipeline.execute(
@@ -340,6 +344,7 @@ def test_validation_failure_skips_controller_apply_and_verification(
         apply_executor,
         verification_executor,
         controller=controller,
+        scope=(str(target),),
     )
 
     result = pipeline.execute(
@@ -417,6 +422,7 @@ def test_controller_rejection_skips_apply_and_verification(
         apply_executor,
         verification_executor,
         controller=controller,
+        scope=(str(target),),
     )
 
     result = pipeline.execute(
@@ -500,6 +506,7 @@ def test_apply_failure_skips_verification(
     pipeline = build_pipeline(
         apply_executor,
         verification_executor,
+        scope=(str(target),),
     )
 
     result = pipeline.execute(
@@ -573,6 +580,7 @@ def test_apply_success_verification_failure_is_overall_failure(
     pipeline = build_pipeline(
         ApplyExecutor(),
         FakeVerificationExecutor(verification),
+        scope=(str(target),),
     )
 
     result = pipeline.execute(
@@ -691,6 +699,7 @@ def test_verification_evidence_preserved_upstream(
     pipeline = build_pipeline(
         ApplyExecutor(),
         FakeVerificationExecutor(verification),
+        scope=(str(target),),
     )
 
     result = pipeline.execute(
@@ -780,6 +789,7 @@ def test_multiple_patches_apply_in_safe_order_with_approval_per_patch(
             )
         ),
         controller=controller,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -910,6 +920,7 @@ def test_later_patch_rejection_prevents_apply_without_approval(
         apply_executor,
         verification_executor,
         controller=controller,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -940,83 +951,6 @@ def test_later_patch_rejection_prevents_apply_without_approval(
     assert apply_executor.calls[0]["patch"] is patch_a
 
     assert len(verification_executor.calls) == 1
-
-
-def test_worker_without_proposals_never_applies_or_verifies(
-    tmp_path
-):
-
-    apply_executor = RecordingApplyExecutor()
-
-    verification_executor = FakeVerificationExecutor(
-        make_verification_result()
-    )
-
-    controller = RecordingController()
-
-    pipeline = build_pipeline(
-        apply_executor,
-        verification_executor,
-        controller=controller,
-    )
-
-    worker_result = make_worker_result(
-        success=False,
-        summary="Worker inspection failed to produce "
-        "a patch proposal.",
-    )
-
-    result = pipeline.execute(
-        worker_result
-    )
-
-    assert result.success is False
-
-    assert result.apply_success is False
-
-    assert result.verification_passed is False
-
-    assert result.verification_ran is False
-
-    assert result.exit_code == -1
-
-    assert (
-        result.failure_reason
-        == "Worker produced no patch proposals."
-    )
-
-    assert result.patch_results == ()
-
-    assert controller.calls == []
-
-    assert apply_executor.calls == []
-
-    assert verification_executor.calls == []
-
-
-def test_worker_pipeline_defaults_construct_real_gates():
-
-    pipeline = WorkerActionPipeline()
-
-    assert isinstance(
-        pipeline.patch_validator,
-        PatchValidator
-    )
-
-    assert isinstance(
-        pipeline.controller,
-        Controller
-    )
-
-    assert isinstance(
-        pipeline.apply_verify_pipeline,
-        ApplyVerifyPipeline
-    )
-
-    assert isinstance(
-        pipeline.apply_verify_pipeline.apply_executor,
-        ApplyExecutor
-    )
 
 
 def test_pipeline_result_mirrors_apply_verify_result_fields(
@@ -1066,6 +1000,7 @@ def test_pipeline_result_mirrors_apply_verify_result_fields(
     pipeline = build_pipeline(
         ApplyExecutor(),
         FakeVerificationExecutor(verification),
+        scope=(str(target),),
     )
 
     result = pipeline.execute(

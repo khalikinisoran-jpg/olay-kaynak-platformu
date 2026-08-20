@@ -98,10 +98,11 @@ class BoundedRecoveryEngine:
 
         seen_fingerprints = set()
 
-        for attempt_number in range(
-            1,
-            self.max_attempts + 1
-        ):
+        attempt_number = 1
+
+        effective_max = self.max_attempts
+
+        while attempt_number <= effective_max:
 
             if (
                 attempt_number == 1
@@ -261,11 +262,64 @@ class BoundedRecoveryEngine:
 
             recovery_evidence = pipeline_result.evidence
 
+            governed = self._governed_budget(
+                pipeline_result
+            )
+
+            if governed is not None:
+
+                effective_max = min(
+                    effective_max,
+                    governed,
+                )
+
+            if attempt_number >= effective_max:
+
+                return self._terminal(
+                    attempts,
+                    (
+                        "Verification failed on the final "
+                        "attempt."
+                    ),
+                    FAILURE_VERIFICATION,
+                )
+
+            attempt_number += 1
+
         return self._terminal(
             attempts,
             "Verification failed on the final attempt.",
             FAILURE_VERIFICATION,
         )
+
+    def _governed_budget(self, pipeline_result) -> int | None:
+
+        """Return the policy-enforced retry budget for a run, or None.
+
+        The budget comes from the ``RiskPolicy`` via the governance
+        decisions the pipeline produced (MISSION-H H-002). The policy
+        is authoritative for the governed retry budget: the recovery
+        engine's generic default can never raise it. When no governed
+        decisions exist (ungoverned pipeline) None is returned and the
+        caller-supplied bounded cap applies unchanged.
+        """
+
+        decisions = getattr(
+            pipeline_result,
+            "governance_decisions",
+            (),
+        )
+
+        if not decisions:
+
+            return None
+
+        budgets = [
+            decision.max_attempts
+            for decision in decisions
+        ]
+
+        return min(budgets)
 
     def _has_proposals(self, worker_result) -> bool:
 

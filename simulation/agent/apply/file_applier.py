@@ -49,7 +49,8 @@ class FileApplier:
 
     def apply(
         self,
-        patch: PatchProposal
+        patch: PatchProposal,
+        scope=None
     ) -> tuple[bool, str]:
 
         if patch.action != "modify":
@@ -59,10 +60,18 @@ class FileApplier:
                 f"Unsupported action: {patch.action}"
             )
 
+        if not scope:
+
+            return (
+                False,
+                "No authoritative scope was provided; "
+                "apply denied."
+            )
+
         in_scope, scope_message = (
             self.path_policy.check_scope(
                 patch.path,
-                patch.allowed_paths
+                scope
             )
         )
 
@@ -174,13 +183,33 @@ class FileApplier:
 
     def restore(
         self,
-        patch: PatchProposal
+        patch: PatchProposal,
+        scope=None,
+        authorized=False
     ) -> tuple[bool, str]:
 
         """Roll a patch back to its exact pre-apply content.
 
-        Fail-closed: the canonical target must still exist and be a
-        file, the restored bytes are read back and compared against
+        Fail-closed (MISSION-J2): an authoritative scope is required,
+        exactly as for ``apply``. The canonical target must be inside
+        the authoritative scope or the rollback is denied before any
+        write. Without a non-empty authoritative scope the restore is
+        denied, so rollback can never become an alternate write
+        primitive for an outside-scope target.
+
+        Trust model (MISSION-J3.1): ``FileApplier`` is a trusted
+        low-level mechanism. It enforces the runtime scope boundary
+        but does NOT itself prove that a rollback corresponds to an
+        authorized, applied patch. That proof is provided by
+        ``ApplyExecutor.rollback`` (the security-authorized layer),
+        which checks its per-executor applied-fingerprint registry and
+        then passes ``authorized=True``. Direct callers must therefore
+        set ``authorized=True`` explicitly; the default is fail-closed
+        so an accidental direct restore can never become an authorized
+        in-scope write.
+
+        The canonical target must still exist and be a file, the
+        restored bytes are read back and compared against
         ``old_content``, and any exception is reported instead of
         being swallowed.
         """
@@ -190,6 +219,36 @@ class FileApplier:
             return (
                 False,
                 f"Unsupported action: {patch.action}"
+            )
+
+        if authorized is not True:
+
+            return (
+                False,
+                "Rollback denied: not authorized by "
+                "the apply authority."
+            )
+
+        if not scope:
+
+            return (
+                False,
+                "No authoritative scope was provided; "
+                "rollback denied."
+            )
+
+        in_scope, scope_message = (
+            self.path_policy.check_scope(
+                patch.path,
+                scope
+            )
+        )
+
+        if not in_scope:
+
+            return (
+                False,
+                scope_message
             )
 
         path = self._resolve_target(patch)

@@ -1,6 +1,11 @@
 import re
 
 from simulation.memory.memory_events import MemoryEvents
+from simulation.memory.provenance import (
+    TrustLevel,
+    VerificationStatus,
+)
+from simulation.agent.approval.approval import now_iso
 
 
 class MemoryStoreExecutor:
@@ -41,7 +46,19 @@ class MemoryStoreExecutor:
 
                 "user.name",
 
-                name
+                name,
+
+                source="user",
+
+                source_type="user_input",
+
+                timestamp=now_iso(),
+
+                trust_level=TrustLevel.UNTRUSTED,
+
+                verification_status=(
+                    VerificationStatus.UNVERIFIED
+                ),
 
             )
 

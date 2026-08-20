@@ -58,7 +58,7 @@ Benefits include:
 
 # Current Version
 
-**v0.1.0-alpha**
+**0.6.0**
 
 Status:
 
@@ -67,7 +67,7 @@ Status:
 Git Tag
 
 ```
-v0.1.0-alpha
+v0.5.0
 ```
 
 ---
@@ -375,13 +375,13 @@ Additional documentation will be added as the project evolves.
 
 ## v0.2.0-alpha
 
-Planned:
+Implemented:
 
-- [ ] Loop Engine
+- [x] Loop Engine
 - [ ] Event Query Engine
-- [ ] Decision Trace
+- [x] Decision Trace
 - [ ] Runtime Console
-- [ ] Worker Runtime
+- [x] Worker Runtime
 
 ---
 

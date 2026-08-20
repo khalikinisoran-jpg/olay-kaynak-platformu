@@ -123,7 +123,8 @@ class RecordingApplyExecutor:
         self,
         patch,
         decision,
-        attempt=None
+        attempt=None,
+        scope=None
     ):
 
         self.calls.append({
@@ -289,7 +290,8 @@ class FakeRecoveryWorker:
 def build_pipeline(
     apply_executor,
     verification_executor,
-    controller=None
+    controller=None,
+    scope=()
 ):
 
     return WorkerActionPipeline(
@@ -303,6 +305,7 @@ def build_pipeline(
             apply_executor=apply_executor,
             verification_executor=verification_executor,
         ),
+        scope=scope,
     )
 
 
@@ -331,11 +334,12 @@ def make_target(tmp_path, content="value = 1\n"):
     return target
 
 
-def build_full_pipeline(verification_executor):
+def build_full_pipeline(verification_executor, scope=()):
 
     return build_pipeline(
         ApplyExecutor(),
         verification_executor,
+        scope=scope,
     )
 
 
@@ -362,7 +366,10 @@ def test_t01_verification_fail_creates_attempt_two(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -409,7 +416,10 @@ def test_t02_two_fails_creates_attempt_three(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -471,7 +481,10 @@ def test_t03_three_fails_never_calls_worker_fourth_time(
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
         max_attempts=max_attempts,
     )
 
@@ -518,7 +531,10 @@ def test_t04_first_attempt_pass_no_retry(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -564,7 +580,11 @@ def test_t05_validator_rejection_stops_no_worker_reanalysis(tmp_path):
 
     engine = build_engine(
         worker,
-        build_pipeline(apply_executor, verify),
+        build_pipeline(
+            apply_executor,
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -612,6 +632,7 @@ def test_t06_controller_rejection_stops_no_worker_reanalysis(tmp_path):
             apply_executor,
             verify,
             controller=controller,
+            scope=(str(tmp_path),),
         ),
     )
 
@@ -650,7 +671,11 @@ def test_t07_apply_failure_no_verification_no_retry(tmp_path):
 
     engine = build_engine(
         worker,
-        build_pipeline(apply_executor, verify),
+        build_pipeline(
+            apply_executor,
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -698,7 +723,10 @@ def test_t08_failure_evidence_reaches_worker_and_new_proposal(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -759,7 +787,11 @@ def test_t09_duplicate_patch_is_not_blindly_reapplied(tmp_path):
 
     engine = build_engine(
         worker,
-        build_pipeline(apply_executor, verify),
+        build_pipeline(
+            apply_executor,
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -808,7 +840,10 @@ def test_t10_attempt_history_is_append_only_and_evidence_accessible(
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -883,7 +918,10 @@ def test_t11_huge_max_attempts_is_capped(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
         max_attempts=1_000_000,
     )
 
@@ -935,7 +973,10 @@ def test_t12_negative_max_attempts_falls_back_to_default(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
         max_attempts=-1,
     )
 
@@ -981,7 +1022,10 @@ def test_t13_none_max_attempts_is_not_unlimited(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
         max_attempts=None,
     )
 
@@ -1037,7 +1081,10 @@ def test_t21_explicit_max_attempts_is_capped_to_three(
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
         max_attempts=max_attempts,
     )
 
@@ -1129,7 +1176,10 @@ def test_t14_verification_exception_is_terminal_no_unlimited_loop(
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -1174,7 +1224,10 @@ def test_t15_worker_exception_on_attempt_two_is_terminal(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -1232,6 +1285,7 @@ def test_t16_default_agent_never_applies_or_verifies(tmp_path):
     pipeline = build_pipeline(
         apply_executor,
         verify,
+        scope=(str(tmp_path),),
     )
 
     worker_executor = WorkerExecutor(
@@ -1289,7 +1343,10 @@ def test_t17_explicit_pipeline_pass_path_works(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -1345,6 +1402,7 @@ def test_t18_attempt_one_fingerprint_cannot_authorize_attempt_two(
             apply_executor,
             verify,
             controller=controller,
+            scope=(str(tmp_path),),
         ),
     )
 
@@ -1416,7 +1474,11 @@ def test_t19_out_of_scope_attempt_two_is_rejected_no_apply(tmp_path):
 
     engine = build_engine(
         worker,
-        build_pipeline(apply_executor, verify),
+        build_pipeline(
+            apply_executor,
+            verify,
+            scope=(str(target),),
+        ),
     )
 
     result = engine.execute(
@@ -1461,7 +1523,10 @@ def test_t20_third_attempt_pass_terminal_success(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -1501,7 +1566,8 @@ class ScriptedApplyExecutor:
         self,
         patch,
         decision,
-        attempt=None
+        attempt=None,
+        scope=None
     ):
 
         self.calls.append(patch)
@@ -1592,6 +1658,7 @@ def test_m1_multi_patch_b_validation_fail_is_terminal_no_retry(
         build_pipeline(
             apply_executor,
             verify,
+            scope=(str(target_a),),
         ),
     )
 
@@ -1698,6 +1765,7 @@ def test_m2_multi_patch_b_controller_reject_is_terminal_no_retry(
             apply_executor,
             verify,
             controller=controller,
+            scope=(str(tmp_path),),
         ),
     )
 
@@ -1801,6 +1869,7 @@ def test_m3_multi_patch_b_apply_fail_is_terminal_no_verification(
         build_pipeline(
             apply_executor,
             verify,
+            scope=(str(tmp_path),),
         ),
     )
 
@@ -1909,7 +1978,10 @@ def test_m4_multi_patch_b_verification_fail_retries_bounded(
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -1974,7 +2046,10 @@ def test_t30_single_patch_verification_fail_terminal_stage(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(
@@ -2028,7 +2103,10 @@ def test_f3_fingerprint_exception_is_terminal_no_retry(tmp_path):
 
     engine = build_engine(
         worker,
-        build_full_pipeline(verify),
+        build_full_pipeline(
+            verify,
+            scope=(str(tmp_path),),
+        ),
     )
 
     result = engine.execute(

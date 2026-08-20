@@ -43,6 +43,8 @@ class WorkerEventType:
 
     APPROVAL_GRANTED = "WorkerHumanApprovalGranted"
 
+    RISK_ASSESSED = "WorkerRiskAssessed"
+
     ALL = frozenset([
         TASK_CREATED,
         INSPECTION_COMPLETED,
@@ -60,6 +62,7 @@ class WorkerEventType:
         RECOVERY_SUCCEEDED,
         RECOVERY_FAILED,
         APPROVAL_GRANTED,
+        RISK_ASSESSED,
     ])
 
 

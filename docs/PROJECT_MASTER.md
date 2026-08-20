@@ -33,12 +33,12 @@ canonical docs (Section 4) rather than duplicating their full content.
 
 | Field | Value | Class |
 |-------|-------|--------|
-| CURRENT DATE | 2026-08-13 | VERIFIED |
+| CURRENT DATE | 2026-08-16 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `a8de82e2ea190db76df34304eca386b1199cd03a` (`a8de82e`, "Harden event store and snapshot integrity") | VERIFIED (`git rev-parse HEAD`) |
-| WORKTREE STATE | MISSION-017 + MISSION-018A + MISSION-018B + MISSION-019 changes **uncommitted**: interactive CLI approval console, risk-boundary hardening, recovery authorization boundary, GovernanceEvaluator (single governance authority), ApplyOutcomeJournal + startup reconciliation (crash consistency), atomic snapshots, retry-evidence redaction, corpus A66-A72, new test suites, doc sync | VERIFIED (`git status --short`) |
-| CURRENT MISSION | MISSION-019 **IMPLEMENTED / VERIFIED-by-suite** (uncommitted working tree); MISSION-018B IMPLEMENTED / VERIFIED-by-suite; MISSION-018A VERIFIED-by-suite; MISSION-017 VERIFIED-by-suite; MISSION-014 VERIFIED / CLOSED; MISSION-016 VERIFIED / CLOSED | VERIFIED (docs/MISSION_STATUS.md) |
-| LAST VERIFIED TEST RESULT | full suite **648 passed / 10 skipped**; adversarial corpus **76 passed / 1 skipped** (A01-A72); `compileall` exit 0; `git diff --check` clean | VERIFIED (2026-08-13 run) |
+| CURRENT HEAD | `1f9088f3f89edd083a592a916e0f8a2a15628e28` (`1f9088f`, "Expand cross-platform path traversal coverage") | VERIFIED (`git rev-parse HEAD`) |
+| WORKTREE STATE | MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes **uncommitted**: authoritative-scope enforcement, per-executor applied-fingerprint rollback registry, rollback trust model, governed retry budget, risk-assessed evidence events, replay suite; RELEASE-03: repo-local secret guard (scripts/secret_guard.py) + pre-commit hook (githooks/pre-commit + scripts/install_hooks.py) + CI secret-scan step, Kernel snapshot path isolation (default derived from event store), hardened .gitignore (.env.*, *.pem, *.key, credentials.json, secrets/), .env.example, new test suites | VERIFIED (`git status --short`) |
+| CURRENT MISSION | RELEASE-03 (Secret & Supply-Chain Protection + Snapshot Concurrency Hardening) **IMPLEMENTED / VERIFIED-by-suite** (uncommitted working tree); MISSION-H/J/J.1/J.2/J.3/J.3.1 VERIFIED-by-suite; MISSION-019..016 VERIFIED | VERIFIED (docs/MISSION_STATUS.md) |
+| LAST VERIFIED TEST RESULT | full suite **823 passed / 12 skipped**; adversarial corpus **80 passed / 1 skipped** (A01-A75 + summary); secret-guard corpus **39 passed**; snapshot isolation **4 passed**; MISSION-M memory suites **38 passed**; `compileall` exit 0; `git diff --check` clean | VERIFIED (2026-08-16 run) |
 | COMPLETED MISSIONS | 8 historic + 3 doc-sync + MISSION-003..014 + MISSION-016 + MISSION-017 + MISSION-018A + MISSION-018B + MISSION-019 (working tree) | VERIFIED (Section 18) |
 | ACTIVE MISSIONS | none open; MISSION-015 (Productization Readiness Assessment) PLANNED | VERIFIED |
 | OPEN SECURITY RISKS | risk classification remains a deterministic heuristic (a secret deliberately hidden under an innocent key in a plain file can still classify LOW); human operator identity is not authenticated (authorizer is informational); approval UX is CLI/synchronous only; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; orphaned-mutation auto-repair is intentionally NOT implemented (detect-only, D-032) | VERIFIED (Section 20) |
@@ -869,14 +869,14 @@ MISSION-014 adds 17 deterministic boundary tests (A-O) in
 
 # 16. TEST ARCHITECTURE
 
-Authoritative run (2026-08-13): **648 passed, 10 skipped**. Per module
+Authoritative run (2026-08-16): **742 passed, 12 skipped**. Per module
 (collected counts, VERIFIED by `pytest --collect-only`):
 
 | Module | Count |
 |--------|-------|
 | tests/approval_boundary_test.py | 48 |
 | tests/structured_analysis_test.py | 41 |
-| tests/security/adversarial_corpus_test.py | 76 (A01-A72) |
+| tests/security/adversarial_corpus_test.py | 80 (A01-A75 + summary) |
 | tests/recovery_engine_test.py | 33 |
 | tests/worker_contract_test.py | 31 |
 | tests/security/path_security_test.py | 31 |
@@ -891,7 +891,7 @@ Authoritative run (2026-08-13): **648 passed, 10 skipped**. Per module
 | tests/worker_evidence_test.py | 13 |
 | tests/runtime_mode_test.py | 12 |
 | tests/apply_outcome_journal_test.py | 11 |
-| tests/worker_action_pipeline_test.py | 11 |
+| tests/worker_action_pipeline_test.py | 9 |
 | tests/startup_reconciliation_test.py | 10 |
 | tests/apply_verify_pipeline_test.py | 9 |
 | tests/fault_injection_test.py | 9 |
@@ -905,9 +905,15 @@ Authoritative run (2026-08-13): **648 passed, 10 skipped**. Per module
 | tests/llm_provider_integration_test.py | 2 (gated, skipped in normal suite) |
 | tests/planner_contract_test.py | 1 |
 | recovery_test.py (root) | 1 |
+| tests/mission_h_security_test.py | 25 (MISSION-H) |
+| tests/mission_j2_rollback_test.py | 18 (MISSION-J.2 + J.3) |
+| tests/mission_j31_rollback_authority_test.py | 18 (MISSION-J.3.1) |
+| tests/mission_j_scope_test.py | 9 (MISSION-J/J.1) |
+| tests/mission_j3_hardening_test.py | 4 (MISSION-J.3) |
+| tests/replay_engine_test.py | 6 (replay suite) |
 
-- 10 skipped: 3 gated `live_llm` tests + 7 symlink-dependent tests (junction
-  variants pass on Windows).
+- 12 skipped: 3 gated `live_llm` tests + 9 symlink-dependent tests (junction
+  variants pass on Windows; symlink records run in CI on ubuntu-latest).
 - Script-style files not collected by pytest: calculator_test.py,
   context_test.py, decision_trace_test.py, hash_test.py, loop_test.py,
   memory_event_test.py, memory_events_test.py, memory_test.py,
@@ -1008,21 +1014,27 @@ git history and the passing suites. "LAST VERIFIED" is the state at
 
 # 19. CURRENT LIVE STATE
 
-- Branch `worker-action-pipeline` @ `a8de82e`; 17 commits ahead of `main`
+- Branch `worker-action-pipeline` @ `1f9088f`; 20 commits ahead of `main`
   (VERIFIED `git log main..HEAD`).
-- Working tree: MISSION-017 sprint changes uncommitted (interactive approval
-  console, runtime-mode tests, corpus A31-A36, CI packaging smoke,
-  approval-lookup benchmark, doc sync).
-- Test suite: **521 passed / 10 skipped** (2026-08-13); adversarial corpus
-  **40 passed / 1 skipped**; `compileall` exit 0; `git diff --check` clean;
-  gated live-LLM E2E **1 passed** (real provider, 2026-08-12).
-- Untracked: `simulation/agent/approval/approval_console.py`,
-  `tests/approval_console_test.py`, `tests/runtime_mode_test.py`,
-  `benchmarks/approval_lookup_benchmark.py`.
-- `.env` present locally (OPENROUTER_API_KEY, untracked/gitignored).
+- Working tree: MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes
+  uncommitted (authoritative-scope enforcement, rollback authority,
+  governed retry budget, risk evidence, replay; RELEASE-03 secret guard +
+  pre-commit hook + CI secret scan, snapshot path isolation, hardened
+  .gitignore, .env.example, doc sync).
+- Test suite: **823 passed / 12 skipped** (2026-08-16); adversarial corpus
+  **80 passed / 1 skipped**; secret-guard corpus **39 passed**; snapshot
+  isolation **4 passed**; MISSION-M memory suites **38 passed**;
+  `compileall` exit 0; `git diff --check` clean.
+- Untracked: `scripts/secret_guard.py`, `scripts/install_hooks.py`,
+  `githooks/pre-commit`, `tests/security/secret_guard_test.py`,
+  `tests/snapshot_concurrency_test.py`, mission test files, `.gitattributes`,
+  `.env.example`; concurrent MISSION-M work adds
+  `tests/security/memory_security_test.py`, `tests/property/memory_property_test.py`.
+- `.env` present locally (OPENROUTER_API_KEY, untracked/gitignored; not in
+  release snapshot).
 - CI workflow (`.github/workflows/ci.yml`, ubuntu + windows, pytest +
-  compileall + corpus + diff-check + packaging smoke); `pyproject.toml`
-  packaging metadata (`pip install -e .` verified locally 2026-08-13).
+  compileall + **secret scan** + corpus + diff-check + packaging smoke);
+  `pyproject.toml` packaging metadata (`pip install -e .` verified locally).
 
 ---
 

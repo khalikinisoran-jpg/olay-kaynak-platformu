@@ -100,7 +100,11 @@ def test_completed_success_is_terminal_not_orphaned(tmp_path):
         verification_executor=PassingVerification(),
         journal=journal,
     )
-    result = pipeline.execute(patch, approved_decision(patch))
+    result = pipeline.execute(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     report = ReconciliationEngine(
@@ -118,7 +122,11 @@ def test_orphaned_applied_mutation_is_detected(tmp_path):
     patch = make_patch(tmp_path)
 
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     assert Path(patch.path).read_text(
@@ -141,7 +149,11 @@ def test_orphan_after_rollback_start_is_detected(tmp_path):
     journal = make_journal(tmp_path)
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
     journal.record_rollback_started(result.intent_id)
 
@@ -160,7 +172,11 @@ def test_rolled_back_is_terminal(tmp_path):
     journal = make_journal(tmp_path)
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     journal.record_rollback_started(result.intent_id)
     journal.record_rolled_back(result.intent_id)
 
@@ -268,7 +284,11 @@ def test_corrupt_journal_fails_closed(tmp_path):
     journal = make_journal(tmp_path)
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    executor.apply(patch, approved_decision(patch))
+    executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
 
     journal.path.write_text("NOT JSON\n", encoding="utf-8")
 
@@ -283,7 +303,11 @@ def test_reconciliation_is_detect_only(tmp_path):
     journal = make_journal(tmp_path)
     patch = make_patch(tmp_path)
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     before = Path(patch.path).read_text(encoding="utf-8")

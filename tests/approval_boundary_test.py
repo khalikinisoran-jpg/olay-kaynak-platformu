@@ -105,7 +105,7 @@ class RecordingApplyExecutor:
 
         self.calls = []
 
-    def apply(self, patch, decision, attempt=None):
+    def apply(self, patch, decision, attempt=None, scope=None):
 
         self.calls.append({
             "patch": patch,
@@ -276,6 +276,7 @@ def build_gated_pipeline(
     apply_executor=None,
     approval_store=None,
     verification_executor=None,
+    scope=(),
 ):
 
     return WorkerActionPipeline(
@@ -296,6 +297,7 @@ def build_gated_pipeline(
         risk_engine=RiskEngine(),
         risk_policy=RiskPolicy(),
         approval_store=approval_store,
+        scope=scope,
     )
 
 
@@ -860,6 +862,8 @@ def test_assembly_wires_approval_store_when_gate_enabled():
 
     class StubWorkerExecutor:
 
+        allowed_paths = ("tests/approval_boundary_test.py",)
+
         def execute(self, *args, **kwargs):
 
             raise AssertionError(
@@ -914,6 +918,7 @@ def test_high_without_approval_denies(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=ApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -952,6 +957,7 @@ def test_critical_without_approval_denies(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=ApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -986,6 +992,7 @@ def test_high_without_any_store_denies(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=None,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -1037,6 +1044,7 @@ def test_high_with_valid_approval_allows_apply(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=ApplyExecutor(),
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1079,6 +1087,7 @@ def test_critical_with_valid_approval_allows_apply(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=ApplyExecutor(),
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1121,6 +1130,7 @@ def test_pipeline_replayed_approval_denies_second_run(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     first = pipeline.execute(make_worker_result(patch))
@@ -1169,6 +1179,7 @@ def test_pipeline_expired_approval_denies(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1215,6 +1226,7 @@ def test_pipeline_wrong_fingerprint_approval_denies(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1249,6 +1261,7 @@ def test_pipeline_wrong_path_approval_denies(tmp_path):
 
     pipeline = build_gated_pipeline(
         approval_store=StubApprovalStore(forged),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1279,6 +1292,7 @@ def test_pipeline_wrong_action_approval_denies(tmp_path):
 
     pipeline = build_gated_pipeline(
         approval_store=StubApprovalStore(forged),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1309,6 +1323,7 @@ def test_pipeline_wrong_risk_context_approval_denies(tmp_path):
 
     pipeline = build_gated_pipeline(
         approval_store=StubApprovalStore(forged),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1349,6 +1364,7 @@ def test_pipeline_wrong_attempt_approval_denies(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -1382,6 +1398,7 @@ def test_pipeline_rejects_forged_typed_approval(tmp_path):
 
     pipeline = build_gated_pipeline(
         approval_store=StubApprovalStore(forged),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1407,6 +1424,7 @@ def test_pipeline_rejects_agent_fabricated_approval_metadata(tmp_path):
 
     pipeline = build_gated_pipeline(
         approval_store=ForgingApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1461,6 +1479,7 @@ def test_pipeline_ignores_proposal_contained_approval_claim(tmp_path):
     pipeline = build_gated_pipeline(
         apply_executor=apply_executor,
         approval_store=ApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(worker_result)
@@ -1550,6 +1569,7 @@ def test_recovery_passes_attempt_context_to_approval_boundary(
     pipeline = build_gated_pipeline(
         apply_executor=RecordingApplyExecutor(),
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     engine = BoundedRecoveryEngine(
@@ -1690,6 +1710,7 @@ def test_b_forged_controller_decision_instance_is_denied(tmp_path):
     ).apply(
         patch,
         forged,
+        scope=(str(tmp_path),),
     )
 
     assert result.success is False
@@ -1772,6 +1793,7 @@ def test_d_valid_approval_authorizes_apply(tmp_path):
     ).apply(
         patch,
         decision,
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -1803,6 +1825,7 @@ def test_d2_valid_critical_approval_authorizes_apply(tmp_path):
     ).apply(
         patch,
         decision,
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -1833,6 +1856,7 @@ def test_e_approval_for_different_patch_is_denied(tmp_path):
     ).apply(
         other,
         decision,
+        scope=(str(tmp_path),),
     )
 
     assert result.success is False
@@ -2137,6 +2161,7 @@ def test_o_direct_apply_authorization_bypass_is_denied(tmp_path):
     ).apply(
         patch,
         forged,
+        scope=(str(tmp_path),),
     )
 
     assert result.success is False

@@ -149,6 +149,7 @@ def test_verification_failure_rolls_back_with_clean_verify(tmp_path):
     result = pipeline.execute(
         patch,
         approved_decision(patch),
+        scope=(str(tmp_path),),
     )
 
     assert result.success is False
@@ -184,7 +185,7 @@ def test_rollback_failure_is_terminal_not_retryable(tmp_path):
 
     class FailingRollbackExecutor(ApplyExecutor):
 
-        def rollback(self, patch):
+        def rollback(self, patch, scope=None):
 
             return (False, "restore target is gone")
 
@@ -201,6 +202,7 @@ def test_rollback_failure_is_terminal_not_retryable(tmp_path):
                 ]
             ),
         ),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -249,6 +251,7 @@ def test_repeated_recovery_leaves_no_cumulative_modifications(tmp_path):
                 ]
             ),
         ),
+        scope=(str(tmp_path),),
     )
 
     engine = BoundedRecoveryEngine(
@@ -299,6 +302,7 @@ def test_recovery_success_after_rollback_retry(tmp_path):
                 ]
             ),
         ),
+        scope=(str(tmp_path),),
     )
 
     engine = BoundedRecoveryEngine(
@@ -356,6 +360,7 @@ def test_rollback_evidence_events_recorded(tmp_path):
             ),
         ),
         evidence_recorder=recorder,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(

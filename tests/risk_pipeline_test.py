@@ -112,7 +112,8 @@ class RecordingApplyExecutor:
         self,
         patch,
         decision,
-        attempt=None
+        attempt=None,
+        scope=None
     ):
 
         self.calls.append({
@@ -157,6 +158,7 @@ class RecordingApplyVerifyPipeline(ApplyVerifyPipeline):
             ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
         ),
         attempt=None,
+        scope=None,
     ):
 
         self.calls.append({
@@ -173,6 +175,7 @@ class RecordingApplyVerifyPipeline(ApplyVerifyPipeline):
             test_targets=test_targets,
             verification_depth=verification_depth,
             attempt=attempt,
+            scope=scope,
         )
 
 
@@ -258,6 +261,8 @@ class StubProvider:
 
 
 class StubWorkerExecutor:
+
+    allowed_paths = ("tests/risk_pipeline_test.py",)
 
     def execute(self, *args, **kwargs):
 
@@ -351,6 +356,7 @@ def build_gated_pipeline(
     risk_policy=None,
     approval_store=None,
     apply_verify_pipeline=None,
+    scope=(),
 ):
 
     if apply_verify_pipeline is None:
@@ -383,6 +389,7 @@ def build_gated_pipeline(
             else RiskPolicy()
         ),
         approval_store=approval_store,
+        scope=scope,
     )
 
 
@@ -404,6 +411,7 @@ def test_gate_enabled_low_risk_flows_through_pipeline(
     pipeline = build_gated_pipeline(
         make_verification_result(),
         apply_executor=ApplyExecutor(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -464,6 +472,7 @@ def test_gate_enabled_medium_risk_flows_through_pipeline(
     pipeline = build_gated_pipeline(
         make_verification_result(),
         apply_executor=ApplyExecutor(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -508,6 +517,7 @@ def test_gate_enabled_risk_rejection_denies_apply(
         make_verification_result(),
         apply_executor=apply_executor,
         risk_engine=DenyRiskEngine(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -574,6 +584,7 @@ def test_gate_enabled_high_risk_requires_human_approval(
     pipeline = build_gated_pipeline(
         make_verification_result(),
         apply_executor=apply_executor,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -639,6 +650,7 @@ def test_gate_enabled_critical_risk_requires_human_approval(
     pipeline = build_gated_pipeline(
         make_verification_result(),
         apply_executor=apply_executor,
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(
@@ -698,6 +710,7 @@ def test_gate_enabled_high_risk_with_approval_flows_to_apply(
         make_verification_result(),
         apply_verify_pipeline=recorded,
         approval_store=store,
+        scope=(str(tmp_path),),
     )
 
     patch = make_patch(
@@ -768,6 +781,7 @@ def test_policy_verification_depth_reaches_pipeline(
         approval_store=StubApprovalStore(
             make_valid_approval(patch)
         ),
+        scope=(str(tmp_path),),
     )
 
     policy_depth = RiskPolicy.from_level(
@@ -815,6 +829,7 @@ def test_policy_medium_depth_reaches_pipeline(
     pipeline = build_gated_pipeline(
         make_verification_result(),
         apply_verify_pipeline=recorded,
+        scope=(str(tmp_path),),
     )
 
     policy_depth = RiskPolicy.from_level(
@@ -864,6 +879,7 @@ def test_gate_disabled_never_consults_risk_engine(
             ),
         ),
         risk_engine=ExplodingRiskEngine(),
+        scope=(str(tmp_path),),
     )
 
     assert pipeline.risk_gate_enabled is False
@@ -921,6 +937,7 @@ def test_apply_verify_compile_depth_uses_compile_only(
         verification_depth=(
             ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE
         ),
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -978,6 +995,7 @@ def test_apply_verify_default_depth_uses_full_verify(
     result = pipeline.execute(
         patch,
         decision,
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -1025,6 +1043,7 @@ def test_apply_verify_explicit_compile_tests_depth_uses_full_verify(
         verification_depth=(
             ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
         ),
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -1058,6 +1077,7 @@ def run_gated_denial(tmp_path, filename, updated, expected_stage):
         make_verification_result(),
         apply_executor=apply_executor,
         approval_store=ApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1178,6 +1198,7 @@ def test_gate_enabled_opaque_content_denies(tmp_path):
         make_verification_result(),
         apply_executor=apply_executor,
         approval_store=ApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))
@@ -1211,6 +1232,7 @@ def test_gate_enabled_trivial_value_stays_low(tmp_path):
         make_verification_result(),
         apply_executor=ApplyExecutor(),
         approval_store=ApprovalStore(),
+        scope=(str(tmp_path),),
     )
 
     result = pipeline.execute(make_worker_result(patch))

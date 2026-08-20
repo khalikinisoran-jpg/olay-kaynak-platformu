@@ -178,7 +178,11 @@ def test_window3_applied_without_verify_is_orphan(tmp_path):
     patch = make_patch(tmp_path)
 
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     report = ReconciliationEngine(
@@ -204,7 +208,11 @@ def test_window4_rollback_started_orphan_detected(tmp_path):
     patch = make_patch(tmp_path)
 
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     journal.record_rollback_started(result.intent_id)
 
     report = ReconciliationEngine(
@@ -235,7 +243,11 @@ def test_window5_rollback_complete_is_terminal_not_orphan(tmp_path):
         verification_executor=FailingVerification(),
         journal=journal,
     )
-    result = pipeline.execute(patch, approved_decision(patch))
+    result = pipeline.execute(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.rollback is not None
     assert result.rollback.success is True
 
@@ -368,7 +380,11 @@ def test_restart_reconciliation_detects_orphan_end_to_end(tmp_path):
     patch = make_patch(tmp_path)
 
     executor = ApplyExecutor(journal=journal)
-    result = executor.apply(patch, approved_decision(patch))
+    result = executor.apply(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     restarted = ApplyOutcomeJournal(path=journal_path)
@@ -406,7 +422,11 @@ def test_complete_apply_has_durable_outcome_across_restart(tmp_path):
         verification_executor=PassingVerification(),
         journal=journal,
     )
-    result = pipeline.execute(patch, approved_decision(patch))
+    result = pipeline.execute(
+        patch,
+        approved_decision(patch),
+        scope=(str(tmp_path),),
+    )
     assert result.success is True
 
     restarted = ApplyOutcomeJournal(path=journal_path)
