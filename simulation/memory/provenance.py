@@ -166,13 +166,27 @@ class MemoryProvenance:
 
         known = {field.name for field in fields(cls)}
 
-        return cls(
-            **{
-                key: data[key]
-                for key in known
-                if key in data
-            }
-        )
+        filtered = {
+            key: data[key]
+            for key in known
+            if key in data
+        }
+
+        if "trust_level" in filtered:
+            filtered["trust_level"] = _clamp(
+                filtered["trust_level"],
+                TrustLevel.ALL,
+                TrustLevel.UNTRUSTED,
+            )
+
+        if "verification_status" in filtered:
+            filtered["verification_status"] = _clamp(
+                filtered["verification_status"],
+                VerificationStatus.ALL,
+                VerificationStatus.UNVERIFIED,
+            )
+
+        return cls(**filtered)
 
     def to_dict(self):
 
