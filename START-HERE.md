@@ -12,7 +12,7 @@ Read in order:
 
 1. **Architecture:** `docs/ARCHITECTURE.md` — high-level `Kernel` → `EventStore` → `Approval` → `Apply` flow
 2. **Authority / Security Model:** `docs/SECURITY_MODEL.md` — `PatchValidator` (scope `R1-R5`), `RiskEngine` (`os\[`+`generic get` `HIGH`), `GovernanceEvaluator`, `ApprovalStore` single-use, `ApplyAuthorization` (`is True`+`is patch`)
-3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current `5b81ac1` `974` state
+3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current `24c72d0` `986 collected / 974 passed / 12 skipped / 0 failures` (MISSION N.55 foundation, 2026-08-21, branch `worker-action-pipeline` clean)
 4. **Development / Testing:** `README.md` — setup and `pytest` instructions
 
 ## Core Principle
@@ -27,7 +27,7 @@ Trace metadata (`trace_id`, `fingerprint` in evidence) is **advisory**, never `i
 
 - **Core runtime:** `simulation/core/` (`kernel.py:71` `dispatch` `append→reducer→snapshot`, `reducer.py`, `state.py`), `simulation/persistence/` (`event_store.py:157`, `snapshot.py`, `chain_anchor.py:206`, `process_lock.py`)
 - **Security / Governance:** `simulation/security/` (`risk_engine.py:300` `os\[`+`generic get`, `risk_policy.py:64`, `governance_evaluator.py:96`, `path_policy.py:41`, `hash_verifier.py:17`), `simulation/agent/approval/` (`approval_ledger.py:335`, `approval_store.py:288`), `simulation/agent/apply/` (`apply_executor.py:69`, `file_applier.py:50`)
-- **Tests:** `tests/` `986` collected `974 passed` (`test_n6 10`, `a26 11`, `multiprocess 9`, `path_security 42`, `adversarial_corpus`)
+- **Tests:** `tests/` `986` collected `974 passed / 12 skipped` (`test_n6 10`, `a26 11`, `multiprocess 9`, `path_security 42`, `adversarial_corpus`) — MISSION N.55 verified
 
 ## First Commands
 
@@ -53,6 +53,6 @@ No `Jaeger`/`Tempo`/`Redis`/`Kafka` required for local `974`.
 
 **Do not start with `MISSION-N*` / `LAYER-A-*` evidence reports** (`70+` `MISSION-N*` `10` `N27` `is NOW`). They are **forensic history**, not canonical onboarding.
 
-They remain `??` `EVIDENCE-OPTIONAL` `DO-NOT-COMMIT` (`git ls-files --others --exclude-standard` `184`), intentionally untracked. Canonical docs above are `5b81ac1` `49 M`+`3` `chain_anchor`/`process_lock`/`provenance`+`1` `a26`+`25` tests+`6` tooling = `84` files `1f9088f..5b81ac1` `84` tracked, `MISSION-N*` stays `??`.
+They remain `??` `EVIDENCE-OPTIONAL` `DO-NOT-COMMIT` (external archive), intentionally untracked. Canonical docs above are current at `24c72d0` on `worker-action-pipeline` (clean, `30` commits ahead of `main`, `986 collected`); `MISSION-N*` remains archived outside the repository.
 
 For historical decisions, summarized `docs/DECISIONS.md` is sufficient; read `MISSION-N*` only if auditing a specific forensic claim.

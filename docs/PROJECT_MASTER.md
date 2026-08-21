@@ -33,29 +33,19 @@ canonical docs (Section 4) rather than duplicating their full content.
 
 | Field | Value | Class |
 |-------|-------|--------|
-| CURRENT DATE | 2026-08-16 | VERIFIED |
+| CURRENT DATE | 2026-08-21 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `1f9088f3f89edd083a592a916e0f8a2a15628e28` (`1f9088f`, "Expand cross-platform path traversal coverage") | VERIFIED (`git rev-parse HEAD`) |
-| WORKTREE STATE | MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes **uncommitted**: authoritative-scope enforcement, per-executor applied-fingerprint rollback registry, rollback trust model, governed retry budget, risk-assessed evidence events, replay suite; RELEASE-03: repo-local secret guard (scripts/secret_guard.py) + pre-commit hook (githooks/pre-commit + scripts/install_hooks.py) + CI secret-scan step, Kernel snapshot path isolation (default derived from event store), hardened .gitignore (.env.*, *.pem, *.key, credentials.json, secrets/), .env.example, new test suites | VERIFIED (`git status --short`) |
-| CURRENT MISSION | RELEASE-03 (Secret & Supply-Chain Protection + Snapshot Concurrency Hardening) **IMPLEMENTED / VERIFIED-by-suite** (uncommitted working tree); MISSION-H/J/J.1/J.2/J.3/J.3.1 VERIFIED-by-suite; MISSION-019..016 VERIFIED | VERIFIED (docs/MISSION_STATUS.md) |
-| LAST VERIFIED TEST RESULT | full suite **823 passed / 12 skipped**; adversarial corpus **80 passed / 1 skipped** (A01-A75 + summary); secret-guard corpus **39 passed**; snapshot isolation **4 passed**; MISSION-M memory suites **38 passed**; `compileall` exit 0; `git diff --check` clean | VERIFIED (2026-08-16 run) |
-| COMPLETED MISSIONS | 8 historic + 3 doc-sync + MISSION-003..014 + MISSION-016 + MISSION-017 + MISSION-018A + MISSION-018B + MISSION-019 (working tree) | VERIFIED (Section 18) |
-| ACTIVE MISSIONS | none open; MISSION-015 (Productization Readiness Assessment) PLANNED | VERIFIED |
+| CURRENT HEAD | `24c72d01690a6a1645317cb2b52c26c532731587` (`24c72d0`, "fix(edge-case): clamp provenance trust levels in from_dict") | VERIFIED (`git rev-parse HEAD`) |
+| WORKTREE STATE | clean — `git status` reports `nothing to commit, working tree clean`; local == origin/worker-action-pipeline | VERIFIED (`git status --porcelain`, `git fetch --prune`) |
+| CURRENT MISSION | MISSION N.55 FOUNDATION EXIT GATE — **ACCEPTED** (986 collected / 974 passed / 12 skipped / 0 failures, 2026-08-21); MISSION N.56 PHASE 1 TRUTH ALIGNMENT in progress | VERIFIED (MISSION N.55 evidence) |
+| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`, 78s); MISSION N.55 reproduced | VERIFIED (2026-08-21 run) |
+| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O; foundation re-verified at 24c72d0 | VERIFIED (Section 18 + git log) |
+| ACTIVE MISSIONS | MISSION N.56 (Phase 1 Truth Alignment) | VERIFIED |
 | OPEN SECURITY RISKS | risk classification remains a deterministic heuristic (a secret deliberately hidden under an innocent key in a plain file can still classify LOW); human operator identity is not authenticated (authorizer is informational); approval UX is CLI/synchronous only; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; orphaned-mutation auto-repair is intentionally NOT implemented (detect-only, D-032) | VERIFIED (Section 20) |
 | UNKNOWN ITEMS | see Section 21 | — |
 | NEXT 3-5 PRIORITIES | 1) commit/push MISSION-016..019 + hosted CI run, 2) default-on gate decision (UX now exists), 3) MISSION-015 productization readiness, 4) benchmark/CI hardening on Linux/macOS, 5) doc-sync + hygiene commit | INFERRED (Section 22) |
 
-Quick orientation: the repository is an **event-sourced AI runtime
-prototype**. A worker (optionally LLM-driven) proposes file modifications;
-deterministic gates (validator -> controller -> apply -> verify) decide;
-every decision becomes a hash-chained event. The MISSION-016 sprint wired
-the risk/approval/authorization stack into a **real opt-in runtime path**
-(`agent_run.py --governed`), added **rollback on verification failure**,
-made approval single-use state **durable via an approval ledger**, hardened
-the event store / snapshot integrity, added a **secret/prompt-injection
-boundary** on the worker read path, and extended the adversarial corpus
-(A01-A30). Apply/recovery/governed mode remain **opt-in only**; the default
-runtime is proposal-only.
+Quick orientation: the repository is an **event-sourced, deterministic, human-governed file-editing agent runtime** (Secure Coding Agent Runtime). A worker (optionally LLM-driven) proposes file modifications; deterministic gates (validator → RiskEngine → GovernanceEvaluator → human approval when required → single-use authorization → atomic apply → verify) decide; every decision becomes a hash-chained event anchored by ChainAnchor. Principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** The risk/approval/authorization stack is a **real opt-in runtime path** (`agent_run.py --governed` / `--recovery`) with rollback on verification failure and durable approval ledger. Apply/recovery/governed mode remain **opt-in only**; the default runtime is proposal-only.
 
 ---
 

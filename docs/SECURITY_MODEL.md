@@ -1,19 +1,9 @@
 # SECURITY_MODEL.md
 
 Canonical security model of the implemented worker action pipeline and
-event-sourcing core, branch `worker-action-pipeline` @ `a8de82e`
-(2026-08-13; risk-layer status refreshed by the MISSION-011 close-out on
-2026-08-12, MISSION-012/013/014 close-outs on 2026-08-12, the
-MISSION-016 gap-closure hardening on 2026-08-12, the MISSION-017
-productization & human-approval additions on 2026-08-13, the
-MISSION-018A risk-boundary hardening on 2026-08-13, the MISSION-018B
-recovery-authorization hardening on 2026-08-13, the MISSION-M
-memory-security & provenance hardening on 2026-08-17, the
-MISSION-N event-store trust-anchor & memory-provenance hardening on
-2026-08-17, the MISSION-N.1 anchored-runtime adoption &
-independent verification on 2026-08-17, and the MISSION-O production
-trust-anchor, single-writer enforcement & final integration on
-2026-08-17). Every claim
+event-sourcing core, branch `worker-action-pipeline` @ `24c72d0`
+(2026-08-21; MISSION N.55 foundation: `986 collected / 974 passed / 12 skipped / 0 failures`, clean).
+Historical risk-layer status: MISSION-011..018B, MISSION-M/N/N.1/O (see history; current baseline is 24c72d0). Every claim
 is classified VERIFIED (code + passing test), INFERRED (reasoned from
 code, no direct test), or UNKNOWN (cannot be determined). Complements
 docs/SECURITY_BASELINE.md (MISSION-005 audit).

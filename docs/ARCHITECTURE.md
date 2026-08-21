@@ -1,12 +1,10 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `a8de82e` (2026-08-13; MISSION-017
-> Productization & Human Approval additions: interactive CLI approval
-> console, deterministic runtime-mode tests, adversarial corpus A31-A36,
-> CI packaging smoke, approval-lookup benchmark).
+> `worker-action-pipeline` @ `24c72d0` (2026-08-21; MISSION N.55 foundation:
+> `986 collected / 974 passed / 12 skipped / 0 failures`, clean, local == remote).
 > This document describes verified code only. Roadmap/future ideas are not
-> presented as current reality; see ROADMAP.md for the future.
+> presented as current reality; see ROADMAP.md for the current strategic direction (A→C).
 
 ---
 

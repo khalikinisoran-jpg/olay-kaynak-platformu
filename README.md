@@ -4,6 +4,8 @@
 >
 > **Every AI decision becomes an auditable event.**
 
+> **Current canonical identity (2026-08-21, `worker-action-pipeline` @ `24c72d0`):** An **event-sourced, deterministic, human-governed file-editing agent runtime.** Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Verified baseline: **`986 collected / 974 passed / 12 skipped / 0 failures`** (MISSION N.55).
+
 An experimental AI runtime that treats every meaningful AI interaction as an immutable event.
 
 Instead of storing only the latest state, the runtime records every action, making AI systems replayable, recoverable, auditable, and verifiable.
@@ -58,17 +60,11 @@ Benefits include:
 
 # Current Version
 
-**0.6.0**
+**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `24c72d0`** (`fix(edge-case): clamp provenance trust levels in from_dict`)
 
-Status:
+Status: Active Development — **Foundation verified 2026-08-21** (`986 collected / 974 passed / 12 skipped / 0 failures`, clean, local == remote)
 
-✅ Stable Core
-
-Git Tag
-
-```
-v0.5.0
-```
+Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is `30` commits ahead of `main` (no release tag after `v0.5.0` for this branch)
 
 ---
 
@@ -362,36 +358,27 @@ Replay Ready
 
 Documentation is located inside the **docs/** directory.
 
-Current documents:
+Canonical entry point: **`START-HERE.md`** → `docs/ARCHITECTURE.md` (implemented flow) → `docs/SECURITY_MODEL.md` (verified boundaries) → `docs/PROJECT_MASTER.md` + `docs/PROJECT_STATE.md` → `docs/ROADMAP.md` (current direction).
 
-- MILESTONE_v0.1.0-alpha.md
-- IDEAS.md
-
-Additional documentation will be added as the project evolves.
+Additional historical docs exist under `docs/` but **canonical docs above are the source of current truth**; `MISSION-N*` reports are archived outside the repo.
 
 ---
 
 # Roadmap
 
-## v0.2.0-alpha
+> **Current strategic direction (2026-08-21):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C).
 
-Implemented:
+## Recently verified (worker-action-pipeline @ 24c72d0)
 
-- [x] Loop Engine
-- [ ] Event Query Engine
-- [x] Decision Trace
-- [ ] Runtime Console
-- [x] Worker Runtime
+- [x] Worker Action Pipeline (Patch Proposal → Validation → Risk → Governance → Approval → Apply → Verify → Recovery)
+- [x] Deterministic Risk + Governance + Single-Use Approval + Atomic Apply
+- [x] Event Store Trust Anchor (ChainAnchor), Provenance, Evidence
+- [x] Human-Governed Runtime (`--governed` / `--recovery`)
 
----
+## Next (controlled productization, not general expansion)
 
-## Future
-
-- [ ] Multi-Agent Runtime
-- [ ] Distributed Event Runtime
-- [ ] Streaming Event Bus
-- [ ] Plugin Architecture
-- [ ] Autonomous AI Loops
+- [ ] Packaging / CI hardening on current governed runtime
+- [ ] Controlled productization decisions (no autonomous/multi-agent expansion)
 
 ---
 

@@ -14,14 +14,14 @@ results > documentation.
 |-------|-------|----------------|
 | Project Name | Event-Sourced AI Runtime | VERIFIED (docs) |
 | Status | Active Development | VERIFIED (git activity) |
-| Last Updated | 2026-08-16 | VERIFIED |
-| Active Branch | `worker-action-pipeline` | VERIFIED (`git branch`) |
-| Branch HEAD | `1f9088f` ("Expand cross-platform path traversal coverage"); MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 (secret guard, snapshot path isolation) changes uncommitted | VERIFIED (`git rev-parse HEAD`) |
+| Last Updated | 2026-08-21 | VERIFIED |
+| Active Branch | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
+| Branch HEAD | `24c72d0` (`24c72d01690a6a1645317cb2b52c26c532731587`, "fix(edge-case): clamp provenance trust levels in from_dict") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 20 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
-| Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") | VERIFIED (`git tag`) |
+| Branch relationship | `worker-action-pipeline` is 30 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
-| Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`) |
+| Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — suite **`986 collected / 974 passed / 12 skipped / 0 failures`** | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`, MISSION N.55) |
 
 ---
 
@@ -247,29 +247,18 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-17 (MISSION-H / J / J.1 / J.2 / J.3 / J.3.1 +
-RELEASE-03, MISSION-M, MISSION-N, MISSION-N.1, MISSION-O):
+Authoritative run on 2026-08-21 (MISSION N.55 foundation, HEAD `24c72d0`):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
-902 passed, 12 skipped in ~60s
+974 passed, 12 skipped in 78.55s (986 collected)
 ```
 
 - 12 skipped: 3 opt-in `live_llm` integration tests (never run in the
   normal suite) + 9 symlink-dependent tests that skip where the OS denies
   symlink creation (junction variants pass on this Windows environment;
   the symlink records run in CI on ubuntu-latest).
-- The 902-passed count is +21 over the MISSION-N.1 close-out (881):
-  MISSION-O added the key-leakage corpus
-  (tests/security/key_leakage_test.py, 6), the single-writer /
-  multi-process prevention suite (tests/security/multiprocess_concurrency_test.py,
-  5), the crash-consistency corpus
-  (tests/security/crash_consistency_test.py, 5), the in-process
-  process-lock safety suite (tests/security/process_lock_test.py, 7)
-  and the anchored + governed runtime corpus
-  (tests/runtime_anchored_governed_test.py, 7), offset by the legacy
-  two-process reproduction assertions that were replaced by
-  prevention assertions.
+- MISSION N.55 reproduced the baseline **`986 collected / 974 passed / 12 skipped / 0 failures`** via `python -m pytest -q` (FULL method). Previous close-outs (902/881) are superseded.
 - Gated live run (real provider): `RUN_LIVE_LLM=1 python -m pytest -m
   live_llm tests/live_llm_e2e_test.py -q` → opt-in; skipped in normal suite.
 
@@ -336,26 +325,8 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              1f9088f (2026-08-16, "Expand cross-platform path traversal coverage")
-Working tree:      MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes
-                   uncommitted (authoritative-scope enforcement, rollback
-                   authority, governed retry budget, risk evidence, replay
-                   tests; RELEASE-03: repo-local secret guard + pre-commit
-                   hook + CI secret scan, snapshot path isolation, hardened
-                   .gitignore, doc sync)
-Untracked files:   tests/mission_h_security_test.py,
-                   tests/mission_j_scope_test.py,
-                   tests/mission_j2_rollback_test.py,
-                   tests/mission_j3_hardening_test.py,
-                   tests/mission_j31_rollback_authority_test.py,
-                   tests/replay_engine_test.py,
-                   tests/security/secret_guard_test.py,
-                   tests/snapshot_concurrency_test.py,
-                   .gitattributes,
-                   .env.example,
-                   scripts/secret_guard.py,
-                   scripts/install_hooks.py,
-                   githooks/pre-commit
+HEAD:              24c72d0 (2026-08-21, "fix(edge-case): clamp provenance trust levels in from_dict") — 24c72d01690a6a1645317cb2b52c26c532731587
+Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (MISSION N.55 verified)
 .gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
                    secrets/, .venv/, data/, __pycache__/, *.pyc,
                    .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
@@ -366,8 +337,8 @@ CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke 
 Packaging:         pyproject.toml (pip install -e . verified locally)
 ```
 
-`main` is 20 commits behind `worker-action-pipeline`. No release tag exists
-after v0.5.0 for the worker-action-pipeline work.
+`main` is 30 commits behind `worker-action-pipeline`. No release tag exists
+after v0.5.0 for the worker-action-pipeline work (HEAD 24c72d0 is 30 ahead).
 
 ---
 
@@ -449,5 +420,5 @@ Recommended (from audit findings, not a committed plan):
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-13 test run (521 passed, 10 skipped). Stale documentation must not
+2026-08-21 MISSION N.55 foundation (986 collected / 974 passed / 12 skipped, HEAD 24c72d0). Stale documentation must not
 be trusted over code and git history.

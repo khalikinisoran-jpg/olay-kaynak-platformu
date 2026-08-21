@@ -1,10 +1,14 @@
 # ROADMAP
 
-Version: 2.0
+Version: 2.0 — **SUPERSEDED as active direction on 2026-08-21** (historical phases preserved below with disclaimer)
 
-Status: Active
+Status: Historical — see Current Strategic Direction (A→C)
 
-Last Updated: 2026-08-07
+Last Updated: 2026-08-21 (HEAD `24c72d0`, `986 collected / 974 passed / 12 skipped`)
+
+> **Current strategic direction (2026-08-21, MISSION N.56):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose expansion (Multi-Agent / Distributed / Streaming / Autonomous) is **explicitly deferred** per telemetry/technology freeze. Phases below are **not** the current active roadmap; they are retained as historical context. Active next work: harden the governed runtime on `worker-action-pipeline` and make controlled productization decisions — not Phase 2/3/4 as written. See `START-HERE.md` → `docs/ARCHITECTURE.md`.
+
+Historical note: v2.0 planned Developer→Production→Enterprise→Autonomous progression. That progression is **not** current; current is Secure Runtime → Controlled Productization.
 
 ---
 
