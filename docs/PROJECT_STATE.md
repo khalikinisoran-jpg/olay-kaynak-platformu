@@ -14,11 +14,11 @@ results > documentation.
 |-------|-------|----------------|
 | Project Name | Event-Sourced AI Runtime | VERIFIED (docs) |
 | Status | Active Development | VERIFIED (git activity) |
-| Last Updated | 2026-08-21 | VERIFIED |
+| Last Updated | 2026-08-22 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| Branch HEAD | `24c72d0` (`24c72d01690a6a1645317cb2b52c26c532731587`, "fix(edge-case): clamp provenance trust levels in from_dict") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
+| Branch HEAD | `7d274bf` (`7d274bf2e3769d4e7322516924e1552088361d42`, "feat(demo): add first working vertical slice demo") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 30 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is 34 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
 | Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — suite **`986 collected / 974 passed / 12 skipped / 0 failures`** | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`, MISSION N.55) |
@@ -247,7 +247,7 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-21 (MISSION N.55 foundation, HEAD `24c72d0`):
+Authoritative run on 2026-08-22 (N.94 exit gate, HEAD `7d274bf`; foundation `24c72d0` at N.55):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
@@ -325,8 +325,8 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              24c72d0 (2026-08-21, "fix(edge-case): clamp provenance trust levels in from_dict") — 24c72d01690a6a1645317cb2b52c26c532731587
-Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (MISSION N.55 verified)
+HEAD:              7d274bf (2026-08-22, "feat(demo): add first working vertical slice demo") — 7d274bf2e3769d4e7322516924e1552088361d42
+Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (N.94 verified)
 .gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
                    secrets/, .venv/, data/, __pycache__/, *.pyc,
                    .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
@@ -337,8 +337,8 @@ CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke 
 Packaging:         pyproject.toml (pip install -e . verified locally)
 ```
 
-`main` is 30 commits behind `worker-action-pipeline`. No release tag exists
-after v0.5.0 for the worker-action-pipeline work (HEAD 24c72d0 is 30 ahead).
+`main` is 34 commits behind `worker-action-pipeline`. No release tag exists
+after v0.5.0 for the worker-action-pipeline work (HEAD 7d274bf is 34 ahead; foundation 24c72d0 was 30 ahead).
 
 ---
 
@@ -420,5 +420,7 @@ Recommended (from audit findings, not a committed plan):
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-21 MISSION N.55 foundation (986 collected / 974 passed / 12 skipped, HEAD 24c72d0). Stale documentation must not
+2026-08-22 N.94 exit gate (HEAD 7d274bf, 986 collected / 974 passed / 12 skipped, clean, local == remote; foundation 24c72d0 at N.55). Stale documentation must not
 be trusted over code and git history.
+
+Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93).

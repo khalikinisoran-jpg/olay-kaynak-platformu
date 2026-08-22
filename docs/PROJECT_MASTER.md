@@ -33,13 +33,13 @@ canonical docs (Section 4) rather than duplicating their full content.
 
 | Field | Value | Class |
 |-------|-------|--------|
-| CURRENT DATE | 2026-08-21 | VERIFIED |
+| CURRENT DATE | 2026-08-22 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `24c72d01690a6a1645317cb2b52c26c532731587` (`24c72d0`, "fix(edge-case): clamp provenance trust levels in from_dict") | VERIFIED (`git rev-parse HEAD`) |
+| CURRENT HEAD | `7d274bf2e3769d4e7322516924e1552088361d42` (`7d274bf`, "feat(demo): add first working vertical slice demo") | VERIFIED (`git rev-parse HEAD`) |
 | WORKTREE STATE | clean — `git status` reports `nothing to commit, working tree clean`; local == origin/worker-action-pipeline | VERIFIED (`git status --porcelain`, `git fetch --prune`) |
-| CURRENT MISSION | MISSION N.55 FOUNDATION EXIT GATE — **ACCEPTED** (986 collected / 974 passed / 12 skipped / 0 failures, 2026-08-21); MISSION N.56 PHASE 1 TRUTH ALIGNMENT in progress | VERIFIED (MISSION N.55 evidence) |
-| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`, 78s); MISSION N.55 reproduced | VERIFIED (2026-08-21 run) |
-| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O; foundation re-verified at 24c72d0 | VERIFIED (Section 18 + git log) |
+| CURRENT MISSION | MISSION N.94 PHASE-1 EXIT GATE (N.89 portability, N.91 cleanup, N.93 demo) — in progress; N.55 foundation at 24c72d0 conserved | VERIFIED (git log 24c72d0..7d274bf: N.89 ed26be0, N.91 07dbd34, N.93 7d274bf) |
+| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`, 72s); N.94 re-verified | VERIFIED (2026-08-22 run, N94_fullsuite_raw 0xD78E44A8) |
+| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93; foundation at 24c72d0, current 7d274bf | VERIFIED (Section 18 + git log) |
 | ACTIVE MISSIONS | MISSION N.56 (Phase 1 Truth Alignment) | VERIFIED |
 | OPEN SECURITY RISKS | risk classification remains a deterministic heuristic (a secret deliberately hidden under an innocent key in a plain file can still classify LOW); human operator identity is not authenticated (authorizer is informational); approval UX is CLI/synchronous only; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; orphaned-mutation auto-repair is intentionally NOT implemented (detect-only, D-032) | VERIFIED (Section 20) |
 | UNKNOWN ITEMS | see Section 21 | — |
