@@ -12,7 +12,7 @@ Read in order:
 
 1. **Architecture:** `docs/ARCHITECTURE.md` — high-level `Kernel` → `EventStore` → `Approval` → `Apply` flow
 2. **Authority / Security Model:** `docs/SECURITY_MODEL.md` — `PatchValidator` (scope `R1-R5`), `RiskEngine` (`os\[`+`generic get` `HIGH`), `GovernanceEvaluator`, `ApprovalStore` single-use, `ApplyAuthorization` (`is True`+`is patch`)
-3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current `7d274bf` (foundation `24c72d0`) `986 collected / 974 passed / 12 skipped / 0 failures` (N.94 exit gate 2026-08-22, branch `worker-action-pipeline` clean; N.89 portability, N.91 cleanup, N.93 demo)
+3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current `71d2353` (foundation `24c72d0` / 7d274bf) `986 collected / 974 passed / 12 skipped / 0 failures` (N.94/N.94-R 2026-08-22, branch `worker-action-pipeline` clean; N.89 portability, N.91 cleanup, N.93 demo, N.92 archive 185 PASS)
 4. **Development / Testing:** `README.md` — setup and `pytest` instructions
 
 ## Core Principle
@@ -56,6 +56,6 @@ No `Jaeger`/`Tempo`/`Redis`/`Kafka` required for local `974`.
 
 **Do not start with `MISSION-N*` / `LAYER-A-*` evidence reports** (`70+` `MISSION-N*` `10` `N27` `is NOW`). They are **forensic history**, not canonical onboarding.
 
-They remain `??` `EVIDENCE-OPTIONAL` `DO-NOT-COMMIT` (external archive), intentionally untracked. Canonical docs above are current at `7d274bf` (foundation `24c72d0`) on `worker-action-pipeline` (clean, `34` commits ahead of `main`, `986 collected`); `MISSION-N*` remains archived outside the repository.
+They remain `??` `EVIDENCE-OPTIONAL` `DO-NOT-COMMIT` (external archive), intentionally untracked. Canonical docs above are current at `71d2353` (foundation `24c72d0` / 7d274bf) on `worker-action-pipeline` (clean, `35` commits ahead of `main`, `986 collected`); `MISSION-N*` remain archived at `C:\Projects\event-sourcing-platform-evidence-archive` (185 files = 144+19+22, N.92/N.94-R PASS).
 
 For historical decisions, summarized `docs/DECISIONS.md` is sufficient; read `MISSION-N*` only if auditing a specific forensic claim.

@@ -4,7 +4,7 @@
 >
 > **Every AI decision becomes an auditable event.**
 
-> **Current canonical identity (2026-08-22, `worker-action-pipeline` @ `7d274bf`):** An **event-sourced, deterministic, human-governed file-editing agent runtime.** Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Verified baseline: **`986 collected / 974 passed / 12 skipped / 0 failures`** (foundation N.55 at 24c72d0 conserved; current HEAD 7d274bf adds N.89 portability, N.91 cleanup, N.93 demo).
+> **Current canonical identity (2026-08-22, `worker-action-pipeline` @ `71d2353`):** An **event-sourced, deterministic, human-governed file-editing agent runtime.** Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Verified baseline: **`986 collected / 974 passed / 12 skipped / 0 failures`** (foundation N.55 at 24c72d0 conserved; current HEAD 71d2353 adds N.89 portability, N.91 cleanup, N.93 demo, N.92/N.94-R archive 185 PASS).
 
 An experimental AI runtime that treats every meaningful AI interaction as an immutable event.
 
@@ -60,11 +60,11 @@ Benefits include:
 
 # Current Version
 
-**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `7d274bf`** (`feat(demo): add first working vertical slice demo`)
+**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `71d2353`** (`docs(n94): align canonical docs with 7d274bf (34 ahead, 986/974/12) and N.93 demo`)
 
-Status: Active Development — **Foundation + N.94 exit-gate verified 2026-08-22** (`986 collected / 974 passed / 12 skipped / 0 failures`, clean, local == remote; foundation 24c72d0 conserved)
+Status: Active Development — **Foundation + N.94/N.94-R verified 2026-08-22** (`986 collected / 974 passed / 12 skipped / 0 failures`, clean, local == remote; foundation 24c72d0 conserved; archive 185 PASS)
 
-Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is `34` commits ahead of `main` (no release tag after `v0.5.0` for this branch)
+Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is `35` commits ahead of `main` (no release tag after `v0.5.0` for this branch)
 
 ---
 
@@ -370,13 +370,14 @@ Additional historical docs exist under `docs/` but **canonical docs above are th
 
 > **Current strategic direction (2026-08-21):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C).
 
-## Recently verified (worker-action-pipeline @ 7d274bf; foundation 24c72d0)
+## Recently verified (worker-action-pipeline @ 71d2353; foundation 24c72d0)
 
 - [x] Worker Action Pipeline (Patch Proposal → Validation → Risk → Governance → Approval → Apply → Verify → Recovery)
 - [x] Deterministic Risk + Governance + Single-Use Approval + Atomic Apply
 - [x] Event Store Trust Anchor (ChainAnchor), Provenance, Evidence
 - [x] Human-Governed Runtime (`--governed` / `--recovery`)
 - [x] Vertical-slice demo `python demo_vertical_slice.py` — LOW pass, HIGH denied→approved, rollback (N.93, real `WorkerActionPipeline`)
+- [x] Historical evidence archive 185 files (144 MISSION-N* + 19 LAYER-A-* + 22 remaining = 185, PRESERVED_RELOCATED, N.92 + N.94-R independent repro PASS)
 
 ## Next (controlled productization, not general expansion)
 

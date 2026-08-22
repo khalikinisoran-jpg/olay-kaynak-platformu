@@ -16,9 +16,10 @@ results > documentation.
 | Status | Active Development | VERIFIED (git activity) |
 | Last Updated | 2026-08-22 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| Branch HEAD | `7d274bf` (`7d274bf2e3769d4e7322516924e1552088361d42`, "feat(demo): add first working vertical slice demo") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
+| Branch HEAD | `71d2353` (`71d2353f7bd99250a4ef8720c3b034e58974e1de`, "docs(n94): align canonical docs with 7d274bf (34 ahead, 986/974/12) and N.93 demo") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 34 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is 35 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Historical Evidence Archive | `C:\Projects\event-sourcing-platform-evidence-archive` — **185 files** (144 MISSION-N* + 19 LAYER-A-* + 22 remaining = 185, missing 0, unreadable 0) — **PRESERVED_RELOCATED, PASS** (N.92 verified, N.94-R re-verified deterministic enumeration, artifact `n94r_enum_raw.txt` SHA `C5C22B…`) | VERIFIED (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
 | Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — suite **`986 collected / 974 passed / 12 skipped / 0 failures`** | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`, MISSION N.55) |
@@ -247,7 +248,7 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-22 (N.94 exit gate, HEAD `7d274bf`; foundation `24c72d0` at N.55):
+Authoritative run on 2026-08-22 (N.94 exit gate HEAD `7d274bf` + N.94-R reconciliation HEAD `71d2353`; foundation `24c72d0` at N.55):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
@@ -325,8 +326,8 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              7d274bf (2026-08-22, "feat(demo): add first working vertical slice demo") — 7d274bf2e3769d4e7322516924e1552088361d42
-Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (N.94 verified)
+HEAD:              71d2353 (2026-08-22, "docs(n94): align canonical docs with 7d274bf (34 ahead, 986/974/12) and N.93 demo") — 71d2353f7bd99250a4ef8720c3b034e58974e1de
+Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (N.94-R verified, archive 185 PASS)
 .gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
                    secrets/, .venv/, data/, __pycache__/, *.pyc,
                    .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
@@ -337,8 +338,9 @@ CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke 
 Packaging:         pyproject.toml (pip install -e . verified locally)
 ```
 
-`main` is 34 commits behind `worker-action-pipeline`. No release tag exists
-after v0.5.0 for the worker-action-pipeline work (HEAD 7d274bf is 34 ahead; foundation 24c72d0 was 30 ahead).
+`main` is 35 commits behind `worker-action-pipeline`. No release tag exists
+after v0.5.0 for the worker-action-pipeline work (HEAD 71d2353 is 35 ahead; 7d274bf was 34, foundation 24c72d0 was 30).
+Historical archive: `C:\Projects\event-sourcing-platform-evidence-archive` — 185 files preserved (N.92 PASS, N.94-R independent repro PASS).
 
 ---
 
@@ -420,7 +422,8 @@ Recommended (from audit findings, not a committed plan):
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-22 N.94 exit gate (HEAD 7d274bf, 986 collected / 974 passed / 12 skipped, clean, local == remote; foundation 24c72d0 at N.55). Stale documentation must not
+2026-08-22 N.94-R reconciliation (HEAD 71d2353, 986 collected / 974 passed / 12 skipped, clean, local == remote; foundation 24c72d0 at N.55; archive 185 = 144+19+22 PRESERVED_RELOCATED). Stale documentation must not
 be trusted over code and git history.
 
 Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93).
+Archive: deterministic enumeration independently reproduced (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt` SHA `C5C22BB9…`, 185 readable, 0 missing — confirms N.92, corrects N.94 UNRESOLVED to PASS).
