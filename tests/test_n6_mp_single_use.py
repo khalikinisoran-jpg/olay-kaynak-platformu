@@ -10,6 +10,8 @@ from simulation.agent.worker.patch_proposal import PatchProposal
 
 KEY = "k" * 32
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
 
 def _make_patch(path="allowed/a.py", old="old", new="new"):
     return PatchProposal(path=path, action="modify", reason="fix", old_content=old, new_content=new, allowed_paths=("allowed",))
@@ -68,9 +70,9 @@ def test_concurrent_processes_single_use():
     tmp = tempfile.mkdtemp()
     helper = pathlib.Path(tmp) / "helper.py"
     helper.write_text(
-        """
+        f"""
 import sys
-sys.path.insert(0, r"C:\\Projects\\event-sourcing-platform")
+sys.path.insert(0, r"{REPO_ROOT}")
 from pathlib import Path
 from simulation.agent.approval.approval_ledger import ApprovalLedger
 from simulation.agent.approval.approval_store import ApprovalStore
@@ -120,9 +122,9 @@ def test_concurrent_processes_anchored_single_use():
     tmp = tempfile.mkdtemp()
     helper = pathlib.Path(tmp) / "helper_a.py"
     helper.write_text(
-        """
+        f"""
 import sys
-sys.path.insert(0, r"C:\\Projects\\event-sourcing-platform")
+sys.path.insert(0, r"{REPO_ROOT}")
 from pathlib import Path
 from simulation.agent.approval.approval_ledger import ApprovalLedger
 from simulation.agent.approval.approval_store import ApprovalStore
