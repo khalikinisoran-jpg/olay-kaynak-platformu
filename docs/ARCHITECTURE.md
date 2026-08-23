@@ -1,7 +1,7 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `2f49d9f` (2026-08-23; foundation `24c72d0` 986/974/12 conserved; HEAD 2f49d9f adds P2.1 CLI, P2.2 natural task entry, P2.2-FP pending exact parity, P2.3-A `demo_cli.ps1`).
+> `worker-action-pipeline` @ `50429ad` (2026-08-23; foundation `24c72d0` 986/974/12 conserved; HEAD 50429ad adds P2.1 CLI, P2.2 natural task entry, P2.2-FP pending exact parity, P2.3-A `demo_cli.ps1` + clean-clone verified locally).
 > This document describes verified code only. Roadmap/future ideas are not
 > presented as current reality; see ROADMAP.md for the current strategic direction (A→C). History at `24c72d0`/`71d2353` preserved in docs/PROJECT_STATE.md.
 

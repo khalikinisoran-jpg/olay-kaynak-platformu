@@ -16,9 +16,9 @@ results > documentation.
 | Status | Active Development | VERIFIED (git activity) |
 | Last Updated | 2026-08-23 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| Branch HEAD | `2f49d9f` (`2f49d9fad7218ad26ebbe431e363e9a118929dcd`, "fix(cli): mechanical pending approval for exact fingerprint parity (P2.2-FP)") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
+| Branch HEAD | `50429ad` (`50429ad540bc074a186141946c57f71f8447604a`, "feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 40 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is 41 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Historical Evidence Archive | `C:\Projects\event-sourcing-platform-evidence-archive` — **185 files** (144 MISSION-N* + 19 LAYER-A-* + 22 remaining = 185, missing 0, unreadable 0) — **PRESERVED_RELOCATED, PASS** (N.92 verified, N.94-R re-verified deterministic enumeration, artifact `n94r_enum_raw.txt` SHA `C5C22B…`) | VERIFIED (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
@@ -249,13 +249,16 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-23 (N.94 exit gate HEAD `7d274bf` + N.94-R reconciliation HEAD `71d2353` + P2.2-FP HEAD `2f49d9f`; foundation `24c72d0` at N.55 conserved):
+Authoritative run on 2026-08-23 (N.94 exit gate HEAD `7d274bf` + N.94-R reconciliation HEAD `71d2353` + P2.2-FP HEAD `2f49d9f` → P2.3-A HEAD `50429ad`; foundation `24c72d0` at N.55 conserved):
 
 ```
 .venv\Scripts\python.exe -m pytest -q
 974 passed, 12 skipped in 78.55s (986 collected)  # 2026-08-22 baseline
 .venv\Scripts\python.exe -m pytest -q tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py -v
-9 + 7 + 6 + 5 passed  # 2026-08-23 P2.x parity
+9 + 7 + 6 + 5 passed  # 2026-08-23 P2.x parity (local)
+C:\Users\...\clean_clone_test\vrepro\Scripts\python.exe -m pytest -q tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py tests/approval_boundary_test.py tests/test_n6_mp_single_use.py
+9 + 7 + 6 + 5 + 48 + 10 passed  # 2026-08-23 P2.3-A clean clone + clean venv verified; hosted CI not yet evidenced
+powershell -ExecutionPolicy Bypass -File demo_cli.ps1 -> OVERALL PASS (local and clean clone)
 ```
 
 - 12 skipped: 3 opt-in `live_llm` integration tests (never run in the
@@ -329,21 +332,21 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              2f49d9f (2026-08-23, "fix(cli): mechanical pending approval for exact fingerprint parity (P2.2-FP)") — 2f49d9fad7218ad26ebbe431e363e9a118929dcd
-Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (P2.2-FP 9 parity tests + N.94-R 185 PASS)
+HEAD:              50429ad (2026-08-23, "feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)") — 50429ad540bc074a186141946c57f71f8447604a
+Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (P2.3-A 41 ahead, clean-clone verified)
 .gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
                    secrets/, .venv/, data/, __pycache__/, *.pyc,
                    .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
                    (with !.env.example exception)
 Local env:         .env present with OPENROUTER_API_KEY (untracked; ignored;
                    not part of any release snapshot)
-CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step)
-Packaging:         pyproject.toml (pip install -e . verified locally)
-Reproducible demo: demo_cli.ps1 (HIGH DENY -> approve --pending -> VERIFIED -> replay DENY, history read-only)
+CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step) — not yet evidenced on hosted runner
+Packaging:         pyproject.toml 0.6.0 (pip install -e . verified locally and in clean clone vrepro)
+Reproducible demo: demo_cli.ps1 (HIGH DENY -> approve --pending -> VERIFIED -> replay DENY, history read-only) — OVERALL PASS locally and in clean clone; hosted CI not yet evidenced
 ```
 
-`main` is 40 commits behind `worker-action-pipeline`. No release tag exists
-after v0.5.0 for the worker-action-pipeline work (HEAD 2f49d9f is 40 ahead; 71d2353 was 35, foundation 24c72d0 was 30).
+`main` is 41 commits behind `worker-action-pipeline`. No release tag exists
+after v0.5.0 for the worker-action-pipeline work (HEAD 50429ad is 41 ahead; 2f49d9f was 40, 71d2353 was 35, foundation 24c72d0 was 30).
 Historical archive: `C:\Projects\event-sourcing-platform-evidence-archive` — 185 files preserved (N.92 PASS, N.94-R independent repro PASS).
 
 ---
@@ -426,8 +429,8 @@ Recommended (from audit findings, not a committed plan):
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-23 P2.2-FP reconciliation (HEAD 2f49d9f, foundation 24c72d0 at N.55 conserved; 986/974/12 + P2.x 22 CLI + 9 parity pass; clean, local == remote; archive 185 = 144+19+22 PRESERVED_RELOCATED). Stale documentation must not
+2026-08-23 P2.3-A reproducible baseline (HEAD 50429ad, foundation 24c72d0 at N.55 conserved; 986/974/12 + P2.x 22 CLI + 9 parity + 5 observability + 48 boundary + 10 mp pass; clean, local == remote; archive 185 = 144+19+22 PRESERVED_RELOCATED; clean clone + clean venv verified locally). Stale documentation must not
 be trusted over code and git history.
 
-Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93); `demo_cli.ps1` — reproducible governed CLI demo (HIGH DENY -> pending -> VERIFIED -> replay DENY, P2.3-A).
-Archive: deterministic enumeration independently reproduced (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt` SHA `C5C22BB9…`, 185 readable, 0 missing — confirms N.92, corrects N.94 UNRESOLVED to PASS).
+Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93); `demo_cli.ps1` — reproducible governed CLI demo (HIGH DENY -> pending -> VERIFIED -> replay DENY, P2.3-A, OVERALL PASS locally + clean clone).
+Archive: deterministic enumeration independently reproduced (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt` SHA `C5C22BB9…`, 185 readable, 0 missing — confirms N.92, corrects N.94 UNRESOLVED to PASS). Hosted CI not yet evidenced.

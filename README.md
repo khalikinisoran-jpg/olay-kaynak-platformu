@@ -4,7 +4,7 @@
 >
 > **Every AI decision becomes an auditable event.**
 
-> **Current canonical identity (2026-08-23, `worker-action-pipeline` @ `2f49d9f`):** An **event-sourced, deterministic, human-governed file-editing agent runtime.** Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Verified baseline: **`986 collected / 974 passed / 12 skipped / 0 failures`** (foundation N.55 at 24c72d0 conserved; HEAD 71d2353 adds N.89 portability, N.91 cleanup, N.93 demo, N.92/N.94-R archive 185 PASS; HEAD 2f49d9f adds P2.1 governed CLI, P2.2 natural task entry, P2.2-FP pending exact parity).
+> **Current canonical identity (2026-08-23, `worker-action-pipeline` @ `50429ad`):** An **event-sourced, deterministic, human-governed file-editing agent runtime.** Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Verified baseline: **`986 collected / 974 passed / 12 skipped / 0 failures`** (foundation N.55 at 24c72d0 conserved; HEAD 71d2353 adds N.89 portability, N.91 cleanup, N.93 demo, N.92/N.94-R archive 185 PASS; HEAD 2f49d9f adds P2.1 governed CLI, P2.2 natural task entry, P2.2-FP pending exact parity; HEAD 50429ad adds P2.3-A reproducible demo + doc sync, clean-clone verified locally).
 
 An experimental AI runtime that treats every meaningful AI interaction as an immutable event.
 
@@ -60,11 +60,11 @@ Benefits include:
 
 # Current Version
 
-**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `2f49d9f`** (`fix(cli): mechanical pending approval for exact fingerprint parity (P2.2-FP)`)
+**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `50429ad`** (`feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)`)
 
-Status: Active Development — **Foundation + N.94/N.94-R verified 2026-08-22, P2.1/P2.2/P2.2-FP verified 2026-08-23** (`986 collected / 974 passed / 12 skipped / 0 failures` foundation conserved; CLI parity 9 tests + CLI apply/task 13 tests + boundary 48 + mp single-use 10 pass)
+Status: Active Development — **Foundation + N.94/N.94-R verified 2026-08-22, P2.1/P2.2/P2.2-FP verified 2026-08-23, P2.3-A reproducible baseline verified 2026-08-23 via clean clone + clean venv + `demo_cli.ps1`** (`986 collected / 974 passed / 12 skipped / 0 failures` foundation conserved; CLI parity 9 + CLI apply/task 13 + observability 5 + boundary 48 + mp single-use 10 pass locally and in clean clone; hosted CI not yet evidenced)
 
-Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is `40` commits ahead of `main` (no release tag after `v0.5.0` for this branch)
+Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is `41` commits ahead of `main` (no release tag after `v0.5.0` for this branch; `0.6.0` declared in `pyproject.toml` but not yet tagged/released)
 
 ---
 
@@ -384,13 +384,15 @@ powershell -ExecutionPolicy Bypass -File demo_cli.ps1
 
 The script creates a temp workspace, writes `demo.txt` as exactly `hello` (no BOM), runs the HIGH-risk `task`, `approve --pending`, re-runs `task`, tests replay, and prints `history`. Exit 0 + `OVERALL PASS` only if all governance checks observed.
 
+**Clean reproduction (prerequisites explicit):** `Windows 10/11 + Python 3.12 + PowerShell 5.1 + git`. Clean steps: `git clone <repo> && cd <repo> && python -m venv .venv && .venv\Scripts\python -m pip install -e . && .venv\Scripts\python -m pip install pytest==9.1.1 && .venv\Scripts\python -m pytest tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py -v && powershell -ExecutionPolicy Bypass -File demo_cli.ps1`. Clean-clone verified locally 2026-08-23 (fresh `vrepro` venv + `pip install -e .` + 9+7+6+5+48+10 PASS + demo `OVERALL PASS`); hosted CI not yet evidenced — see `START-HERE.md` First Commands.
+
 ---
 
 # Roadmap
 
 > **Current strategic direction (2026-08-21):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C).
 
-## Recently verified (worker-action-pipeline @ 2f49d9f; foundation 24c72d0)
+## Recently verified (worker-action-pipeline @ 50429ad; foundation 24c72d0)
 
 - [x] Worker Action Pipeline (Patch Proposal → Validation → Risk → Governance → Approval → Apply → Verify → Recovery)
 - [x] Deterministic Risk + Governance + Single-Use Approval + Atomic Apply
@@ -401,13 +403,14 @@ The script creates a temp workspace, writes `demo.txt` as exactly `hello` (no BO
 - [x] P2.1 governed CLI (`apply`/`approve`/`history`/`status` thin wrappers over `WorkerActionPipeline`, `agent_run.py:154`) — 7 CLI apply + 5 observability tests
 - [x] P2.2 natural task entry (`task --goal --fake-analyzer` -> Worker -> governed pipeline, `agent_run.py:216`) — 6 CLI task tests
 - [x] P2.2-FP mechanical pending parity (`pending_proposals.json` + `approve --pending` exact fingerprint, `agent_run.py:534`) — 9 parity tests (HIGH denied→pending→verified→replay DENY, newline/BOM handling)
+- [x] P2.3-A reproducible governed CLI baseline (`demo_cli.ps1` DENY→APPROVE→VERIFIED→replay DENY, clean clone + clean venv `pip install -e .` 9+7+6+5+48+10 PASS) — implemented and verified locally 2026-08-23; hosted CI not yet evidenced
 
 Historical v2.0 Phases 1-4 (Developer→Production→Enterprise→Autonomous) are retained in `docs/ROADMAP.md` as context; they are not the active plan.
 
 ## Next (controlled productization, not general expansion)
 
-- [x] P2.3-A reproducible PowerShell demo `demo_cli.ps1` + canonical doc sync (this commit)
-- [ ] Packaging / CI hardening on current governed runtime
+- [x] P2.3-A reproducible PowerShell demo `demo_cli.ps1` + canonical doc sync (50429ad, clean-clone verified locally)
+- [ ] Packaging / CI hardening on current governed runtime (hosted runner evidence still missing)
 - [ ] Controlled productization decisions (no autonomous/multi-agent expansion)
 
 ---
