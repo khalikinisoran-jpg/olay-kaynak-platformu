@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -169,18 +170,21 @@ def main():
 
     approve_p = subparsers.add_parser(
         "approve",
-        help="Grant a single-use approval for a HIGH-risk patch (P2.1)",
-        description="Creates a real ApprovalStore grant bound to exact patch fingerprint/path/action/risk/attempt. No bypass.",
+        help="Grant a single-use approval for a HIGH-risk patch (P2.1/P2.2)",
+        description="Creates a real ApprovalStore grant bound to exact patch fingerprint/path/action/risk/attempt. No bypass. P2.2: use --pending to approve the exact pending proposal from the last task without manually reconstructing hidden fields (exact fingerprint parity).",
     )
-    approve_p.add_argument("--file", required=True, help="Target file (same as apply)")
-    approve_p.add_argument("--old-content", required=True, help="Old content (same as apply)")
-    approve_p.add_argument("--new-content", required=True, help="New content (same as apply)")
+    approve_p.add_argument("--file", required=False, default=None, help="Target file (same as apply) — not required with --pending")
+    approve_p.add_argument("--old-content", required=False, default=None, help="Old content (same as apply) — not required with --pending")
+    approve_p.add_argument("--new-content", required=False, default=None, help="New content (same as apply) — not required with --pending")
     approve_p.add_argument("--reason", default="cli apply", help="Patch reason (must match apply)")
     approve_p.add_argument("--workspace", required=True, help="Workspace root")
     approve_p.add_argument("--data-dir", default=None, help="Platform data dir (default: <workspace>/.cli_platform)")
     approve_p.add_argument("--allowed-path", action="append", default=None, help="Allowed paths (must match apply)")
     approve_p.add_argument("--authorizer", default="human-operator", help="Authorizer identity")
     approve_p.add_argument("--attempt", type=int, default=1, help="Attempt number (default 1)")
+    approve_p.add_argument("--pending", action="store_true", help="Approve the exact pending proposal(s) from the last task (P2.2 exact parity, no manual reconstruction)")
+    approve_p.add_argument("--fingerprint", default=None, help="With --pending, approve only the proposal matching this fingerprint (full or prefix); default: all pending")  # noqa: E501
+    approve_p.add_argument("--pending-path", default=None, help="Override pending proposals file (default: <data-dir>/pending_proposals.json)")
 
     history_p = subparsers.add_parser(
         "history",
@@ -525,6 +529,55 @@ def _cli_resolve_workspace(args):
     allowed = tuple(str(Path(p).resolve()) for p in args.allowed_path) if getattr(args, "allowed_path", None) else (str(ws),)
     # ensure workspace is within allowed scope (PathPolicy will re-check, but early hint)
     return ws, data_dir, allowed
+
+
+def _cli_pending_path(data_dir: Path, override=None) -> Path:
+    if override:
+        return Path(override).resolve()
+    return Path(data_dir) / "pending_proposals.json"
+
+
+def _cli_save_pending(data_dir: Path, patches, override=None):
+    """Persist exact pending proposals for mechanical approve parity (P2.2).
+
+    The file is NOT an approval authority; it is a convenience store of
+    the exact PatchProposal fields (including allowed_paths) so `approve
+    --pending` can reconstruct the identical fingerprint without human
+    newline/quoting reconstruction. Security invariant preserved: approval
+    still binds to exact fingerprint via ApprovalStore.
+    """
+    p = _cli_pending_path(data_dir, override)
+    data = []
+    for patch in patches:
+        data.append({
+            "path": patch.path,
+            "action": patch.action,
+            "reason": patch.reason,
+            "old_content": patch.old_content,
+            "new_content": patch.new_content,
+            "allowed_paths": list(patch.allowed_paths),
+            "fingerprint": patch.fingerprint(),
+        })
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    # atomic replace
+    tmp.replace(p)
+
+
+def _cli_load_pending(data_dir: Path, override=None):
+    p = _cli_pending_path(data_dir, override)
+    if not p.exists():
+        return []
+    try:
+        raw = p.read_text(encoding="utf-8")
+        if not raw.strip():
+            return []
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            return []
+        return data
+    except Exception:
+        return []
 
 
 def _cli_build_patch(args, ws, allowed):
@@ -951,6 +1004,15 @@ def _cli_task(args):
     print(f"Patches: {len(worker_result.patches)}")
     for idx, patch in enumerate(worker_result.patches):
         print(f"  Patch {idx}: path={patch.path} fingerprint={patch.fingerprint()[:12]} reason={patch.reason[:120]!r}")
+    # P2.2 exact parity: persist pending proposals for mechanical approve (no manual reconstruction)
+    try:
+        _cli_save_pending(data_dir, worker_result.patches, getattr(args, "pending_path", None))
+        print(f"Pending proposals persisted: {len(worker_result.patches)} to {_cli_pending_path(data_dir, getattr(args, 'pending_path', None))}")
+        for patch in worker_result.patches:
+            print(f"  Pending fingerprint: {patch.fingerprint()[:12]} (full {patch.fingerprint()})")
+            print(f"  To approve: python agent_run.py approve --pending --workspace \"{ws}\"")
+    except Exception as e:
+        print(f"Warning: failed to persist pending proposals: {e}")
     if bool(getattr(args, "dry_run", False)):
         print("Dry-run: proposal only, not applying.")
         for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
@@ -985,6 +1047,66 @@ def _cli_task(args):
 def _cli_approve(args):
     ws, data_dir, allowed = _cli_resolve_workspace(args)
     env = _cli_build_pipeline(ws, data_dir, allowed)
+    # P2.2 pending mode: approve exact persisted proposal(s) without manual reconstruction
+    if bool(getattr(args, "pending", False)):
+        pending_path = _cli_pending_path(data_dir, getattr(args, "pending_path", None))
+        pending = _cli_load_pending(data_dir, getattr(args, "pending_path", None))
+        if not pending:
+            print(f"No pending proposals found at {pending_path}")
+            print("Run a task first to generate a pending proposal (e.g., 'task --goal ... --fake-analyzer')")
+            return 1
+        # filter by fingerprint prefix if provided
+        fp_filter = getattr(args, "fingerprint", None)
+        if fp_filter:
+            pending = [p for p in pending if p.get("fingerprint", "").startswith(fp_filter) or p.get("fingerprint","") == fp_filter]
+            if not pending:
+                print(f"No pending proposal matches fingerprint {fp_filter!r}")
+                return 1
+        granted = 0
+        for rec in pending:
+            try:
+                patch = PatchProposal(
+                    path=rec["path"],
+                    action=rec.get("action", "modify"),
+                    reason=rec.get("reason", "cli apply"),
+                    old_content=rec["old_content"],
+                    new_content=rec["new_content"],
+                    allowed_paths=tuple(rec.get("allowed_paths", ())),
+                )
+            except Exception as e:
+                print(f"Skipping malformed pending record: {e}")
+                continue
+            # Verify fingerprint matches stored fingerprint (integrity check)
+            computed_fp = patch.fingerprint()
+            stored_fp = rec.get("fingerprint", "")
+            if stored_fp and stored_fp != computed_fp:
+                print(f"Warning: pending fingerprint mismatch stored={stored_fp[:12]} computed={computed_fp[:12]} — using computed")
+            gov_decision = env["gov"].evaluate(patch)
+            risk_level = gov_decision.risk_level.value
+            if gov_decision.requires_human_approval is not True:
+                print(f"Pending {computed_fp[:12]} risk {risk_level} does not require approval — skipping")
+                continue
+            approval = env["approval_store"].grant(
+                patch_fingerprint=computed_fp,
+                path=patch.path,
+                action=patch.action,
+                risk_level=risk_level,
+                attempt=getattr(args, "attempt", 1),
+                authorizer=getattr(args, "authorizer", "human-operator"),
+            )
+            print(f"Approval granted: {approval.approval_id[:8]} bound to fingerprint {approval.patch_fingerprint[:12]} (pending {computed_fp[:12]})")
+            print(f"Risk: {risk_level} attempt={approval.attempt} authorizer={approval.authorizer} path={patch.path}")
+            granted += 1
+        print(f"Approval ledger: {env['approval_store'].ledger.path}")
+        print(f"Granted {granted} approval(s) from {len(pending)} pending proposal(s)")
+        if granted == 0:
+            return 1
+        return 0
+    # manual mode (P2.1): require file/old/new
+    if not getattr(args, "file", None) or getattr(args, "old_content", None) is None or getattr(args, "new_content", None) is None:
+        print("Error: --file, --old-content and --new-content are required unless --pending is used")
+        print("Hint: use 'approve --pending --workspace <ws>' to approve the exact last task proposal without reconstruction")
+        return 1
     patch = _cli_build_patch(args, ws, allowed)
     gov_decision = env["gov"].evaluate(patch)
     risk_level = gov_decision.risk_level.value
