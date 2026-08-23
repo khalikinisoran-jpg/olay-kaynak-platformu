@@ -364,6 +364,8 @@ Canonical entry point: **`START-HERE.md`** → `docs/ARCHITECTURE.md` (implement
 
 **Reproducible governed CLI demo (P2.3-A):** `powershell -ExecutionPolicy Bypass -File demo_cli.ps1` — uses only the real CLI (`task`/`approve --pending`/`history`), deterministic `--fake-analyzer` (no LLM key), demonstrates HIGH-risk DENY → pending approval → VERIFIED → replay DENY (single-use fingerprint binding). See Quick Start below.
 
+**Visible product experience (P5):** `python demo_p5.py` or `powershell -ExecutionPolicy Bypass -File demo_p5.ps1` — uses the **real P5 localhost UI/service path** (`p5/server.py` view layer, `http://127.0.0.1:8766`) over the existing governed pipeline; shows proposal → HIGH approval-required → approve via canonical `ApprovalStore` → VERIFIED → replay DENY → adversarial spoof DENY (UI never writes directly, LLM claims untrusted). Also runnable as `python -m p5.server --port 8765` then open `http://127.0.0.1:8765/`.
+
 Additional historical docs exist under `docs/` but **canonical docs above are the source of current truth**; `MISSION-N*` reports are archived outside the repo.
 
 ---
@@ -386,13 +388,26 @@ The script creates a temp workspace, writes `demo.txt` as exactly `hello` (no BO
 
 **Clean reproduction (prerequisites explicit):** `Windows 10/11 + Python 3.12 + PowerShell 5.1 + git`. Clean steps: `git clone <repo> && cd <repo> && python -m venv .venv && .venv\Scripts\python -m pip install -e . && .venv\Scripts\python -m pip install pytest==9.1.1 && .venv\Scripts\python -m pytest tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py -v && powershell -ExecutionPolicy Bypass -File demo_cli.ps1`. Clean-clone verified locally 2026-08-23 (fresh `vrepro` venv + `pip install -e .` + 9+7+6+5+48+10 PASS + demo `OVERALL PASS`); hosted CI not yet evidenced — see `START-HERE.md` First Commands.
 
+# P5 Visible Product Experience (view layer, not authority)
+
+Local UI is a **view layer** over the existing governed runtime (`p5/server.py`, stdlib `http.server`). Start:
+
+```powershell
+python -m p5.server --host 127.0.0.1 --port 8765
+# open http://127.0.0.1:8765/  (Goal → Proposal → Governance → Approve → Execute → Verify → History)
+python demo_p5.py
+# expected: A LOW VERIFIED -> B HIGH APPROVAL_REQUIRED -> approve -> VERIFIED -> C REPLAY DENIED -> D ADVERSARIAL DENIED -> OVERALL PASS
+```
+
+What it demonstrates (real UI/service path, not mocks): proposal visible (target/fingerprint/diff/risk/approval-required), governance state (`PROPOSED`/`APPROVAL_REQUIRED`/`DENIED`/`VERIFIED`/`ROLLED_BACK`), canonical approval via `ApprovalStore` exact fingerprint (single-use, replay DENY preserved), execution via `WorkerActionPipeline` only (UI never calls `FileApplier`/`open(...,w)` on target), read-only history from `ApplyOutcomeJournal`. LLM claims (`approved`, `bypass_governance`, `verification_passed`) remain untrusted and are shown only as data, never as decisions. Known limitations: localhost only, no auth, no production DB, governed path unchanged — see `p5/server.py` header.
+
 ---
 
 # Roadmap
 
 > **Current strategic direction (2026-08-21):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C).
 
-## Recently verified (worker-action-pipeline @ 50429ad; foundation 24c72d0)
+## Recently verified (worker-action-pipeline @ 60b37ff + P5; foundation 24c72d0)
 
 - [x] Worker Action Pipeline (Patch Proposal → Validation → Risk → Governance → Approval → Apply → Verify → Recovery)
 - [x] Deterministic Risk + Governance + Single-Use Approval + Atomic Apply
@@ -403,13 +418,16 @@ The script creates a temp workspace, writes `demo.txt` as exactly `hello` (no BO
 - [x] P2.1 governed CLI (`apply`/`approve`/`history`/`status` thin wrappers over `WorkerActionPipeline`, `agent_run.py:154`) — 7 CLI apply + 5 observability tests
 - [x] P2.2 natural task entry (`task --goal --fake-analyzer` -> Worker -> governed pipeline, `agent_run.py:216`) — 6 CLI task tests
 - [x] P2.2-FP mechanical pending parity (`pending_proposals.json` + `approve --pending` exact fingerprint, `agent_run.py:534`) — 9 parity tests (HIGH denied→pending→verified→replay DENY, newline/BOM handling)
-- [x] P2.3-A reproducible governed CLI baseline (`demo_cli.ps1` DENY→APPROVE→VERIFIED→replay DENY, clean clone + clean venv `pip install -e .` 9+7+6+5+48+10 PASS) — implemented and verified locally 2026-08-23; hosted CI not yet evidenced
+- [x] P2.3-A reproducible governed CLI baseline (`demo_cli.ps1` DENY→APPROVE→VERIFIED→replay DENY, clean clone + clean venv `pip install -e .` 9+7+6+5+48+10 PASS) — verified locally 2026-08-23
+- [x] P3 adversarial proposals (20 tests, 8 scenarios) — real repo, zero bypass
+- [x] P4 LLM as untrusted proposer (hardened `LLMCodeAnalyzer` spoof strip + 13 deterministic + live smoke `deepseek` hello→hello fixed) — proposer != authority
+- [x] P5 visible product experience (`p5/server.py` localhost view layer + `demo_p5.py` A-D via real UI path) — no direct write, UI != authority, 7 UI tests, HIGH→approve→VERIFIED→replay DENY→spoof DENY, history read-only
 
 Historical v2.0 Phases 1-4 (Developer→Production→Enterprise→Autonomous) are retained in `docs/ROADMAP.md` as context; they are not the active plan.
 
 ## Next (controlled productization, not general expansion)
 
-- [x] P2.3-A reproducible PowerShell demo `demo_cli.ps1` + canonical doc sync (50429ad, clean-clone verified locally)
+- [x] P5 visible product experience (`demo_p5.py` via real UI/service path, localhost `p5/server.py`)
 - [ ] Packaging / CI hardening on current governed runtime (hosted runner evidence still missing)
 - [ ] Controlled productization decisions (no autonomous/multi-agent expansion)
 

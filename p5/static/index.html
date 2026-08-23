@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>P5 Governed Agent — Visible Experience (view layer only)</title>
+<style>
+body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:1100px;margin:24px auto;padding:0 16px;background:#f8fafc;color:#0f172a}
+h1{font-size:22px;margin:0 0 4px}
+.sub{color:#475569;font-size:13px;margin-bottom:16px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+label{font-weight:600;font-size:13px}
+input,textarea,select{width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;margin:4px 0 10px}
+button{padding:8px 14px;border-radius:8px;border:1px solid #0ea5e9;background:#0ea5e9;color:#fff;font-weight:600;cursor:pointer;margin-right:8px}
+button:disabled{opacity:.5}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.badge-HIGH{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.badge-LOW{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.badge-APPROVAL_REQUIRED{background:#fefce8;color:#a16207;border:1px solid #fde68a}
+.badge-VERIFIED{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.badge-DENIED{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+pre{white-space:pre-wrap;word-break:break-all;background:#f1f5f9;padding:10px;border-radius:8px;font-size:12px;overflow:auto}
+.small{font-size:12px;color:#64748b}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>P5 Governed Agent — Visible Experience</h1>
+<div class="sub">View layer only. Authority = WorkerActionPipeline + GovernanceEvaluator + ApprovalStore + ApplyAuthorization + FileApplier + VerificationExecutor. UI never writes directly. LLM claims are untrusted. <span style="color:#b91c1c">Unauthorized 0</span> is the goal.</div>
+
+<div class="card">
+<h3>1. Goal input</h3>
+<label>Workspace (temp dir path — must contain demo.txt)</label>
+<input id="ws" placeholder="e.g. C:\Temp\my_ws  — will be created if missing" value="">
+<label>Target file (relative to workspace or absolute)</label>
+<input id="file" value="demo.txt">
+<label>Goal / task description</label>
+<textarea id="goal" rows="2">fix hello file</textarea>
+<div class="small">Try: <code>fix hello file</code> (LOW) — <code>add api_key secret to file</code> (HIGH) — <code>ADVISORY_BYPASS add api_key</code> (adversarial spoof)</div>
+<label><input type="checkbox" id="fake" checked> use fake analyzer (deterministic, no API key) — keep checked for demo</label>
+<div style="margin-top:10px">
+<button onclick="propose()">Propose (visible proposal via governed pipeline)</button>
+<button onclick="approve()">Approve (canonical exact fingerprint via ApprovalStore)</button>
+<button onclick="execute()">Execute / Apply via governed path</button>
+<button onclick="showHistory()">History (read-only)</button>
+</div>
+<div id="msg" class="small"></div>
+</div>
+
+<div class="grid">
+<div class="card">
+<h3>2. Proposal view</h3>
+<div id="proposal"><span class="small">No proposal yet — click Propose.</span></div>
+</div>
+<div class="card">
+<h3>3. Governance state</h3>
+<div id="governance"><span class="small">—</span></div>
+<h3 style="margin-top:12px">4. Approval experience</h3>
+<div id="approval"><span class="small">—</span></div>
+</div>
+</div>
+
+<div class="card">
+<h3>5. Execution view</h3>
+<div id="execution"><span class="small">No execution yet.</span></div>
+</div>
+
+<div class="card">
+<h3>6. History view (read-only)</h3>
+<pre id="history">—</pre>
+<div class="small">History is loaded from ApplyOutcomeJournal (append-only, never mutated by UI). Each intent is correlated via intent_id + fingerprint. Reload proves read-only.</div>
+</div>
+
+<script>
+const $ = id=>document.getElementById(id);
+async function api(path, opts={}){
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(()=>({}));
+  return {ok:r.ok, status:r.status, json:j};
+}
+async function propose(){
+  const body={goal:$('goal').value, workspace:$('ws').value, file:$('file').value, fake_analyzer:$('fake').checked};
+  if(!body.workspace){ $('msg').textContent='Workspace required'; return; }
+  $('msg').textContent='Proposing via Worker → PatchProposal → Governance (UI is not authority)...';
+  const {ok, json} = await api('/api/propose',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  $('proposal').innerHTML = '<pre>'+JSON.stringify(json,null,2)+'</pre>';
+  if(json.governance){
+    $('governance').innerHTML = `Risk: <span class="badge badge-${json.governance.risk}">${json.governance.risk}</span> Approval required: <b>${json.governance.approval_required}</b> Allowed: ${json.governance.allowed}<br><span class="small">${json.governance.reason||''}</span><br>Status: <span class="badge badge-${json.status}">${json.status}</span>`;
+  }
+  if(json.proposal){
+    $('approval').innerHTML = `Fingerprint: <code>${json.proposal.fingerprint_short}</code> <span class="small">${json.proposal.fingerprint}</span><br>Target: <code>${json.proposal.path}</code><br>Risk: <b>${json.governance.risk}</b> — ${json.governance.approval_required?'<span class="badge badge-APPROVAL_REQUIRED">APPROVAL_REQUIRED</span> — click Approve then Execute':'<span class="badge badge-LOW">no approval needed</span>' }`;
+  }
+  $('msg').textContent = ok ? 'Proposal visible (governance is authority, UI is view).': (json.error||'propose failed');
+  if(ok) showHistory();
+}
+async function approve(){
+  const body={workspace:$('ws').value};
+  if(!body.workspace){ $('msg').textContent='Workspace required'; return; }
+  const {ok, json} = await api('/api/approve',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  $('approval').innerHTML = '<pre>'+JSON.stringify(json,null,2)+'</pre>';
+  $('msg').textContent = ok ? 'Approval granted via ApprovalStore (exact fingerprint, single-use). Now click Execute.' : (json.error||'approve failed');
+  if(ok) showHistory();
+}
+async function execute(){
+  const body={goal:$('goal').value, workspace:$('ws').value, file:$('file').value, fake_analyzer:$('fake').checked};
+  if(!body.workspace){ $('msg').textContent='Workspace required'; return; }
+  $('msg').textContent='Executing via WorkerActionPipeline (governed apply → verify → rollback if needed)...';
+  const {ok, json} = await api('/api/execute',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  $('execution').innerHTML = '<pre>'+JSON.stringify(json,null,2)+'</pre>';
+  if(json.result){
+    const t=json.result.terminal||json.status;
+    const color = t==='VERIFIED' ? 'VERIFIED' : (t==='DENIED'?'DENIED':'APPROVAL_REQUIRED');
+    $('execution').innerHTML = `Terminal: <span class="badge badge-${color}">${t}</span> — lifecycle: <code>${json.lifecycle||json.result.lifecycle||''}</code><br><pre>${JSON.stringify(json,null,2)}</pre>`;
+  }
+  $('msg').textContent = ok ? 'Executed through governed path (UI never writes directly).': (json.error||'execute finished');
+  showHistory();
+}
+async function showHistory(){
+  const ws=$('ws').value; if(!ws) return;
+  const {json} = await api('/api/history?workspace='+encodeURIComponent(ws));
+  $('history').textContent = JSON.stringify(json,null,2);
+}
+</script>
+</body>
+</html>
