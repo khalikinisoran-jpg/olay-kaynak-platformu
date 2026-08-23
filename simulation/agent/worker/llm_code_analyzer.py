@@ -119,6 +119,37 @@ class LLMCodeAnalyzer:
                 "LLM response must be a JSON object."
             )
 
+        # P4.1: explicit UNTRUSTED enforcement — provider claims that look like
+        # authority are never promoted. Any top-level field that could be
+        # confused with governance state is stripped before validation. They
+        # are advisory noise at most; the independent boundary stays authority.
+        _UNTRUSTED_TOP_LEVEL = {
+            "approved",
+            "human_approved",
+            "approval_id",
+            "approval",
+            "bypass_governance",
+            "bypass",
+            "human_approval",
+            "verification_passed",
+            "verified",
+            "tests_passed",
+            "test_passed",
+            "risk_override",
+            "risk_level",
+            "risk_authority",
+            "governance_override",
+            "apply_directly",
+            "write_directly",
+            "path_override",
+            "target_path",
+        }
+        for k in list(data.keys()):
+            if k.lower() in _UNTRUSTED_TOP_LEVEL:
+                # keep a trace in metadata only if caller supplied metadata
+                # but never as a top-level authority field
+                data.pop(k, None)
+
         return self._build_result(
             data,
             content,
@@ -240,7 +271,23 @@ class LLMCodeAnalyzer:
 
         else:
 
-            metadata = metadata_raw
+            # P4.1: metadata is untrusted advisory only. Strip any
+            # authority-like keys so downstream can never misinterpret them.
+            _METADATA_DENY = {
+                "approved",
+                "human_approved",
+                "approval_id",
+                "bypass_governance",
+                "verification_passed",
+                "verified",
+                "risk_override",
+                "governance_override",
+            }
+            metadata = {
+                k: v
+                for k, v in metadata_raw.items()
+                if k.lower() not in _METADATA_DENY
+            }
 
         return AnalysisResult(
             diagnosis=diagnosis,
