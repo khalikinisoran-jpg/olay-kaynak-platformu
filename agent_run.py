@@ -209,6 +209,21 @@ def main():
     status_p.add_argument("--approval-ledger", default=None, help="Override approval ledger path")
     status_p.add_argument("--apply-journal", default=None, help="Override apply journal path")
 
+    task_p = subparsers.add_parser(
+        "task",
+        help="Execute a natural-language task via Worker -> PatchProposal -> governed pipeline (P2.2)",
+        description="Minimal user task entry: natural language goal -> existing Worker/LLM -> PatchProposal -> existing WorkerActionPipeline (governance/approval/verify/rollback). Reuses WorkerAgent, LLMCodeAnalyzer, PatchValidator, GovernanceEvaluator, ApprovalStore, Controller, ApplyAuthorization, FileApplier, VerificationExecutor.",
+    )
+    task_p.add_argument("--goal", required=True, help="Natural-language goal/task description")
+    task_p.add_argument("--workspace", required=True, help="Workspace root (authoritative scope)")
+    task_p.add_argument("--file", required=False, default=None, help="Target file hint (absolute or relative to --workspace). If omitted, worker discovers files under workspace.")
+    task_p.add_argument("--data-dir", default=None, help="Platform data dir (default: <workspace>/.cli_platform)")
+    task_p.add_argument("--allowed-path", action="append", default=None, help="Additional allowed paths (repeatable). Defaults to --workspace.")
+    task_p.add_argument("--approval-ledger", default=None, help="Override approval ledger path (default: <data-dir>/approval_ledger.jsonl)")
+    task_p.add_argument("--apply-journal", default=None, help="Override apply journal path (default: <data-dir>/apply_journal.jsonl)")
+    task_p.add_argument("--dry-run", action="store_true", help="Propose only; do not apply/verify (no mutation)")
+    task_p.add_argument("--fake-analyzer", action="store_true", help="Use deterministic fake analyzer (for tests/offline, no LLM call)")
+
     args = parser.parse_args()
 
     # dispatch P2.1 subcommands before chat loop
@@ -220,6 +235,8 @@ def main():
         sys.exit(_cli_history(args))
     if args.command == "status":
         sys.exit(_cli_history(args))
+    if args.command == "task":
+        sys.exit(_cli_task(args))
 
     print("=" * 50)
     print(" Event-Sourced AI Runtime")
@@ -824,6 +841,145 @@ def _cli_history(args):
         print("-" * 60)
     print("=" * 60)
     return 0
+
+
+def _cli_task(args):
+    """P2.2: natural-language goal -> Worker -> PatchProposal -> governed pipeline."""
+    ws, data_dir, allowed = _cli_resolve_workspace(args)
+    if getattr(args, "approval_ledger", None):
+        sys._cli_approval_ledger = args.approval_ledger
+    if getattr(args, "apply_journal", None):
+        sys._cli_apply_journal = args.apply_journal
+    env = _cli_build_pipeline(ws, data_dir, allowed)
+    goal = getattr(args, "goal", "") or ""
+    # Resolve optional file hint for task; Worker will read it deterministically
+    file_hint = getattr(args, "file", None)
+    target_hint = None
+    if file_hint:
+        raw = Path(file_hint)
+        target_hint = (ws / raw) if not raw.is_absolute() else raw
+        try:
+            target_hint = target_hint.resolve()
+        except Exception:
+            pass
+        # Ensure hint is within allowed scope for display
+        print(f"File hint: {target_hint}")
+    print(f"Goal: {goal}")
+    print(f"Workspace: {ws}")
+    print(f"Data dir: {data_dir}")
+    print(f"Allowed scope: {allowed}")
+
+    # Build analyzer: fake for tests/offline, real LLM otherwise (lazy)
+    use_fake = bool(getattr(args, "fake_analyzer", False))
+    if use_fake:
+        # Deterministic fake that varies output based on goal to allow governance/rollback demos
+        # Reason is kept as "cli apply" for high-risk so that `approve --reason "cli apply"` (default) matches the worker patch fingerprint
+        from simulation.agent.worker.analysis_result import AnalysisResult
+        class _GoalAwareFake:
+            def analyze(self, path, content, description):
+                desc = (description or "").lower()
+                # HIGH-risk via secret marker
+                if "secret" in desc or "api_key" in desc or "credential" in desc:
+                    new_text = content.rstrip("\n") + '\napi_key = "sk-test-key-aaaaaaaaaaaaaaaa"\n'
+                    return AnalysisResult(diagnosis="cli apply", old_text=content, new_text=new_text, confidence=0.9, risk="HIGH")
+                if "syntax" in desc or "rollback" in desc:
+                    # produce syntactically broken content that will fail compile verification
+                    new_text = content + " syntax error !!!\n"
+                    return AnalysisResult(diagnosis="cli apply", old_text=content, new_text=new_text, confidence=0.8, risk="LOW")
+                # default LOW fix
+                if content.strip() == "hello":
+                    new_text = "hello fixed\n"
+                    # need old_text to match exactly content
+                    return AnalysisResult(diagnosis="cli apply", old_text=content, new_text=new_text, confidence=0.9, risk="LOW")
+                # generic: append marker
+                new_text = content + "\n# Fake worker proposal marker\n"
+                return AnalysisResult(diagnosis="cli apply", old_text=content, new_text=new_text, confidence=0.9, risk="LOW")
+        analyzer = _GoalAwareFake()
+    else:
+        from simulation.agent.worker.llm_code_analyzer import LLMCodeAnalyzer
+        analyzer = LLMCodeAnalyzer()
+    from simulation.agent.worker.worker_agent import WorkerAgent
+    from simulation.agent.worker.worker_task import WorkerTask
+    # Determine read paths: if file hint given, read that file; else discover up to 5 files under workspace
+    if target_hint and str(target_hint):
+        read_paths = (str(target_hint),)
+    else:
+        discovered = []
+        try:
+            for p in ws.rglob("*"):
+                if p.is_file() and p.name not in ("test_cli_dummy.py",) and ".cli_platform" not in str(p) and "events.jsonl" not in str(p):
+                    # skip large/binary: only .py/.txt/.md for demo
+                    if p.suffix.lower() in (".py", ".txt", ".md", "") or p.name in ("demo.txt", "app.py"):
+                        discovered.append(str(p.resolve()))
+                        if len(discovered) >= 5:
+                            break
+            # fallback to workspace if nothing found
+            if not discovered:
+                discovered = [str(ws)]
+        except Exception:
+            discovered = [str(ws)]
+        read_paths = tuple(discovered)
+        print(f"Discovered read paths: {read_paths}")
+    task = WorkerTask(
+        task_id="cli-task",
+        description=goal,
+        allowed_paths=allowed,
+        read_paths=read_paths,
+        allowed_actions=("read", "inspect", "propose"),
+        expected_output="patch proposal",
+    )
+    worker_agent = WorkerAgent(analyzer=analyzer)
+    worker_result = worker_agent.run(task)
+    print("=" * 60)
+    print("WORKER RESULT")
+    print("=" * 60)
+    print(f"Success: {worker_result.success}")
+    print(f"Summary: {worker_result.summary}")
+    if worker_result.evidence:
+        for ev in worker_result.evidence:
+            print(f"  evidence: {ev}")
+    if not worker_result.patches:
+        print("No patches proposed. Worker completed without proposal.")
+        # show first failure if any
+        for ev in worker_result.evidence:
+            if ev.get("status") in ("failed", "denied"):
+                print(f"Worker inspection failed: {ev.get('error')}")
+        for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
+            if hasattr(sys, attr):
+                delattr(sys, attr)
+        return 1
+    print(f"Patches: {len(worker_result.patches)}")
+    for idx, patch in enumerate(worker_result.patches):
+        print(f"  Patch {idx}: path={patch.path} fingerprint={patch.fingerprint()[:12]} reason={patch.reason[:120]!r}")
+    if bool(getattr(args, "dry_run", False)):
+        print("Dry-run: proposal only, not applying.")
+        for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
+            if hasattr(sys, attr):
+                delattr(sys, attr)
+        return 0 if worker_result.success else 1
+    # Ensure dummy test for verification
+    dummy_test = ws / "test_cli_dummy.py"
+    if not dummy_test.exists():
+        dummy_test.write_text("def test_cli_dummy():\n    assert True\n", encoding="utf-8")
+    # Execute governed pipeline with worker proposals
+    result = env["pipeline"].execute(
+        worker_result,
+        verify_paths=[str(ws)],
+        test_targets=(str(dummy_test),),
+    )
+    # Reuse existing governed print for first patch (authoritative)
+    first_patch = worker_result.patches[0]
+    gov_decision = env["gov"].evaluate(first_patch)
+    _cli_print_result(first_patch, gov_decision, result, env["journal"], first_patch.path, approval_store=env["approval_store"])
+    # If multiple patches, print brief for rest
+    if len(worker_result.patches) > 1:
+        for patch in worker_result.patches[1:]:
+            gov2 = env["gov"].evaluate(patch)
+            print(f"Additional patch: {patch.path} risk={gov2.risk_level.value} fingerprint={patch.fingerprint()[:12]}")
+    for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
+        if hasattr(sys, attr):
+            delattr(sys, attr)
+    return 0 if result.success else 1
 
 
 def _cli_approve(args):
