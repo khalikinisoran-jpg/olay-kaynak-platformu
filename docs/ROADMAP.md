@@ -4,9 +4,9 @@ Version: 2.0 — **SUPERSEDED as active direction on 2026-08-21** (historical ph
 
 Status: Historical — see Current Strategic Direction (A→C)
 
-Last Updated: 2026-08-21 (HEAD `24c72d0`, `986 collected / 974 passed / 12 skipped`)
+Last Updated: 2026-08-23 (HEAD `2f49d9f`, foundation `24c72d0` 986/974/12 conserved; P2.1/P2.2/P2.2-FP CLI + P2.3-A `demo_cli.ps1`)
 
-> **Current strategic direction (2026-08-21, MISSION N.56):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose expansion (Multi-Agent / Distributed / Streaming / Autonomous) is **explicitly deferred** per telemetry/technology freeze. Phases below are **not** the current active roadmap; they are retained as historical context. Active next work: harden the governed runtime on `worker-action-pipeline` and make controlled productization decisions — not Phase 2/3/4 as written. See `START-HERE.md` → `docs/ARCHITECTURE.md`.
+> **Current strategic direction (2026-08-23, P2.3-A):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose expansion (Multi-Agent / Distributed / Streaming / Autonomous) is **explicitly deferred**. Recent incremental milestones: **P2.1** governed CLI (`apply`/`approve`/`history`), **P2.2** natural task entry (`task --fake-analyzer`), **P2.2-FP** mechanical pending parity (`pending_proposals.json` + `approve --pending` exact fingerprint), **P2.3-A** reproducible PowerShell demo (`demo_cli.ps1`) + canonical doc sync to `2f49d9f`. Phases below are **not** the current active roadmap; retained as historical context. See `START-HERE.md` → `docs/ARCHITECTURE.md`.
 
 Historical note: v2.0 planned Developer→Production→Enterprise→Autonomous progression. That progression is **not** current; current is Secure Runtime → Controlled Productization.
 

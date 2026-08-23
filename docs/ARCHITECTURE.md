@@ -1,10 +1,9 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `24c72d0` (2026-08-21; MISSION N.55 foundation:
-> `986 collected / 974 passed / 12 skipped / 0 failures`, clean, local == remote).
+> `worker-action-pipeline` @ `2f49d9f` (2026-08-23; foundation `24c72d0` 986/974/12 conserved; HEAD 2f49d9f adds P2.1 CLI, P2.2 natural task entry, P2.2-FP pending exact parity, P2.3-A `demo_cli.ps1`).
 > This document describes verified code only. Roadmap/future ideas are not
-> presented as current reality; see ROADMAP.md for the current strategic direction (A→C).
+> presented as current reality; see ROADMAP.md for the current strategic direction (A→C). History at `24c72d0`/`71d2353` preserved in docs/PROJECT_STATE.md.
 
 ---
 
@@ -366,6 +365,16 @@ approval metadata is never authority. Grants are recorded as
 - `--approval-ledger <path>`: durable approval ledger for `--governed`.
 - Default: `Agent(kernel)` proposal-only chat loop.
 - REPL prompts in Turkish; on "exit"/"quit" exits.
+
+# 14b. Governed CLI (P2.1/P2.2/P2.2-FP, `agent_run.py:154`)
+
+Thin wrappers over the same `WorkerActionPipeline`+`GovernanceEvaluator`+`ApprovalStore`+`ApplyOutcomeJournal` (isolated per-workspace `.cli_platform`, no global `data/` pollution):
+
+- `python agent_run.py apply --file <f> --old-content <o> --new-content <n> --workspace <ws>` — single patch through governed pipeline (P2.1).
+- `python agent_run.py approve --file ... --workspace <ws>` — manual grant (P2.1); `approve --pending --workspace <ws>` — mechanical grant from `pending_proposals.json` exact proposal (P2.2-FP fingerprint parity, includes `allowed_paths`+reason+old/new).
+- `python agent_run.py task --goal "..." --workspace <ws> [--file <f>] --fake-analyzer [--dry-run]` — natural-language `WorkerAgent` -> `PatchProposal` -> governed pipeline (P2.2). Persists `pending_proposals.json` for `--pending`.
+- `python agent_run.py history|status --workspace <ws>` — read-only `ApplyOutcomeJournal` inspection (no mutation).
+- Demo: `powershell -ExecutionPolicy Bypass -File demo_cli.ps1` — HIGH DENY -> `approve --pending` -> VERIFIED -> replay DENY -> `history` (P2.3-A).
 
 # 14a. MISSION-016 Hardening (verified code)
 

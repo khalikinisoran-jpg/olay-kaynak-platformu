@@ -33,13 +33,13 @@ canonical docs (Section 4) rather than duplicating their full content.
 
 | Field | Value | Class |
 |-------|-------|--------|
-| CURRENT DATE | 2026-08-22 | VERIFIED |
+| CURRENT DATE | 2026-08-23 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `71d2353f7bd99250a4ef8720c3b034e58974e1de` (`71d2353`, "docs(n94): align canonical docs with 7d274bf (34 ahead, 986/974/12) and N.93 demo") | VERIFIED (`git rev-parse HEAD`) |
+| CURRENT HEAD | `2f49d9fad7218ad26ebbe431e363e9a118929dcd` (`2f49d9f`, "fix(cli): mechanical pending approval for exact fingerprint parity (P2.2-FP)") | VERIFIED (`git rev-parse HEAD`) |
 | WORKTREE STATE | clean — `git status` reports `nothing to commit, working tree clean`; local == origin/worker-action-pipeline | VERIFIED (`git status --porcelain`, `git fetch --prune`) |
-| CURRENT MISSION | MISSION N.94-R RECONCILIATION — N.92 archive 185 PASS confirmed (144+19+22), N.94 doc HEAD corrected; technical Phase 1 PASS pending owner secret attestation | VERIFIED (git log 24c72d0..71d2353; archive `C:\Projects\event-sourcing-platform-evidence-archive` 185 readable, `n94r_enum_raw.txt` SHA `C5C22BB9`) |
-| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`, 72s); N.94 re-verified, N.94-R enumeration re-verified | VERIFIED (2026-08-22 run, N94_fullsuite_raw 0xD78E44A8; n94r_enum_raw SHA `C5C22BB9`) |
-| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93; foundation at 24c72d0, current 71d2353 | VERIFIED (Section 18 + git log) |
+| CURRENT MISSION | P2.3-A REPRODUCIBLE GOVERNED CLI DEMO & CANONICAL STATE SYNC — pending parity + demo_cli.ps1 + doc sync to 2f49d9f | VERIFIED (git log 71d2353..2f49d9f; 4 commits: 0a2f005 P2.1, 5390c0f observability, c03dfb8 P2.2, 2f49d9f P2.2-FP) |
+| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`) foundation conserved; P2.x **9 parity + 7 CLI apply + 6 CLI task + 5 observability + 10 mp single-use** pass | VERIFIED (2026-08-22 foundation; 2026-08-23 CLI parity) |
+| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93 + P2.1/P2.2/P2.2-FP; foundation at 24c72d0, current 2f49d9f | VERIFIED (Section 18 + git log) |
 | ACTIVE MISSIONS | MISSION N.56 (Phase 1 Truth Alignment) | VERIFIED |
 | OPEN SECURITY RISKS | risk classification remains a deterministic heuristic (a secret deliberately hidden under an innocent key in a plain file can still classify LOW); human operator identity is not authenticated (authorizer is informational); approval UX is CLI/synchronous only; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; orphaned-mutation auto-repair is intentionally NOT implemented (detect-only, D-032) | VERIFIED (Section 20) |
 | UNKNOWN ITEMS | see Section 21 | — |

@@ -2,7 +2,7 @@
 
 ## Project in One Paragraph
 
-This repository implements an **event-sourced, deterministic, human-governed file-editing agent runtime**. Every user prompt becomes an immutable `Event` in `EventStore` (`events.jsonl` + `ChainAnchor` HMAC). The `Kernel` projects `State` via `Reducer`; `ContextBuilder` renders the last 10 `UNTRUSTED` conversation turns; an LLM proposes a `PatchProposal` (SHA-256 `path+action+reason+old/new+allowed_paths`); `PatchValidator` + `PathPolicy` checks `authoritative_scope`; `RiskEngine` classifies `SAFE`/`SUSPICIOUS HIGH`/`OPAQUE UNKNOWN`; `GovernanceEvaluator` (shared `RiskEngine`+`RiskPolicy`) decides `requires_human`; `ApprovalStore` enforces single-use `5-tuple`+`is patch` under `ledger._process_lock` with `ChainAnchor`; `ApplyAuthorization` (`is True` + `fingerprint`) + `FileApplier` (`mkstemp+fsync+replace`) writes only within `allowed_paths`. Evidence (`fingerprint` only) and recovery (`cap3`) never create authority.
+This repository implements an **event-sourced, deterministic, human-governed file-editing agent runtime**. Every user prompt becomes an immutable `Event` in `EventStore` (`events.jsonl` + `ChainAnchor` HMAC). The `Kernel` projects `State` via `Reducer`; `ContextBuilder` renders the last 10 `UNTRUSTED` conversation turns; an LLM proposes a `PatchProposal` (SHA-256 `path+action+reason+old/new+allowed_paths`); `PatchValidator` + `PathPolicy` checks `authoritative_scope`; `RiskEngine` classifies `SAFE`/`SUSPICIOUS HIGH`/`OPAQUE UNKNOWN`; `GovernanceEvaluator` (shared `RiskEngine`+`RiskPolicy`) decides `requires_human`; `ApprovalStore` enforces single-use `5-tuple`+`is patch` under `ledger._process_lock` with `ChainAnchor`; `ApplyAuthorization` (`is True` + `fingerprint`) + `FileApplier` (`mkstemp+fsync+replace`) writes only within `allowed_paths`. Evidence (`fingerprint` only) and recovery (`cap3`) never create authority. CLI thin wrappers (`apply`/`approve --pending`/`task --fake-analyzer`/`history`) expose the same pipeline with mechanical pending parity (`pending_proposals.json`, exact fingerprint).
 
 ## Starting Path
 
@@ -12,7 +12,7 @@ Read in order:
 
 1. **Architecture:** `docs/ARCHITECTURE.md` — high-level `Kernel` → `EventStore` → `Approval` → `Apply` flow
 2. **Authority / Security Model:** `docs/SECURITY_MODEL.md` — `PatchValidator` (scope `R1-R5`), `RiskEngine` (`os\[`+`generic get` `HIGH`), `GovernanceEvaluator`, `ApprovalStore` single-use, `ApplyAuthorization` (`is True`+`is patch`)
-3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current `71d2353` (foundation `24c72d0` / 7d274bf) `986 collected / 974 passed / 12 skipped / 0 failures` (N.94/N.94-R 2026-08-22, branch `worker-action-pipeline` clean; N.89 portability, N.91 cleanup, N.93 demo, N.92 archive 185 PASS)
+3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current `2f49d9f` (foundation `24c72d0` / 71d2353) `986 collected / 974 passed / 12 skipped / 0 failures` + P2.1/P2.2/P2.2-FP 22+9 CLI parity tests (2026-08-23, branch `worker-action-pipeline` clean; N.93 demo + P2.3-A `demo_cli.ps1` + N.92 archive 185 PASS)
 4. **Development / Testing:** `README.md` — setup and `pytest` instructions
 
 ## Core Principle
@@ -37,17 +37,18 @@ All verified from current repository (`pyproject.toml` `testpaths: tests`):
 # create venv and install (once)
 python -m venv .venv
 .venv\Scripts\python -m pip install -e .
-# demo — first working vertical slice (no external services)
+# reproducible governed CLI demo — real CLI, no API key (P2.3-A)
+powershell -ExecutionPolicy Bypass -File demo_cli.ps1
+# expected: DENIED WITHOUT APPROVAL -> APPROVED -> VERIFIED AFTER APPROVAL -> REPLAY DENIED -> HISTORY READ-ONLY -> OVERALL PASS
+# demo — first working vertical slice (no external services, internal pipeline)
 python demo_vertical_slice.py
 # expected: Scenarios A LOW PASS, B HIGH denied→approved, C rollback; OVERALL PASS
 # verify
 .venv\Scripts\python -m compileall simulation tests
 .venv\Scripts\python -m pytest -q
-# expected: 974 passed, 12 skipped, 986 collected
-.venv\Scripts\python -m pytest -q tests/test_n6_mp_single_use.py -v
-# expected: 10 passed (N-New-01 single-use anchored, portable)
-.venv\Scripts\python -m pytest -q tests/security/a26_env_reference_regression_test.py -v
-# expected: 11 passed (A26 HIGH)
+# expected: 974 passed, 12 skipped, 986 collected (foundation conserved)
+.venv\Scripts\python -m pytest -q tests/test_n6_mp_single_use.py tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py -v
+# expected: 10 + 9 + 7 + 6 passed (CLI parity + single-use, portable)
 ```
 
 No `Jaeger`/`Tempo`/`Redis`/`Kafka` required for local `974`.
@@ -56,6 +57,6 @@ No `Jaeger`/`Tempo`/`Redis`/`Kafka` required for local `974`.
 
 **Do not start with `MISSION-N*` / `LAYER-A-*` evidence reports** (`70+` `MISSION-N*` `10` `N27` `is NOW`). They are **forensic history**, not canonical onboarding.
 
-They remain `??` `EVIDENCE-OPTIONAL` `DO-NOT-COMMIT` (external archive), intentionally untracked. Canonical docs above are current at `71d2353` (foundation `24c72d0` / 7d274bf) on `worker-action-pipeline` (clean, `35` commits ahead of `main`, `986 collected`); `MISSION-N*` remain archived at `C:\Projects\event-sourcing-platform-evidence-archive` (185 files = 144+19+22, N.92/N.94-R PASS).
+They remain `??` `EVIDENCE-OPTIONAL` `DO-NOT-COMMIT` (external archive), intentionally untracked. Canonical docs above are current at `2f49d9f` (foundation `24c72d0` / 71d2353) on `worker-action-pipeline` (clean, `40` commits ahead of `main`, `986 collected`); `MISSION-N*` remain archived at `C:\Projects\event-sourcing-platform-evidence-archive` (185 files = 144+19+22, N.92/N.94-R PASS).
 
 For historical decisions, summarized `docs/DECISIONS.md` is sufficient; read `MISSION-N*` only if auditing a specific forensic claim.
