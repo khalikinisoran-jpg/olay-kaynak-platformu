@@ -182,6 +182,33 @@ def main():
     approve_p.add_argument("--authorizer", default="human-operator", help="Authorizer identity")
     approve_p.add_argument("--attempt", type=int, default=1, help="Attempt number (default 1)")
 
+    history_p = subparsers.add_parser(
+        "history",
+        help="Show historical apply outcomes (read-only)",
+        description="Read-only inspection of the durable ApplyOutcomeJournal. No mutation, no authorization bypass. Shows per-intent lifecycle with correlation via intent_id / fingerprint.",
+    )
+    history_p.add_argument("--workspace", required=True, help="Workspace root")
+    history_p.add_argument("--data-dir", default=None, help="Platform data dir (default: <workspace>/.cli_platform)")
+    history_p.add_argument("--allowed-path", action="append", default=None, help="Allowed paths (kept for compatibility, unused)")
+    history_p.add_argument("--limit", type=int, default=None, help="Show most recent N intents (default: all)")
+    history_p.add_argument("--intent", default=None, help="Show only this intent_id (full or prefix)")
+    history_p.add_argument("--approval-ledger", default=None, help="Override approval ledger path (default: <data-dir>/approval_ledger.jsonl)")
+    history_p.add_argument("--apply-journal", default=None, help="Override apply journal path (default: <data-dir>/apply_journal.jsonl)")
+
+    # optional alias: status shows same history (read-only)
+    status_p = subparsers.add_parser(
+        "status",
+        help="Alias for history (read-only)",
+        description="Alias for history — read-only inspection of the ApplyOutcomeJournal.",
+    )
+    status_p.add_argument("--workspace", required=True, help="Workspace root")
+    status_p.add_argument("--data-dir", default=None, help="Platform data dir (default: <workspace>/.cli_platform)")
+    status_p.add_argument("--allowed-path", action="append", default=None, help="Allowed paths (kept for compatibility, unused)")
+    status_p.add_argument("--limit", type=int, default=None, help="Show most recent N intents (default: all)")
+    status_p.add_argument("--intent", default=None, help="Show only this intent_id (full or prefix)")
+    status_p.add_argument("--approval-ledger", default=None, help="Override approval ledger path")
+    status_p.add_argument("--apply-journal", default=None, help="Override apply journal path")
+
     args = parser.parse_args()
 
     # dispatch P2.1 subcommands before chat loop
@@ -189,6 +216,10 @@ def main():
         sys.exit(_cli_apply(args))
     if args.command == "approve":
         sys.exit(_cli_approve(args))
+    if args.command == "history":
+        sys.exit(_cli_history(args))
+    if args.command == "status":
+        sys.exit(_cli_history(args))
 
     print("=" * 50)
     print(" Event-Sourced AI Runtime")
@@ -529,16 +560,92 @@ def _cli_build_pipeline(ws, data_dir, allowed):
     }
 
 
-def _cli_print_result(patch, gov_decision, result, journal, target_path):
+def _cli_print_result(patch, gov_decision, result, journal, target_path, approval_store=None):
+    # Reuse existing production identifiers only — no duplicate source of truth.
+    # Current intent_id is taken from the authoritative ApplyOutcomeJournal via
+    # the pipeline's ApplyResult, never invented.
     print("=" * 60)
-    print("GOVERNED APPLY — CLI RESULT")
+    print("GOVERNED APPLY — CURRENT OPERATION")
     print("=" * 60)
     print(f"Target: {target_path}")
     fp = patch.fingerprint()[:12]
-    print(f"Fingerprint: {fp}")
+    full_fp = patch.fingerprint()
+    print(f"Fingerprint: {fp} (full {full_fp[:16]}...)")
+    # Extract authoritative current intent_id and approval_id from pipeline result
+    current_intent_id = ""
+    current_approval_id = ""
+    if result is not None and getattr(result, "patch_results", None):
+        for pr in result.patch_results:
+            pr_result = getattr(pr, "pipeline_result", None)
+            if pr_result is not None and getattr(pr_result, "apply_result", None) is not None:
+                current_intent_id = getattr(pr_result.apply_result, "intent_id", "") or ""
+                if getattr(pr, "decision", None) and getattr(pr.decision, "approval_id", ""):
+                    current_approval_id = pr.decision.approval_id
+                break
+        if not current_approval_id:
+            for pr in result.patch_results:
+                if getattr(pr, "decision", None) and getattr(pr.decision, "approval_id", ""):
+                    current_approval_id = pr.decision.approval_id
+                    break
+    # Also recover approval_id from journal intent record if pipeline decision not yet available
+    if current_intent_id and not current_approval_id:
+        try:
+            for r in journal.load():
+                if r.get("intent_id") == current_intent_id and r.get("approval_id"):
+                    current_approval_id = r.get("approval_id")
+                    break
+        except Exception:
+            pass
+    if current_intent_id:
+        print(f"Intent ID: {current_intent_id[:8]} (full {current_intent_id})")
+    else:
+        print("Intent ID: (none — no apply intent created)")
     if gov_decision:
         print(f"Risk: {gov_decision.risk_level.value}")
         print(f"Approval required: {gov_decision.requires_human_approval}")
+        # Approval visibility without exposing secrets
+        if not gov_decision.requires_human_approval:
+            print("Approval state: not required")
+            print("Approval ID: (not required)")
+        else:
+            if current_approval_id:
+                print(f"Approval ID: {current_approval_id[:8]} (full {current_approval_id})")
+                # Distinguish granted/accepted vs consumed — if authoritatively available
+                consumed_hint = ""
+                if approval_store is not None:
+                    try:
+                        # consumed / applied sets are authoritative single-use state
+                        if approval_store.is_consumed_id(current_approval_id):
+                            # if result succeeded, consumed is expected; if failed, it is replay
+                            if result is not None and not result.success and result.failure_stage == "approval":
+                                consumed_hint = " (already consumed — single-use)"
+                            elif result is not None and result.success:
+                                consumed_hint = " (consumed by this operation — single-use)"
+                    except Exception:
+                        pass
+                print(f"Approval state: granted and accepted{consumed_hint}")
+            else:
+                # Check if a previous approval for this fingerprint was consumed (authoritative)
+                consumed_prev = False
+                if approval_store is not None:
+                    try:
+                        # scan ledger for a grant matching this fingerprint that is now consumed
+                        if getattr(approval_store, "ledger", None) is not None:
+                            recs_ledger = approval_store.ledger.load()
+                            grants = [r for r in recs_ledger if r.get("record_type") == "grant" and r.get("patch_fingerprint") == patch.fingerprint()]
+                            consumed_ids = {r.get("approval_id") for r in recs_ledger if r.get("record_type") in ("consumed", "applied")}
+                            for g in grants:
+                                if g.get("approval_id") in consumed_ids:
+                                    consumed_prev = True
+                                    break
+                    except Exception:
+                        pass
+                if consumed_prev and result is not None and result.failure_stage == "approval":
+                    print("Approval ID: (none — previous approval already consumed)")
+                    print("Approval state: required but missing / denied (already consumed — single-use)")
+                else:
+                    print("Approval ID: (none)")
+                    print("Approval state: required but missing / denied")
         print(f"Allowed: {gov_decision.allowed}")
     # execution outcome
     if result is None:
@@ -562,27 +669,48 @@ def _cli_print_result(patch, gov_decision, result, journal, target_path):
         print(f"Final file: {repr(final)}")
     except Exception as e:
         print(f"Final file: <unreadable {e}>")
-    # journal terminal
+    # CURRENT OPERATION LIFECYCLE — filtered to current intent only
+    print("-" * 60)
+    print("CURRENT OPERATION LIFECYCLE")
+    print("-" * 60)
     try:
         recs = journal.load()
-        if not recs:
-            print("Journal: (no apply lifecycle)")
+        if not current_intent_id:
+            # Denied before apply lifecycle — do not fabricate journal
+            print("  No apply journal created.")
+            denied_stage = result.failure_stage or "unknown"
+            print(f"  Operation denied at: {denied_stage}")
+            # Still show that historical entries exist but are not mixed
+            if recs:
+                print(f"  (historical intents present: {len(set(r['intent_id'] for r in recs))} — use 'history' to inspect)")
+            # Terminal state for denied-before-apply is the denial itself, not verified
+            print("Terminal state: DENIED")
         else:
-            print("Journal:")
-            for r in recs:
-                print(f"  {r['record_type']} intent={r['intent_id'][:8]}")
-            last = recs[-1]["record_type"]
-            print(f"Journal terminal: {last}")
-            if last == "verified":
-                print("Terminal state: VERIFIED")
-            elif last == "rolled_back":
-                print("Terminal state: ROLLED_BACK")
-            elif last == "rollback_failed":
-                print("Terminal state: ROLLBACK_FAILED")
+            filtered = [r for r in recs if r.get("intent_id") == current_intent_id]
+            if not filtered:
+                print(f"  (no journal records for intent {current_intent_id[:8]} — unexpected)")
+                print("Terminal state: UNKNOWN")
             else:
-                print(f"Terminal state: {last.upper()}")
+                for r in filtered:
+                    aid = r.get("approval_id", "")
+                    aid_short = f" approval={aid[:8]}" if aid else ""
+                    print(f"  {r['record_type']} intent={r['intent_id'][:8]}{aid_short}")
+                last = filtered[-1]["record_type"]
+                print(f"Journal terminal: {last}")
+                if last == "verified":
+                    print("Terminal state: VERIFIED")
+                elif last == "rolled_back":
+                    print("Terminal state: ROLLED_BACK")
+                elif last == "rollback_failed":
+                    print("Terminal state: ROLLBACK_FAILED")
+                elif last == "apply_failed":
+                    print("Terminal state: APPLY_FAILED")
+                else:
+                    print(f"Terminal state: {last.upper()}")
     except Exception as e:
         print(f"Journal error: {e}")
+    print("-" * 60)
+    print("HINT: Run 'python agent_run.py history --workspace <workspace>' for full history (read-only).")
     print("=" * 60)
 
 
@@ -610,12 +738,92 @@ def _cli_apply(args):
         verify_paths=[str(ws)],
         test_targets=(str(dummy_test),),
     )
-    _cli_print_result(patch, gov_decision, result, env["journal"], patch.path)
+    _cli_print_result(patch, gov_decision, result, env["journal"], patch.path, approval_store=env["approval_store"])
     # cleanup sys attrs
     for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
         if hasattr(sys, attr):
             delattr(sys, attr)
     return 0 if result.success else 1
+
+
+def _cli_history(args):
+    """Read-only historical inspection (no mutation, no bypass)."""
+    ws, data_dir, allowed = _cli_resolve_workspace(args)
+    if getattr(args, "approval_ledger", None):
+        sys._cli_approval_ledger = args.approval_ledger
+    if getattr(args, "apply_journal", None):
+        sys._cli_apply_journal = args.apply_journal
+    env = _cli_build_pipeline(ws, data_dir, allowed)
+    journal = env["journal"]
+    # cleanup sys attrs early
+    for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
+        if hasattr(sys, attr):
+            delattr(sys, attr)
+    print("=" * 60)
+    print("APPLY HISTORY — READ ONLY")
+    print("=" * 60)
+    print(f"Workspace: {ws}")
+    print(f"Data dir: {data_dir}")
+    print(f"Journal: {journal.path}")
+    try:
+        recs = journal.load()
+    except Exception as e:
+        print(f"Journal error: {e}")
+        print("Terminal state: ERROR")
+        print("=" * 60)
+        return 1
+    if not recs:
+        print("No apply intents found.")
+        print("=" * 60)
+        return 0
+    # Filter by intent prefix if requested
+    intent_filter = getattr(args, "intent", None)
+    if intent_filter:
+        recs = [r for r in recs if r.get("intent_id", "").startswith(intent_filter)]
+        if not recs:
+            print(f"No records matching intent prefix {intent_filter!r}")
+            print("=" * 60)
+            return 0
+    order, grouped = journal.intents(recs)
+    # Apply limit (most recent N)
+    limit = getattr(args, "limit", None)
+    if isinstance(limit, int) and limit > 0 and len(order) > limit:
+        order = order[-limit:]
+    print(f"Total intents: {len(order)}  Total records: {len(recs)}")
+    print("-" * 60)
+    for intent_id in order:
+        records = grouped[intent_id]
+        # first record holds correlation metadata
+        first = records[0]
+        fp = first.get("patch_fingerprint", "")[:12]
+        path = first.get("path", "")
+        action = first.get("action", "")
+        attempt = first.get("attempt", "")
+        approval_id = first.get("approval_id", "")
+        # terminal
+        last_type = records[-1].get("record_type", "")
+        if last_type == "verified":
+            terminal = "VERIFIED"
+        elif last_type == "rolled_back":
+            terminal = "ROLLED_BACK"
+        elif last_type == "rollback_failed":
+            terminal = "ROLLBACK_FAILED"
+        elif last_type == "apply_failed":
+            terminal = "APPLY_FAILED"
+        else:
+            terminal = last_type.upper() if last_type else "UNKNOWN"
+        lifecycle = " -> ".join(r.get("record_type", "") for r in records)
+        print(f"Intent: {intent_id[:8]} (full {intent_id})")
+        print(f"  Fingerprint: {fp}  Path: {path}  Action: {action}  Attempt: {attempt}")
+        if approval_id:
+            print(f"  Approval: {approval_id[:8]}")
+        else:
+            print("  Approval: (none)")
+        print(f"  Lifecycle: {lifecycle}")
+        print(f"  Terminal: {terminal}  Records: {len(records)}")
+        print("-" * 60)
+    print("=" * 60)
+    return 0
 
 
 def _cli_approve(args):
