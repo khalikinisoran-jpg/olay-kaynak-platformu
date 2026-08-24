@@ -34,9 +34,12 @@ jobs:
         run: |
           pip install -e . --quiet
           python -c "import simulation; from simulation.agent.approval.approval_console import ConsoleApprovalGateway; print('package-ok')"
+          python -m p5.server --help
+          p5-server --help || python -m p5.server --help
+          python -c "from p5.config import load_config; cfg=load_config(); print(f'config-ok host={cfg.host} port={cfg.port}')"
 
       - name: Compile all packages
-        run: python -m compileall -q simulation tests
+        run: python -m compileall -q simulation tests p5
 
       - name: Secret scan (repo-local guard)
         run: python scripts/secret_guard.py

@@ -71,18 +71,12 @@ def main():
     print(f"Workspace: {ws}")
     print(f"Target: {target} content={repr(target.read_text(encoding='utf-8'))}")
 
-    # start server
+    # start server — DEVNULL to avoid PIPE deadlock from structured logs (logs now on stderr)
     proc = subprocess.Popen([sys.executable, "-m", "p5.server", "--host", HOST, "--port", str(PORT)],
-                            cwd=str(Path(__file__).parent), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                            cwd=str(Path(__file__).parent), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         if not wait_health():
             print("FAIL: server not healthy")
-            try:
-                out, err = proc.communicate(timeout=2)
-                print(out.decode()[:500])
-                print(err.decode()[:500])
-            except Exception:
-                pass
             proc.terminate()
             return 1
 

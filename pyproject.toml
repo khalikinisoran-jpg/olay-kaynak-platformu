@@ -19,8 +19,11 @@ dev = [
     "pytest==9.1.1",
 ]
 
+[project.scripts]
+p5-server = "p5.server:main"
+
 [tool.setuptools.packages.find]
-include = ["simulation*"]
+include = ["simulation*", "p5*"]
 
 [tool.pytest.ini_options]
 minversion = "9.0"
