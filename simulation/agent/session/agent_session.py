@@ -27,12 +27,14 @@ class SessionState(str, Enum):
     GOVERNING = "GOVERNING"
     WAITING_APPROVAL = "WAITING_APPROVAL"
     AUTHORIZED = "AUTHORIZED"
+    VERIFIED = "VERIFIED"  # P9.4: pipeline VERIFIED via existing verification
     DENIED = "DENIED"
     FAILED = "FAILED"
 
 
 # Allowed transitions — explicit, deterministic, fail-closed on invalid
 # P9.2 adds INSPECTED as explicit success of inspection, but keeps INSPECTING→PROPOSING for backward compat
+# P9.4 adds VERIFIED as terminal after AUTHORIZED via pipeline verification
 _ALLOWED = {
     SessionState.CREATED: {SessionState.INSPECTING, SessionState.FAILED},
     SessionState.INSPECTING: {SessionState.INSPECTED, SessionState.PROPOSING, SessionState.FAILED},
@@ -41,11 +43,13 @@ _ALLOWED = {
     SessionState.GOVERNING: {
         SessionState.WAITING_APPROVAL,
         SessionState.AUTHORIZED,
+        SessionState.VERIFIED,
         SessionState.DENIED,
         SessionState.FAILED,
     },
     SessionState.WAITING_APPROVAL: {SessionState.GOVERNING, SessionState.DENIED, SessionState.FAILED},
-    SessionState.AUTHORIZED: {SessionState.DENIED, SessionState.FAILED},  # P9.1 terminal, future may go to APPLYING
+    SessionState.AUTHORIZED: {SessionState.VERIFIED, SessionState.DENIED, SessionState.FAILED},
+    SessionState.VERIFIED: set(),
     SessionState.DENIED: set(),
     SessionState.FAILED: set(),
 }
@@ -160,7 +164,7 @@ class AgentSession:
         # Do not auto-transition; caller must transition_to
 
     def is_terminal(self) -> bool:
-        return self.state in {SessionState.DENIED, SessionState.FAILED, SessionState.AUTHORIZED}
+        return self.state in {SessionState.DENIED, SessionState.FAILED, SessionState.AUTHORIZED, SessionState.VERIFIED}
 
     # --- Authority boundary checks (for meta-test) ---
     @staticmethod
