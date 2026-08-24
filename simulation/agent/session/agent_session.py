@@ -14,6 +14,7 @@ All governance/apply remains via existing WorkerActionPipeline.
 import hashlib
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Tuple
@@ -122,9 +123,9 @@ class AgentSession:
         if reason:
             # reason is advisory, never authority, and must not contain secret
             self.failure_reason = str(reason)[:500]
-        # P9.5 evidence: record transition (advisory, never authority)
+        # P9.5/P9.6 evidence: record transition (advisory, never authority) with correlation anchor
         try:
-            self.history.append({"event": "transition", "from": old.value, "to": new_state.value, "reason": reason[:200] if reason else "", "attempt": self.attempt})
+            self.history.append({"event": "transition", "session_id": self.session_id, "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "from": old.value, "to": new_state.value, "reason": reason[:200] if reason else "", "attempt": self.attempt})
         except Exception:
             pass
 
@@ -160,7 +161,7 @@ class AgentSession:
         self.pipeline_result_ref = pipeline_result
         self.governance_count += 1
         try:
-            self.history.append({"event": "governance", "success": bool(getattr(pipeline_result, "success", False)), "failure_stage": str(getattr(pipeline_result, "failure_stage", "")), "attempt": self.attempt, "governance_count": self.governance_count})
+            self.history.append({"event": "governance", "session_id": self.session_id, "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "success": bool(getattr(pipeline_result, "success", False)), "failure_stage": str(getattr(pipeline_result, "failure_stage", "")), "attempt": self.attempt, "governance_count": self.governance_count})
         except Exception:
             pass
         # Do not interpret pipeline_result as approval; just store ref
@@ -193,9 +194,15 @@ class AgentSession:
             raise ValueError(f"resume requires WAITING_APPROVAL, was {self.state.value}")
         self.resume_count += 1
         try:
-            self.history.append({"event": "resume_requested", "resume_count": self.resume_count, "attempt": self.attempt, "proposal_set_id": self.proposal_set_id})
+            self.history.append({"event": "resume_requested", "session_id": self.session_id, "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "resume_count": self.resume_count, "attempt": self.attempt, "proposal_set_id": self.proposal_set_id})
         except Exception:
             pass
+
+    # --- P9.6 audit correlation (read-only, never authority) ---
+    def audit_snapshot(self):
+        """Read-only correlated evidence snapshot for this session (no side effects)."""
+        from simulation.agent.session.session_evidence import SessionEvidence
+        return SessionEvidence.from_session(self)
 
     # --- Authority boundary checks (for meta-test) ---
     @staticmethod
