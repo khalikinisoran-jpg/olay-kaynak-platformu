@@ -47,7 +47,6 @@ from simulation.security.governance_evaluator import GovernanceEvaluator
 
 DATA_DIR_NAME = ".p5_platform"
 PENDING_FILE = "pending_proposals.json"
-ALLOWED_ORIGINS = {"http://127.0.0.1:8765", "http://127.0.0.1:8766", "http://localhost:8765", "http://localhost:8766", "http://127.0.0.1:8767", "http://localhost:8767"}
 
 # Global config set by run()/main()
 CONFIG: P5Config | None = None
@@ -171,8 +170,9 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _cors(self, origin: str | None = None):
-        # Narrow CORS: only localhost origins allowed; evil origins get no header
-        if origin and origin in ALLOWED_ORIGINS:
+        # P8: dynamic localhost CORS via config helper — any http://127.0.0.1:port or http://localhost:port
+        from p5.config import is_allowed_origin
+        if origin and is_allowed_origin(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
         # For requests without Origin or same-origin, no CORS header needed

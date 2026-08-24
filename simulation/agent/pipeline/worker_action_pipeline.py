@@ -408,6 +408,9 @@ class WorkerActionPipeline:
             ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
         )
 
+        # P8: track successfully applied patches for coordinated rollback
+        applied_patches: list[PatchProposal] = []
+
         for patch in patches:
 
             approval = None
@@ -666,9 +669,50 @@ class WorkerActionPipeline:
                 )
             )
 
-            if not pipeline_result.success:
-
+            if pipeline_result.success:
+                applied_patches.append(patch)
+            else:
+                # P8: verification or apply failed — attempt to rollback previously
+                # applied patches to avoid partial final state for coordinated sets
+                if applied_patches:
+                    for prev in reversed(applied_patches):
+                        try:
+                            rb_ok, rb_msg = self.apply_verify_pipeline.apply_executor.rollback(
+                                prev, scope=effective_scope
+                            )
+                            # Record rollback attempt for evidence if recorder present
+                            if recorder is not None:
+                                from simulation.agent.pipeline.apply_verify_result import RollbackResult
+                                rb_result = RollbackResult(
+                                    success=rb_ok, path=prev.path, message=rb_msg, restore_verified=rb_ok
+                                )
+                                recorder.record_rollback_result(
+                                    worker_result.task_id, prev, rb_result
+                                )
+                        except Exception:
+                            pass
+                    applied_patches.clear()
                 break
+
+        # P8: if earlier stage (validation/risk/approval/controller) failed after some
+        # patches already applied, also rollback those previously applied patches
+        if stages and not stages[-1].success and applied_patches:
+            for prev in reversed(applied_patches):
+                try:
+                    rb_ok, rb_msg = self.apply_verify_pipeline.apply_executor.rollback(
+                        prev, scope=effective_scope
+                    )
+                    if recorder is not None:
+                        from simulation.agent.pipeline.apply_verify_result import RollbackResult
+                        rb_result = RollbackResult(
+                            success=rb_ok, path=prev.path, message=rb_msg, restore_verified=rb_ok
+                        )
+                        recorder.record_rollback_result(
+                            worker_result.task_id, prev, rb_result
+                        )
+                except Exception:
+                    pass
+            applied_patches.clear()
 
         final = stages[-1]
 

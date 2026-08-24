@@ -131,3 +131,29 @@ def is_within_workspace_root(requested: Path, root: Path) -> bool:
             return False
     except Exception:
         return False
+
+
+def is_allowed_origin(origin: str, allowed_hosts=ALLOWED_HOSTS) -> bool:
+    """P8: dynamic localhost CORS — any http://127.0.0.1:port or http://localhost:port."""
+    if not origin or not isinstance(origin, str):
+        return False
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        if parsed.scheme != "http":
+            return False
+        host = parsed.hostname
+        if host not in allowed_hosts:
+            return False
+        port = parsed.port
+        # Allow any valid port 1-65535, or default 80 if not specified (but localhost without port is unlikely)
+        if port is not None and not (1 <= port <= 65535):
+            return False
+        # No extra path/query/fragment allowed for Origin (should be just scheme://host:port)
+        if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+            # Origin header should never contain path; be strict
+            if parsed.path not in ("",):
+                return False
+        return True
+    except Exception:
+        return False
