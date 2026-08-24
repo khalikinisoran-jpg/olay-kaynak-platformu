@@ -22,6 +22,7 @@ from typing import Tuple
 class SessionState(str, Enum):
     CREATED = "CREATED"
     INSPECTING = "INSPECTING"
+    INSPECTED = "INSPECTED"  # P9.2: successful read-only inspection, not yet proposing
     PROPOSING = "PROPOSING"
     GOVERNING = "GOVERNING"
     WAITING_APPROVAL = "WAITING_APPROVAL"
@@ -30,10 +31,12 @@ class SessionState(str, Enum):
     FAILED = "FAILED"
 
 
-# Allowed transitions for P9.1 — explicit, deterministic, fail-closed on invalid
+# Allowed transitions — explicit, deterministic, fail-closed on invalid
+# P9.2 adds INSPECTED as explicit success of inspection, but keeps INSPECTING→PROPOSING for backward compat
 _ALLOWED = {
     SessionState.CREATED: {SessionState.INSPECTING, SessionState.FAILED},
-    SessionState.INSPECTING: {SessionState.PROPOSING, SessionState.FAILED},
+    SessionState.INSPECTING: {SessionState.INSPECTED, SessionState.PROPOSING, SessionState.FAILED},
+    SessionState.INSPECTED: {SessionState.PROPOSING, SessionState.FAILED, SessionState.DENIED},
     SessionState.PROPOSING: {SessionState.GOVERNING, SessionState.FAILED},
     SessionState.GOVERNING: {
         SessionState.WAITING_APPROVAL,
@@ -75,6 +78,7 @@ class AgentSession:
     # Advisory references — never authority
     worker_result_ref: object = None  # WorkerResult (untrusted)
     pipeline_result_ref: object = None  # WorkerPipelineResult (governance outcome)
+    inspection_result: object = None  # InspectionResult (read-only evidence, advisory)
 
     def __post_init__(self):
         if not isinstance(self.session_id, str) or not self.session_id:
@@ -110,6 +114,16 @@ class AgentSession:
             # reason is advisory, never authority, and must not contain secret
             self.failure_reason = str(reason)[:500]
 
+    def attach_inspection(self, inspection_result) -> None:
+        """Attach read-only inspection evidence (advisory, never authority)."""
+        if inspection_result is None:
+            raise ValueError("inspection_result required")
+        # Validate required fields minimally (advisory, not authority)
+        if not hasattr(inspection_result, "requested_path"):
+            raise ValueError("inspection_result must have requested_path")
+        self.inspection_result = inspection_result
+        # Do not auto-transition; caller must explicit transition_to
+
     def attach_proposal(self, worker_result) -> None:
         """Attach proposer output (untrusted) and derive advisory proposal_set_id."""
         # worker_result is untrusted (WorkerAgent output)
@@ -141,6 +155,7 @@ class AgentSession:
         self.proposal_set_id = ""
         self.worker_result_ref = None
         self.pipeline_result_ref = None
+        self.inspection_result = None
         # State should be reset to INSPECTING for next attempt by caller via explicit transition
         # Do not auto-transition; caller must transition_to
 
