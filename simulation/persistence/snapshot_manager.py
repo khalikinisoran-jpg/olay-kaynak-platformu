@@ -40,7 +40,16 @@ class SnapshotManager:
             last_sequence=last_sequence
         )
 
-        print(
-            f"Otomatik snapshot alındı. "
-            f"Event sayısı: {last_sequence}"
-        )
+        # P6.1: Windows cp1252 compatibility — avoid '\u0131' (dotless i) which fails on hosted Windows
+        try:
+            print(
+                f"Otomatik snapshot alindi. "
+                f"Event sayisi: {last_sequence}"
+            )
+        except UnicodeEncodeError:
+            # Fallback: write via buffer with replacement
+            import sys
+            sys.stdout.buffer.write(
+                f"Otomatik snapshot alindi. Event sayisi: {last_sequence}\n".encode("utf-8", errors="replace")
+            )
+            sys.stdout.buffer.flush()
