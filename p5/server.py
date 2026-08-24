@@ -232,8 +232,31 @@ class Handler(BaseHTTPRequestHandler):
             self._cors(origin)
             self._security_headers(is_api=True)
             self.end_headers()
-            self.wfile.write(json.dumps({"ok": True, "service": "p5-governed-ui", "authority": "governance-boundary"}).encode())
-            log_emit({"level": "INFO", "request_id": rid, "method": "GET", "path": parsed.path, "status": 200, "duration_ms": int((time.time()-t0)*1000)})
+            # P7: operational version + config summary (no secrets) for independent verification
+            try:
+                from importlib.metadata import version as _pkg_version
+                ver = _pkg_version("event-sourced-ai-runtime")
+            except Exception:
+                ver = "0.6.0"
+            # config summary without secrets
+            cfg = self.__class__.config or CONFIG
+            cfg_summary = None
+            if cfg is not None:
+                cfg_summary = {
+                    "host": cfg.host,
+                    "port": cfg.port,
+                    "workspace_root": str(cfg.workspace_root),
+                    "max_body": cfg.max_body,
+                    "log_level": cfg.log_level,
+                }
+            self.wfile.write(json.dumps({
+                "ok": True,
+                "service": "p5-governed-ui",
+                "authority": "governance-boundary",
+                "version": ver,
+                "config": cfg_summary,
+            }).encode())
+            log_emit({"level": "INFO", "request_id": rid, "method": "GET", "path": parsed.path, "status": 200, "duration_ms": int((time.time()-t0)*1000), "version": ver})
             return
         if parsed.path == "/api/history":
             qs = parse_qs(parsed.query)
