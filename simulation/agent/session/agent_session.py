@@ -83,6 +83,10 @@ class AgentSession:
     worker_result_ref: object = None  # WorkerResult (untrusted)
     pipeline_result_ref: object = None  # WorkerPipelineResult (governance outcome)
     inspection_result: object = None  # InspectionResult (read-only evidence, advisory)
+    # P9.5: audit evidence for same-session resume (advisory only, never authority)
+    history: list = field(default_factory=list)
+    resume_count: int = 0
+    governance_count: int = 0
 
     def __post_init__(self):
         if not isinstance(self.session_id, str) or not self.session_id:
@@ -113,10 +117,16 @@ class AgentSession:
         allowed = _ALLOWED.get(self.state, set())
         if new_state not in allowed:
             raise ValueError(f"invalid transition {self.state.value} -> {new_state.value}")
+        old = self.state
         self.state = new_state
         if reason:
             # reason is advisory, never authority, and must not contain secret
             self.failure_reason = str(reason)[:500]
+        # P9.5 evidence: record transition (advisory, never authority)
+        try:
+            self.history.append({"event": "transition", "from": old.value, "to": new_state.value, "reason": reason[:200] if reason else "", "attempt": self.attempt})
+        except Exception:
+            pass
 
     def attach_inspection(self, inspection_result) -> None:
         """Attach read-only inspection evidence (advisory, never authority)."""
@@ -148,6 +158,11 @@ class AgentSession:
     def record_governance(self, pipeline_result, governance_decisions=None) -> None:
         """Record governance outcome (advisory reference, not authority)."""
         self.pipeline_result_ref = pipeline_result
+        self.governance_count += 1
+        try:
+            self.history.append({"event": "governance", "success": bool(getattr(pipeline_result, "success", False)), "failure_stage": str(getattr(pipeline_result, "failure_stage", "")), "attempt": self.attempt, "governance_count": self.governance_count})
+        except Exception:
+            pass
         # Do not interpret pipeline_result as approval; just store ref
 
     def next_attempt(self) -> None:
@@ -165,6 +180,22 @@ class AgentSession:
 
     def is_terminal(self) -> bool:
         return self.state in {SessionState.DENIED, SessionState.FAILED, SessionState.AUTHORIZED, SessionState.VERIFIED}
+
+    # --- P9.5 same-session resume orchestration (never authority) ---
+    def record_resume_requested(self) -> None:
+        """Mark an explicit same-session resume request (advisory evidence only).
+
+        Valid only when currently in WAITING_APPROVAL. Does NOT change attempt
+        (preserves approval binding), does NOT transition state (bridge will
+        transition to GOVERNING), does NOT grant approval. Purely evidence.
+        """
+        if self.state != SessionState.WAITING_APPROVAL:
+            raise ValueError(f"resume requires WAITING_APPROVAL, was {self.state.value}")
+        self.resume_count += 1
+        try:
+            self.history.append({"event": "resume_requested", "resume_count": self.resume_count, "attempt": self.attempt, "proposal_set_id": self.proposal_set_id})
+        except Exception:
+            pass
 
     # --- Authority boundary checks (for meta-test) ---
     @staticmethod
