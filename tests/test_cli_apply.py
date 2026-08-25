@@ -103,7 +103,7 @@ def test_cli_rollback_on_verification_failure():
     ws = Path(tempfile.mkdtemp(prefix="cli_rollback_"))
     target = ws / "app.py"
     target.write_text("x = 1\n", encoding="utf-8")
-    r = _run_cli(["apply", "--file", "app.py", "--old-content", "x = 1\n", "--new-content", "x = 1\n syntax error !!!\n", "--workspace", str(ws)], ws)
+    r = _run_cli(["apply", "--file", "app.py", "--old-content", "x = 1\n", "--new-content", "x = 1\n!!!\n", "--workspace", str(ws)], ws)
     assert r.returncode != 0
     assert "Apply success: True" in r.stdout  # apply occurred before verification
     assert "Verification passed: False" in r.stdout

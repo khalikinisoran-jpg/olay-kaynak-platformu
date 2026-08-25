@@ -132,7 +132,7 @@ def test_p8_verify_failure_after_multiple_rollback_all():
         (tmp / "app.py").write_text("x = 1\n", encoding="utf-8")
         p1 = PatchProposal(path=str(tmp / "a.txt"), action="modify", reason="fix", old_content="hello", new_content="hello fixed", allowed_paths=(str(tmp),))
         # Second patch introduces syntax error into app.py (LOW but verification will fail)
-        p2 = PatchProposal(path=str(tmp / "app.py"), action="modify", reason="fix", old_content="x = 1\n", new_content="x = 1\n syntax error !!!\n", allowed_paths=(str(tmp),))
+        p2 = PatchProposal(path=str(tmp / "app.py"), action="modify", reason="fix", old_content="x = 1\n", new_content="x = 1\n!!!\n", allowed_paths=(str(tmp),))
         pipeline, store, gov = _governed(tmp, verify_real=True)
         # Need dummy test for verification
         dummy = tmp / "test_dummy.py"
@@ -221,7 +221,7 @@ def test_p8_meta_zero_bypass_multi():
             (tmp / "b.txt").write_text("world", encoding="utf-8")
             (tmp / "app.py").write_text("x=1\n", encoding="utf-8")
             p1 = PatchProposal(path=str(tmp / "a.txt"), action="modify", reason="x", old_content="hello", new_content="hello fixed", allowed_paths=(str(tmp),))
-            p2 = PatchProposal(path=str(tmp / "app.py"), action="modify", reason="x", old_content="x=1\n", new_content="x=1\n syntax error !!!\n", allowed_paths=(str(tmp),))
+            p2 = PatchProposal(path=str(tmp / "app.py"), action="modify", reason="x", old_content="x=1\n", new_content="x=1\n!!!\n", allowed_paths=(str(tmp),))
             pipeline2, _, _ = _governed(tmp, verify_real=True)
             dummy = tmp / "test_dummy.py"
             dummy.write_text("def test_dummy(): assert True\n", encoding="utf-8")

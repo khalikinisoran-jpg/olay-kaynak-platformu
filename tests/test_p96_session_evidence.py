@@ -207,7 +207,7 @@ def test_p96_failed_verification_rollback_evidence():
         # Build two patches: first succeeds, second introduces syntax error into app.py with real verification
         from simulation.agent.worker.patch_proposal import PatchProposal as PP
         p1 = PP(path=str(tmp / "a.txt"), action="modify", reason="fix", old_content="hello", new_content="hello fixed", allowed_paths=(str(tmp),))
-        p2 = PP(path=str(tmp / "app.py"), action="modify", reason="fix", old_content="x = 1\n", new_content="x = 1\n syntax error !!!\n", allowed_paths=(str(tmp),))
+        p2 = PP(path=str(tmp / "app.py"), action="modify", reason="fix", old_content="x = 1\n", new_content="x = 1\n!!!\n", allowed_paths=(str(tmp),))
         wr = WorkerResult(task_id="t", success=True, summary="t", patches=(p1, p2))
         s.attach_proposal(wr)
         s.transition_to(SessionState.PROPOSING)

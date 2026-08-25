@@ -127,8 +127,8 @@ def _provider_double_spoof():
     return _P()
 
 def _provider_double_bad():
-    # Bad patch: syntax error
-    bad_new = OLD_HEALTH + "\n syntax error !!!\n"
+    # Bad patch: syntax error — use clear SyntaxError (no leading indent) for cross-platform compileall reliability
+    bad_new = OLD_HEALTH + "\n!!!\n"
     payload = json.dumps({
         "diagnosis": "bad patch",
         "old_text": OLD_HEALTH,

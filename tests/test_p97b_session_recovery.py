@@ -467,7 +467,7 @@ def test_p97b_multi_file_failure_rollback():
         (tmp / "app.py").write_text("x = 1\n", encoding="utf-8")
         from simulation.agent.worker.patch_proposal import PatchProposal as PP
         p1 = PP(path=str(tmp / "a.txt"), action="modify", reason="fix", old_content="hello", new_content="hello fixed", allowed_paths=(str(tmp),))
-        p2 = PP(path=str(tmp / "app.py"), action="modify", reason="fix", old_content="x = 1\n", new_content="x = 1\n syntax error !!!\n", allowed_paths=(str(tmp),))
+        p2 = PP(path=str(tmp / "app.py"), action="modify", reason="fix", old_content="x = 1\n", new_content="x = 1\n!!!\n", allowed_paths=(str(tmp),))
         wr = WorkerResult(task_id="t", success=True, summary="t", patches=(p1, p2))
         s = AgentSession(session_id="rec-multi-fail", goal="fix", workspace=tmp, allowed_paths=(str(tmp),))
         s.transition_to(SessionState.INSPECTING)
