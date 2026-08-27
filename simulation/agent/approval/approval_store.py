@@ -255,7 +255,8 @@ class ApprovalStore:
         action=None,
         risk_level=None,
         attempt=None,
-        patch=None
+        patch=None,
+        required_approval_id=None,
     ):
 
         """Return a single-use approval matching the full context.
@@ -306,6 +307,9 @@ class ApprovalStore:
 
                     continue
 
+                if required_approval_id is not None and approval_id != required_approval_id:
+                    continue
+
                 approval = self._approvals[approval_id]
 
                 if approval.is_expired():
@@ -326,6 +330,10 @@ class ApprovalStore:
 
                 if approval.attempt != attempt:
 
+                    continue
+
+                # Exact approval-ID correlation: if required, must match
+                if required_approval_id is not None and approval.approval_id != required_approval_id:
                     continue
 
                 self._consumed.add(approval_id)
@@ -357,6 +365,9 @@ class ApprovalStore:
 
                         continue
 
+                    if required_approval_id is not None and approval_id != required_approval_id:
+                        continue
+
                     approval = self._approvals[approval_id]
 
                     if approval.is_expired():
@@ -377,6 +388,9 @@ class ApprovalStore:
 
                     if approval.attempt != attempt:
 
+                        continue
+
+                    if required_approval_id is not None and approval.approval_id != required_approval_id:
                         continue
 
                     self._consumed.add(approval_id)

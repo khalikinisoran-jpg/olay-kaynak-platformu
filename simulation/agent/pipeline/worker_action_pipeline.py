@@ -52,6 +52,8 @@ from simulation.security.risk_policy import (
     RiskPolicy
 )
 
+from simulation.agent.approval.approval_validation import is_approval_valid
+
 
 FAILURE_VALIDATION = "validation"
 
@@ -768,65 +770,9 @@ class WorkerActionPipeline:
         attempt: int
     ):
 
-        """Fail-closed validation of a returned approval.
+        """Fail-closed validation — delegates to shared implementation."""
 
-        The pipeline never trusts whatever the approval store hands
-        back. A usable approval must be a typed ``Approval`` bound to
-        this exact patch fingerprint, path, action, risk context and
-        attempt, and it must not be expired. Anything else (a missing
-        record, a forged object, a substituted or downgraded context)
-        is a denial. This keeps approval authority agent-independent:
-        proposal-contained or store-injected approval metadata is
-        never sufficient on its own.
-        """
-
-        if approval is None:
-
-            return False, ""
-
-        if not isinstance(approval, Approval):
-
-            return False, (
-                "Malformed approval: expected an Approval "
-                "authorization record."
-            )
-
-        if approval.patch_fingerprint != patch.fingerprint():
-
-            return False, (
-                "Approval is bound to a different patch "
-                "fingerprint."
-            )
-
-        if approval.path != patch.path:
-
-            return False, (
-                "Approval is bound to a different path."
-            )
-
-        if approval.action != patch.action:
-
-            return False, (
-                "Approval is bound to a different action."
-            )
-
-        if approval.risk_level != risk_level:
-
-            return False, (
-                "Approval is bound to a different risk context."
-            )
-
-        if approval.attempt != attempt:
-
-            return False, (
-                "Approval is bound to a different attempt."
-            )
-
-        if approval.is_expired():
-
-            return False, "Approval has expired."
-
-        return True, ""
+        return is_approval_valid(approval, patch, risk_level, attempt)
 
     @staticmethod
     def _classify_failure(final: PatchStageResult) -> str:
