@@ -158,6 +158,17 @@ class VerificationExecutor:
 
         passed = self._is_pass(result)
 
+        # P8_COMPILE_DIAG: narrow CI diagnostic for compile verification (no semantic change)
+        if os.environ.get("P8_COMPILE_DIAG") == "1":
+            print(
+                f"P8_COMPILE_DIAG "
+                f"stage={stage} argv={command} cwd={self.cwd!r} "
+                f"executable={self.python_executable!r} version={sys.version.split()[0]!r} "
+                f"pycache={self._pycache_prefix!r} exit_code={result.exit_code} "
+                f"timed_out={result.timed_out} error={result.error!r} "
+                f"stdout={result.stdout!r} stderr={result.stderr!r} passed={passed}"
+            )
+
         exit_code = (
             -1
             if result.timed_out or result.error
