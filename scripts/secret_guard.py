@@ -81,6 +81,7 @@ FIXTURE_PATHS = {
     "tests/secret_retry_boundary_test.py",
     "tests/security/adversarial_corpus_test.py",
     "tests/security/secret_guard_test.py",
+    "tests/test_external_t_b10.py",
 }
 
 # Value substrings that mark a candidate as an obvious fake / placeholder.
