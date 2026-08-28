@@ -145,6 +145,114 @@ class SessionGovernedBridge:
 
         return result
 
+    def execute_external(
+        self,
+        session: AgentSession,
+        pipeline,
+        action,
+        provider=None,
+        intent_id: str | None = None,
+        attempt_context=None,
+        scope=None,
+        verify_paths: Optional[Tuple[str, ...]] = None,
+        test_targets: Tuple[str, ...] = (),
+    ):
+        """Submit session's external action to the existing governed ExternalActionPipeline.
+
+        Preconditions:
+         - session.state in (PROPOSING, WAITING_APPROVAL) — fail-closed otherwise
+         - session.external_action_ref must be set or action param must be ExternalAction
+         - pipeline must be ExternalActionPipeline (or compatible with execute)
+
+        Transitions:
+         PROPOSING/WAITING_APPROVAL → GOVERNING → {VERIFIED, WAITING_APPROVAL, DENIED, FAILED}
+        No hidden retry, no direct ExternalProvider call, no approval creation.
+
+        Returns the ExternalPipelineResult (authoritative).
+        """
+        if session.state not in (SessionState.PROPOSING, SessionState.WAITING_APPROVAL):
+            raise ValueError(f"session must be in PROPOSING or WAITING_APPROVAL to govern external, was {session.state.value}")
+
+        # Prefer explicit action param, fallback to session ref
+        ext_action = action if action is not None else getattr(session, "external_action_ref", None)
+        if ext_action is None:
+            session.transition_to(SessionState.FAILED, reason="no external action attached")
+            raise ValueError("session has no external action attached")
+
+        # Basic type check without importing authority (duck-typed fingerprint)
+        if not hasattr(ext_action, "fingerprint") or not callable(getattr(ext_action, "fingerprint")):
+            session.transition_to(SessionState.FAILED, reason="invalid external action")
+            raise ValueError("external action must have fingerprint()")
+
+        # Explicit transition to GOVERNING
+        session.transition_to(SessionState.GOVERNING)
+
+        # Delegate to existing external pipeline — sole authority, no direct provider call
+        # Use session.attempt for attempt binding where pipeline derives it, but pipeline itself
+        # derives authoritative_attempt from intent_id/attempt_context, so we pass through.
+        # Scope is pipeline's authoritative_scope if not provided; session workspace is fallback for verify_paths.
+        result = pipeline.execute(
+            ext_action,
+            provider=provider,
+            intent_id=intent_id,
+            attempt_context=attempt_context,
+        )
+
+        # Record governance outcome as advisory reference (not authority)
+        session.record_governance(result)
+
+        # Map external pipeline result to session state (explicit, no bypass)
+        # success + external_result is_known success → VERIFIED
+        is_success = bool(getattr(result, "success", False)) and bool(getattr(result, "is_success", False) if hasattr(result, "is_success") else getattr(result, "success", False))
+        # Also check external_result outcome for known success
+        ext_res = getattr(result, "external_result", None)
+        if ext_res is not None and hasattr(ext_res, "outcome"):
+            try:
+                from simulation.agent.apply.external_provider import ExternalOutcome
+                if ext_res.outcome == ExternalOutcome.KNOWN_SUCCESS:
+                    is_success = bool(result.success)
+                else:
+                    is_success = False
+            except Exception:
+                pass
+
+        failure_stage = str(getattr(result, "failure_stage", ""))
+
+        if is_success and result.success:
+            try:
+                session.transition_to(SessionState.VERIFIED)
+            except ValueError:
+                try:
+                    session.transition_to(SessionState.AUTHORIZED)
+                    session.transition_to(SessionState.VERIFIED)
+                except ValueError:
+                    session.transition_to(SessionState.FAILED, reason="unexpected verified transition")
+        elif failure_stage == "approval":
+            try:
+                session.transition_to(SessionState.WAITING_APPROVAL, reason=getattr(result, "failure_reason", ""))
+            except ValueError:
+                session.transition_to(SessionState.DENIED, reason=getattr(result, "failure_reason", ""))
+        elif failure_stage in ("validation", "risk", "controller"):
+            session.transition_to(SessionState.DENIED, reason=getattr(result, "failure_reason", ""))
+        elif failure_stage in ("external", "external_ambiguous", "external_failed", "unexpected"):
+            session.transition_to(SessionState.FAILED, reason=getattr(result, "failure_reason", ""))
+        elif failure_stage in ("verification", "apply", "rollback"):
+            session.transition_to(SessionState.FAILED, reason=getattr(result, "failure_reason", ""))
+        else:
+            if not result.success:
+                try:
+                    session.transition_to(SessionState.DENIED, reason=getattr(result, "failure_reason", ""))
+                except ValueError:
+                    session.transition_to(SessionState.FAILED, reason=getattr(result, "failure_reason", ""))
+            else:
+                # ambiguous remains not verified
+                if getattr(result, "is_ambiguous", False):
+                    session.transition_to(SessionState.FAILED, reason=getattr(result, "failure_reason", "external ambiguous"))
+                else:
+                    session.transition_to(SessionState.FAILED, reason="unexpected non-success without failure_stage")
+
+        return result
+
     @staticmethod
     def _assert_no_authority_imports():
         """Meta-test helper: ensure this module does not import execution/approval primitives as bypass."""

@@ -82,7 +82,8 @@ class AgentSession:
     failure_reason: str = ""
     # Advisory references — never authority
     worker_result_ref: object = None  # WorkerResult (untrusted)
-    pipeline_result_ref: object = None  # WorkerPipelineResult (governance outcome)
+    external_action_ref: object = None  # ExternalAction (untrusted, governed via ExternalActionPipeline)
+    pipeline_result_ref: object = None  # WorkerPipelineResult / ExternalPipelineResult (governance outcome)
     inspection_result: object = None  # InspectionResult (read-only evidence, advisory)
     # P9.5: audit evidence for same-session resume (advisory only, never authority)
     history: list = field(default_factory=list)
@@ -154,7 +155,25 @@ class AgentSession:
             raise ValueError(f"invalid patches: {e}")
         self.proposal_set_id = _derive_proposal_set_id(fps)
         self.worker_result_ref = worker_result
+        # Clear external ref to keep single active proposal
+        self.external_action_ref = None
         # Advisory: do not automatically transition; caller must explicit transition_to
+
+    def attach_external_action(self, external_action) -> None:
+        """Attach external action (untrusted) and derive advisory proposal_set_id."""
+        if external_action is None:
+            raise ValueError("external_action required")
+        # fingerprint() is the governed identity for ExternalAction
+        try:
+            fp = external_action.fingerprint()
+            if not isinstance(fp, str) or not fp:
+                raise ValueError("fingerprint must be non-empty string")
+        except Exception as e:
+            raise ValueError(f"invalid external_action: {e}")
+        self.proposal_set_id = _derive_proposal_set_id((fp,))
+        self.external_action_ref = external_action
+        # Clear worker ref to keep single active proposal
+        self.worker_result_ref = None
 
     def record_governance(self, pipeline_result, governance_decisions=None) -> None:
         """Record governance outcome (advisory reference, not authority)."""
@@ -174,6 +193,7 @@ class AgentSession:
         # Reset proposal_set_id for new attempt (will be re-derived on attach)
         self.proposal_set_id = ""
         self.worker_result_ref = None
+        self.external_action_ref = None
         self.pipeline_result_ref = None
         self.inspection_result = None
         # State should be reset to INSPECTING for next attempt by caller via explicit transition
