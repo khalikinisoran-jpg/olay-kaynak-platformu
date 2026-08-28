@@ -1,5 +1,11 @@
 from dataclasses import dataclass, field
 
+from simulation.agent.apply.apply_authorization import (
+    ApplyAuthorization
+)
+
+from simulation.agent.approval.approval import Approval
+
 from simulation.agent.controller.controller import Controller
 
 from simulation.agent.controller.controller_decision import (
@@ -26,9 +32,46 @@ from simulation.agent.worker.patch_validator import (
     PatchValidator
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 from simulation.agent.worker.worker_result import (
     WorkerResult
 )
+
+from simulation.security.governance_evaluator import (
+    GovernanceEvaluator
+)
+
+from simulation.security.risk_engine import (
+    RiskEngine
+)
+
+from simulation.security.risk_policy import (
+    RiskPolicy
+)
+
+from simulation.agent.approval.approval_validation import is_approval_valid
+
+
+FAILURE_VALIDATION = "validation"
+
+FAILURE_CONTROLLER = "controller"
+
+FAILURE_APPLY = "apply"
+
+FAILURE_VERIFICATION = "verification"
+
+FAILURE_WORKER = "worker"
+
+FAILURE_RISK = "risk"
+
+FAILURE_APPROVAL = "approval"
+
+FAILURE_ROLLBACK = "rollback"
+
+FAILURE_UNEXPECTED = "unexpected"
 
 
 @dataclass(frozen=True)
@@ -73,6 +116,10 @@ class WorkerPipelineResult:
         default_factory=tuple
     )
     verification_ran: bool = False
+    failure_stage: str = ""
+    governance_decisions: tuple = field(
+        default_factory=tuple
+    )
 
     @property
     def apply_success(self) -> bool:
@@ -120,6 +167,11 @@ class WorkerActionPipeline:
     Security contract, enforced per proposal in the exact order of the
     WorkerResult:
 
+    0. Fail-closed scope (MISSION-J): the pipeline is apply-capable
+       ONLY when constructed with a non-empty authoritative ``scope``.
+       Without one every proposal is denied at validation, so an
+       unscoped pipeline can never reach Apply. The proposal's own
+       ``allowed_paths`` is never treated as authority.
     1. Worker only proposes; it never applies by itself.
     2. PatchValidator must pass before Controller is consulted.
     3. Controller approval is required before apply runs.
@@ -132,13 +184,25 @@ class WorkerActionPipeline:
     STAGE_VALIDATION = "validation"
     STAGE_CONTROLLER = "controller"
     STAGE_APPLY_VERIFY = "apply_verify"
+    STAGE_RISK = "risk"
+    STAGE_APPROVAL = "approval"
 
     def __init__(
         self,
         patch_validator=None,
         controller=None,
-        apply_verify_pipeline=None
+        apply_verify_pipeline=None,
+        evidence_recorder=None,
+        risk_engine=None,
+        risk_policy=None,
+        approval_store=None,
+        approval_gateway=None,
+        governance=None,
+        apply_journal=None,
+        scope=()
     ):
+
+        self.authoritative_scope = tuple(scope)
 
         self.patch_validator = (
             patch_validator
@@ -158,16 +222,169 @@ class WorkerActionPipeline:
             else ApplyVerifyPipeline()
         )
 
+        self.evidence_recorder = evidence_recorder
+
+        self.approval_store = approval_store
+
+        self.approval_gateway = approval_gateway
+
+        self.apply_journal = apply_journal
+
+        if governance is not None:
+
+            self.governance = governance
+
+            self.risk_engine = governance.risk_engine
+
+            self.risk_policy = governance.risk_policy
+
+            self.risk_gate_enabled = True
+
+        else:
+
+            self.risk_engine = (
+                risk_engine
+                if risk_engine is not None
+                else RiskEngine()
+            )
+
+            self.risk_policy = (
+                risk_policy
+                if risk_policy is not None
+                else RiskPolicy()
+            )
+
+            self.governance = GovernanceEvaluator(
+                risk_engine=self.risk_engine,
+                risk_policy=self.risk_policy,
+            )
+
+            self.risk_gate_enabled = (
+                risk_engine is not None
+                and risk_policy is not None
+            )
+
+        self._bind_apply_journal()
+
+        self._bind_approval_authority()
+
+    def _bind_apply_journal(self):
+
+        """Wire the optional apply-outcome journal into the pipeline.
+
+        The journal records apply intent / outcome transitions around
+        the real file write and verification. It is evidence of *what
+        happened on disk*, never an authorization input. When no journal
+        is supplied every record method is a no-op and behavior is
+        unchanged.
+        """
+
+        if self.apply_journal is None:
+
+            return
+
+        executor = getattr(
+            self.apply_verify_pipeline,
+            "apply_executor",
+            None,
+        )
+
+        pipeline = self.apply_verify_pipeline
+
+        try:
+
+            pipeline.journal = self.apply_journal
+
+        except Exception:
+
+            pass
+
+        if executor is not None:
+
+            try:
+
+                executor.journal = self.apply_journal
+
+            except Exception:
+
+                pass
+
+    def _bind_approval_authority(self):
+
+        """Bind the apply boundary to the approval authority.
+
+        When the risk gate is enabled the apply executor's
+        authorization must re-verify the approval binding itself (not
+        merely trust the pipeline) and must classify the patch with the
+        *same* ``GovernanceEvaluator`` the pipeline uses (MISSION-019),
+        so a caller-supplied custom engine can never drift between the
+        pipeline gate and the apply boundary. Only a store-backed,
+        shared-evaluator authorization can fail closed on forged
+        decisions, agent-claimed approval ids and replayed approvals at
+        the apply boundary.
+        """
+
+        if not self.risk_gate_enabled:
+
+            return
+
+        executor = getattr(
+            self.apply_verify_pipeline,
+            "apply_executor",
+            None,
+        )
+
+        authorization = getattr(
+            executor,
+            "authorization",
+            None,
+        )
+
+        if (
+            isinstance(
+                authorization,
+                ApplyAuthorization,
+            )
+        ):
+
+            executor.authorization = ApplyAuthorization(
+                approval_store=self.approval_store,
+                governance=self.governance,
+            )
+
     def execute(
         self,
         worker_result: WorkerResult,
         verify_paths=None,
-        test_targets=()
+        test_targets=(),
+        attempt=None
     ) -> WorkerPipelineResult:
 
         patches = tuple(
             worker_result.patches
         )
+
+        recorder = self.evidence_recorder
+
+        attempt_context = (
+            attempt
+            if (
+                isinstance(attempt, int)
+                and not isinstance(attempt, bool)
+                and attempt >= 1
+            )
+            else 1
+        )
+
+        if recorder is not None:
+
+            recorder.record_task_created(
+                worker_result
+            )
+
+            recorder.record_inspection(
+                worker_result
+            )
 
         if not patches:
 
@@ -178,19 +395,50 @@ class WorkerActionPipeline:
                     "Worker produced no patch proposals."
                 ),
                 exit_code=-1,
+                failure_stage=FAILURE_WORKER,
             )
 
         stages = []
 
         verification_ran = False
 
+        governance_decisions = []
+
+        effective_scope = self.authoritative_scope
+
+        verification_depth = (
+            ApplyVerifyPipeline.VERIFICATION_DEPTH_COMPILE_TESTS
+        )
+
+        # P8: track successfully applied patches for coordinated rollback
+        applied_patches: list[PatchProposal] = []
+
         for patch in patches:
+
+            approval = None
+
+            if recorder is not None:
+
+                recorder.record_patch_proposed(
+                    worker_result.task_id,
+                    patch,
+                )
 
             valid, message = (
                 self.patch_validator.validate(
-                    patch
+                    patch,
+                    scope=effective_scope,
                 )
             )
+
+            if recorder is not None:
+
+                recorder.record_patch_validated(
+                    worker_result.task_id,
+                    patch,
+                    valid,
+                    message,
+                )
 
             if not valid:
 
@@ -205,10 +453,160 @@ class WorkerActionPipeline:
 
                 break
 
-            decision = self.controller.approve(
-                patch,
-                message,
-            )
+            if self.risk_gate_enabled:
+
+                governance_decision = self.governance.evaluate(
+                    patch
+                )
+
+                governance_decisions.append(
+                    governance_decision
+                )
+
+                if recorder is not None:
+
+                    recorder.record_risk_assessed(
+                        worker_result.task_id,
+                        patch,
+                        governance_decision,
+                    )
+
+                if governance_decision.allowed is not True:
+
+                    stages.append(
+                        PatchStageResult(
+                            patch=patch,
+                            success=False,
+                            stage=self.STAGE_RISK,
+                            message=governance_decision.reason,
+                        )
+                    )
+
+                    break
+
+                if governance_decision.requires_human_approval:
+
+                    approval = None
+
+                    if self.approval_store is not None:
+
+                        approval = (
+                            self.approval_store.find_valid(
+                                patch.fingerprint(),
+                                path=patch.path,
+                                action=patch.action,
+                                risk_level=(
+                                    governance_decision.risk_level.value
+                                ),
+                                attempt=attempt_context,
+                                patch=patch,
+                            )
+                        )
+
+                    valid, approval_reason = (
+                        self._approval_is_valid(
+                            approval,
+                            patch,
+                            governance_decision.risk_level.value,
+                            attempt_context,
+                        )
+                    )
+
+                    if (
+                        not valid
+                        and self.approval_gateway is not None
+                        and self.approval_store is not None
+                    ):
+
+                        granted = (
+                            self.approval_gateway.request_approval(
+                                patch,
+                                risk_level=(
+                                    governance_decision.risk_level.value
+                                ),
+                                attempt=attempt_context,
+                                evidence_reference=(
+                                    worker_result.task_id
+                                ),
+                            )
+                        )
+
+                        if granted is not None:
+
+                            approval = (
+                                self.approval_store.find_valid(
+                                    patch.fingerprint(),
+                                    path=patch.path,
+                                    action=patch.action,
+                                    risk_level=(
+                                        governance_decision.risk_level.value
+                                    ),
+                                    attempt=attempt_context,
+                                    patch=patch,
+                                )
+                            )
+
+                            valid, approval_reason = (
+                                self._approval_is_valid(
+                                    approval,
+                                    patch,
+                                    governance_decision.risk_level.value,
+                                    attempt_context,
+                                )
+                            )
+
+                    if not valid:
+
+                        stages.append(
+                            PatchStageResult(
+                                patch=patch,
+                                success=False,
+                                stage=self.STAGE_APPROVAL,
+                                message=(
+                                    approval_reason
+                                    if approval_reason
+                                    else (
+                                        "High-risk patch requires "
+                                        "human approval."
+                                    )
+                                ),
+                            )
+                        )
+
+                        break
+
+                verification_depth = (
+                    governance_decision.verification_depth
+                )
+
+            if approval is not None:
+
+                decision = self.controller.approve(
+                    patch,
+                    ValidationResult(
+                        valid=valid,
+                        message=message,
+                    ),
+                    approval=approval,
+                )
+
+            else:
+
+                decision = self.controller.approve(
+                    patch,
+                    ValidationResult(
+                        valid=valid,
+                        message=message,
+                    ),
+                )
+
+            if recorder is not None:
+
+                recorder.record_controller_decision(
+                    worker_result.task_id,
+                    patch,
+                    decision,
+                )
 
             if decision.approved is not True:
 
@@ -229,7 +627,34 @@ class WorkerActionPipeline:
                 decision,
                 verify_paths=verify_paths,
                 test_targets=test_targets,
+                verification_depth=verification_depth,
+                attempt=attempt_context,
+                scope=effective_scope,
             )
+
+            if recorder is not None:
+
+                recorder.record_apply_result(
+                    worker_result.task_id,
+                    patch,
+                    pipeline_result.apply_result,
+                )
+
+                if pipeline_result.verification is not None:
+
+                    recorder.record_verification_result(
+                        worker_result.task_id,
+                        patch,
+                        pipeline_result.verification,
+                    )
+
+                if pipeline_result.rollback is not None:
+
+                    recorder.record_rollback_result(
+                        worker_result.task_id,
+                        patch,
+                        pipeline_result.rollback,
+                    )
 
             if pipeline_result.verification_ran:
 
@@ -246,9 +671,50 @@ class WorkerActionPipeline:
                 )
             )
 
-            if not pipeline_result.success:
-
+            if pipeline_result.success:
+                applied_patches.append(patch)
+            else:
+                # P8: verification or apply failed — attempt to rollback previously
+                # applied patches to avoid partial final state for coordinated sets
+                if applied_patches:
+                    for prev in reversed(applied_patches):
+                        try:
+                            rb_ok, rb_msg = self.apply_verify_pipeline.apply_executor.rollback(
+                                prev, scope=effective_scope
+                            )
+                            # Record rollback attempt for evidence if recorder present
+                            if recorder is not None:
+                                from simulation.agent.pipeline.apply_verify_result import RollbackResult
+                                rb_result = RollbackResult(
+                                    success=rb_ok, path=prev.path, message=rb_msg, restore_verified=rb_ok
+                                )
+                                recorder.record_rollback_result(
+                                    worker_result.task_id, prev, rb_result
+                                )
+                        except Exception:
+                            pass
+                    applied_patches.clear()
                 break
+
+        # P8: if earlier stage (validation/risk/approval/controller) failed after some
+        # patches already applied, also rollback those previously applied patches
+        if stages and not stages[-1].success and applied_patches:
+            for prev in reversed(applied_patches):
+                try:
+                    rb_ok, rb_msg = self.apply_verify_pipeline.apply_executor.rollback(
+                        prev, scope=effective_scope
+                    )
+                    if recorder is not None:
+                        from simulation.agent.pipeline.apply_verify_result import RollbackResult
+                        rb_result = RollbackResult(
+                            success=rb_ok, path=prev.path, message=rb_msg, restore_verified=rb_ok
+                        )
+                        recorder.record_rollback_result(
+                            worker_result.task_id, prev, rb_result
+                        )
+                except Exception:
+                    pass
+            applied_patches.clear()
 
         final = stages[-1]
 
@@ -273,6 +739,9 @@ class WorkerActionPipeline:
                 if final.success
                 else final.message
             ),
+            failure_stage=WorkerActionPipeline._classify_failure(
+                final
+            ),
             exit_code=(
                 final.pipeline_result.exit_code
                 if final.pipeline_result is not None
@@ -288,7 +757,66 @@ class WorkerActionPipeline:
             ),
             evidence=evidence,
             verification_ran=verification_ran,
+            governance_decisions=tuple(
+                governance_decisions
+            ),
         )
+
+    @staticmethod
+    def _approval_is_valid(
+        approval,
+        patch: PatchProposal,
+        risk_level: str,
+        attempt: int
+    ):
+
+        """Fail-closed validation — delegates to shared implementation."""
+
+        return is_approval_valid(approval, patch, risk_level, attempt)
+
+    @staticmethod
+    def _classify_failure(final: PatchStageResult) -> str:
+
+        if final.success:
+
+            return ""
+
+        if final.stage == WorkerActionPipeline.STAGE_VALIDATION:
+
+            return FAILURE_VALIDATION
+
+        if final.stage == WorkerActionPipeline.STAGE_CONTROLLER:
+
+            return FAILURE_CONTROLLER
+
+        if final.stage == WorkerActionPipeline.STAGE_RISK:
+
+            return FAILURE_RISK
+
+        if final.stage == WorkerActionPipeline.STAGE_APPROVAL:
+
+            return FAILURE_APPROVAL
+
+        if final.stage == WorkerActionPipeline.STAGE_APPLY_VERIFY:
+
+            if final.pipeline_result is not None:
+
+                rollback = final.pipeline_result.rollback
+
+                if (
+                    rollback is not None
+                    and not rollback.success
+                ):
+
+                    return FAILURE_ROLLBACK
+
+                if final.pipeline_result.apply_success:
+
+                    return FAILURE_VERIFICATION
+
+            return FAILURE_APPLY
+
+        return FAILURE_UNEXPECTED
 
     @staticmethod
     def _join_outputs(outputs):

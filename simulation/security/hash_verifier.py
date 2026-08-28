@@ -18,8 +18,21 @@ class HashVerifier:
 
         previous_hash = "GENESIS"
 
+        for index, event in enumerate(events):
 
-        for event in events:
+            # MISSION-M: sequence-contiguity enforcement. The event
+            # store allocates strictly contiguous sequences starting at
+            # 1, so a valid stream must satisfy ``sequence ==
+            # position + 1``. This catches (a) a sequence jump, (b) a
+            # hash-recomputed middle deletion (the gap survives even
+            # when every current_hash is rewritten), and (c) a
+            # duplicated sequence. A gap is fail-closed: the chain can
+            # never be accepted with a missing position.
+            expected_sequence = index + 1
+
+            if event.get("sequence") != expected_sequence:
+
+                return False
 
             body = {
 

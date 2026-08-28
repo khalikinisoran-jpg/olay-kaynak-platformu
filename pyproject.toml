@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "event-sourced-ai-runtime"
+version = "0.6.0"
+description = "Event-sourced AI runtime with deterministic, governed AI action execution."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "requests",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+]
+
+[project.scripts]
+p5-server = "p5.server:main"
+
+[tool.setuptools.packages.find]
+include = ["simulation*", "p5*"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+markers = [
+    "live_llm: runs a real LLM provider call; opt-in only (requires RUN_LIVE_LLM=1)",
+]

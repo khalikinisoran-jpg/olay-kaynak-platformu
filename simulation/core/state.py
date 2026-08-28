@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any, List
 
+from simulation.memory.provenance import MemoryProvenance
+
 
 @dataclass(frozen=True)
 class State:
@@ -17,7 +19,19 @@ class State:
         default_factory=dict
     )
 
+    # MISSION-N: parallel origin metadata for ``memory`` keys. Each
+    # entry is a ``MemoryProvenance`` dict. This is METADATA only and
+    # is never consulted by governance / approval / scope / risk /
+    # apply.
+    memory_provenance: Dict[str, Any] = field(
+        default_factory=dict
+    )
+
     conversation_history: List[dict] = field(
+        default_factory=list
+    )
+
+    worker_trace: List[Any] = field(
         default_factory=list
     )
 
@@ -49,6 +63,22 @@ class State:
 
                 workers[key] = value
 
+        provenance = {}
+
+        for key, record in self.memory_provenance.items():
+
+            if isinstance(record, MemoryProvenance):
+
+                provenance[key] = record.to_dict()
+
+            elif hasattr(record, "to_dict"):
+
+                provenance[key] = record.to_dict()
+
+            elif isinstance(record, dict):
+
+                provenance[key] = record
+
         return {
 
             "event_counter": self.event_counter,
@@ -59,7 +89,11 @@ class State:
 
             "memory": self.memory,
 
-            "conversation_history": self.conversation_history
+            "memory_provenance": provenance,
+
+            "conversation_history": self.conversation_history,
+
+            "worker_trace": self.worker_trace
 
         }
 
@@ -95,9 +129,53 @@ class State:
                 {}
             ),
 
+            memory_provenance=cls._restore_provenance(
+                data.get(
+                    "memory_provenance",
+                    {}
+                )
+            ),
+
             conversation_history=data.get(
                 "conversation_history",
+                []
+            ),
+
+            worker_trace=data.get(
+                "worker_trace",
                 []
             )
 
         )
+
+    @staticmethod
+    def _restore_provenance(data):
+
+        """Rebuild provenance envelopes from a serialized snapshot.
+
+        Keeps live-state type consistency (``MemoryProvenance`` objects
+        everywhere) while tolerating legacy snapshots that lack the
+        field entirely or carry raw dicts.
+        """
+
+        if not isinstance(data, dict):
+
+            return {}
+
+        restored = {}
+
+        for key, record in data.items():
+
+            if isinstance(record, MemoryProvenance):
+
+                restored[key] = record
+
+            elif isinstance(record, dict):
+
+                restored[key] = MemoryProvenance.from_dict(record)
+
+            else:
+
+                restored[key] = MemoryProvenance()
+
+        return restored

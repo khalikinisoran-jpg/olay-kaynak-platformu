@@ -1,0 +1,43 @@
+#!/bin/sh
+# Pre-commit secret guard (RELEASE-03).
+#
+# Installed into .git/hooks/pre-commit by scripts/install_hooks.py.
+# Scans only staged files so it stays fast. A detected secret blocks the
+# commit with a non-zero exit; a scan error also blocks (fail-closed).
+
+ROOT="$(git rev-parse --show-toplevel)"
+GUARD="$ROOT/scripts/secret_guard.py"
+PYTHON="${PYTHON:-python}"
+
+if [ ! -f "$GUARD" ]; then
+    echo "secret-guard: missing $GUARD; blocking commit (fail-closed)."
+    exit 1
+fi
+
+if ! command -v "$PYTHON" >/dev/null 2>&1; then
+    echo "secret-guard: python not found; blocking commit (fail-closed)."
+    exit 1
+fi
+
+# Collect staged file paths (safely, NUL-separated) and feed them to the guard.
+STAGED=""
+while IFS= read -r -d '' file; do
+    STAGED="$STAGED $file"
+done < <(git diff --cached --name-only -z)
+
+if [ -z "$STAGED" ]; then
+    exit 0
+fi
+
+# shellcheck disable=SC2086
+"$PYTHON" "$GUARD" $STAGED
+
+rc=$?
+
+if [ "$rc" -ne 0 ]; then
+    echo
+    echo "secret-guard: commit blocked (exit $rc). Review the findings above."
+    exit 1
+fi
+
+exit 0

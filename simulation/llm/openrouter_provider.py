@@ -1,35 +1,30 @@
+import logging
 import os
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
 
-from simulation.llm.base_provider import BaseProvider
+from simulation.llm.base_provider import (
+    BaseProvider,
+    ProviderError,
+)
 from simulation.llm.models import LLMRequest, LLMResponse
 
 
-# .env dosyasını proje kökünden yükle
 ROOT_DIR = Path(__file__).resolve().parents[2]
 ENV_FILE = ROOT_DIR / ".env"
 
-loaded = load_dotenv(dotenv_path=ENV_FILE)
+load_dotenv(dotenv_path=ENV_FILE)
 
-print("=" * 60)
-print("OpenRouter Debug")
-print("=" * 60)
-print("Project Root :", ROOT_DIR)
-print(".env Path    :", ENV_FILE)
-print("Loaded       :", loaded)
-print(
-    "API Key      :",
-    "FOUND" if os.getenv("OPENROUTER_API_KEY") else "NOT FOUND"
-)
-print("=" * 60)
+logger = logging.getLogger(__name__)
+
+REQUEST_TIMEOUT = (10, 120)
 
 
 class OpenRouterProvider(BaseProvider):
 
-    def __init__(self, api_key=None):
+    def __init__(self, api_key=None, timeout=REQUEST_TIMEOUT):
 
         self.api_key = api_key or os.getenv(
             "OPENROUTER_API_KEY"
@@ -46,7 +41,11 @@ class OpenRouterProvider(BaseProvider):
             "https://openrouter.ai/api/v1/chat/completions"
         )
 
+        self.timeout = timeout
+
     def chat(self, request: LLMRequest) -> LLMResponse:
+
+        model = request.model or self.default_model
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -54,7 +53,7 @@ class OpenRouterProvider(BaseProvider):
         }
 
         payload = {
-            "model": request.model or self.default_model,
+            "model": model,
             "messages": [
                 {
                     "role": m.role,
@@ -66,25 +65,55 @@ class OpenRouterProvider(BaseProvider):
             "max_tokens": request.max_tokens,
         }
 
-        response = requests.post(
-            self.url,
-            headers=headers,
-            json=payload,
+        try:
+
+            response = requests.post(
+                self.url,
+                headers=headers,
+                json=payload,
+                timeout=self.timeout,
+            )
+
+        except requests.RequestException as exc:
+
+            raise ProviderError(
+                "OpenRouter request failed: "
+                f"{exc.__class__.__name__}"
+            ) from exc
+
+        logger.debug(
+            "OpenRouter HTTP %s model=%s",
+            response.status_code,
+            model,
         )
 
-        print("HTTP:", response.status_code)
-        print(response.text)
+        if response.status_code >= 400:
 
-        response.raise_for_status()
+            raise ProviderError(
+                "OpenRouter returned HTTP "
+                f"{response.status_code}."
+            )
 
-        data = response.json()
+        try:
 
-        choice = data["choices"][0]
-        usage = data.get("usage", {})
+            data = response.json()
+
+            choice = data["choices"][0]
+
+            content = choice["message"]["content"]
+
+            usage = data.get("usage", {})
+
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+
+            raise ProviderError(
+                "OpenRouter returned an "
+                "unparseable response."
+            ) from exc
 
         return LLMResponse(
-            content=choice["message"]["content"],
-            model=data.get("model", self.default_model),
+            content=content,
+            model=data.get("model", model),
             tokens_used=usage.get("total_tokens", 0),
             finish_reason=choice.get(
                 "finish_reason",

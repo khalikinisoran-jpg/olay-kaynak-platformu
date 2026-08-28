@@ -4,6 +4,10 @@ import sys
 
 import pytest
 
+from simulation.agent.worker.analysis_result import (
+    AnalysisResult
+)
+
 from simulation.agent.worker.worker_agent import (
     WorkerAgent
 )
@@ -24,7 +28,7 @@ class RecordingAnalyzer:
         path,
         content,
         description
-    ):
+    ) -> AnalysisResult:
 
         self.calls.append({
             "path": path,
@@ -39,10 +43,12 @@ class RecordingAnalyzer:
             + "\n# Recorded worker marker\n"
         )
 
-        return (
-            "Recorded analyzer produced a patch.",
-            old_text,
-            new_text
+        return AnalysisResult(
+            diagnosis=(
+                "Recorded analyzer produced a patch."
+            ),
+            old_text=old_text,
+            new_text=new_text,
         )
 
 
@@ -63,14 +69,16 @@ def worker(analyzer):
 def _make_task(
     allowed_paths,
     read_paths,
-    description="Inspect read scope."
+    description="Inspect read scope.",
+    allowed_actions=()
 ):
 
     return WorkerTask(
         task_id="read-scope-task",
         description=description,
         allowed_paths=allowed_paths,
-        read_paths=read_paths
+        read_paths=read_paths,
+        allowed_actions=allowed_actions
     )
 
 
@@ -670,3 +678,133 @@ def test_worker_still_reads_within_directory_scope(
     }
 
     assert str(outside) not in received
+
+
+def test_worker_denies_when_allowed_actions_exclude_read(
+    tmp_path,
+    worker,
+    analyzer
+):
+
+    target = tmp_path / "target.txt"
+
+    target.write_text(
+        "content\n",
+        encoding="utf-8"
+    )
+
+    task = _make_task(
+        allowed_paths=(str(target),),
+        read_paths=(str(target),),
+        allowed_actions=("inspect", "propose"),
+    )
+
+    result = worker.run(task)
+
+    assert result.success is False
+
+    assert (
+        "Worker policy denied read action."
+        in result.summary
+    )
+
+    assert not result.patches
+
+    assert analyzer.calls == []
+
+
+def test_worker_denies_when_allowed_actions_exclude_propose(
+    tmp_path,
+    worker,
+    analyzer
+):
+
+    target = tmp_path / "target.txt"
+
+    target.write_text(
+        "content\n",
+        encoding="utf-8"
+    )
+
+    task = _make_task(
+        allowed_paths=(str(target),),
+        read_paths=(str(target),),
+        allowed_actions=("read", "inspect"),
+    )
+
+    result = worker.run(task)
+
+    assert result.success is False
+
+    assert (
+        "Worker policy denied propose action."
+        in result.summary
+    )
+
+    assert not result.patches
+
+    assert analyzer.calls == []
+
+
+def test_worker_allows_when_allowed_actions_are_empty(
+    tmp_path,
+    worker,
+    analyzer
+):
+
+    target = tmp_path / "target.txt"
+
+    content = "content\n"
+
+    target.write_text(
+        content,
+        encoding="utf-8"
+    )
+
+    task = _make_task(
+        allowed_paths=(str(target),),
+        read_paths=(str(target),),
+        allowed_actions=(),
+    )
+
+    result = worker.run(task)
+
+    assert result.success is True
+
+    assert result.patches
+
+    assert result.patches[0].path == str(target)
+
+    assert len(analyzer.calls) == 1
+
+
+def test_worker_accepts_when_allowed_actions_cover_required(
+    tmp_path,
+    worker,
+    analyzer
+):
+
+    target = tmp_path / "target.txt"
+
+    content = "content\n"
+
+    target.write_text(
+        content,
+        encoding="utf-8"
+    )
+
+    task = _make_task(
+        allowed_paths=(str(target),),
+        read_paths=(str(target),),
+        allowed_actions=("read", "inspect", "propose"),
+    )
+
+    result = worker.run(task)
+
+    assert result.success is True
+
+    assert result.patches
+
+    assert result.patches[0].path == str(target)
+
+    assert len(analyzer.calls) == 1

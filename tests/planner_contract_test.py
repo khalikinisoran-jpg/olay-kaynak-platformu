@@ -10,6 +10,7 @@ def test_planner_strategy_executor_contract():
     test_cases = [
         ("15 + 27", "calculator"),
         ("Merhaba", "llm"),
+        ("Bugün hava nasıl?", "llm"),
         ("Benim adım Ahmet", "memory_store"),
         ("Benim adım ne?", "memory_recall"),
         ("worker: test worker task", "worker"),

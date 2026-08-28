@@ -6,6 +6,10 @@ from simulation.llm.models import (
 )
 
 
+class ProviderError(Exception):
+    pass
+
+
 class BaseProvider(ABC):
 
     @abstractmethod

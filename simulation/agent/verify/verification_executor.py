@@ -1,4 +1,6 @@
+import os
 import sys
+import tempfile
 
 from simulation.agent.verify.command_runner import (
     CommandResult,
@@ -19,10 +21,26 @@ class VerificationExecutor:
 
     This component only verifies. It never applies a patch, never
     makes a Controller decision, and never produces a new patch.
+
+    Hardening (sprint):
+
+    - A default timeout is applied so a hanging verification cannot
+      block the runtime forever (an explicit ``timeout`` still wins).
+    - pytest's documented "no tests collected" exit code (5) is
+      treated as FAILURE, never as a pass, so a neutered or empty test
+      target cannot be reported as verification success.
+    - Bytecode cache output (``__pycache__``) of the verification
+      subprocess is redirected to a temporary directory via
+      ``PYTHONPYCACHEPREFIX`` so verification does not mutate the
+      repository it verifies.
     """
+
+    DEFAULT_TIMEOUT = 120
 
     STAGE_COMPILE = "compile"
     STAGE_TESTS = "tests"
+
+    NO_TESTS_COLLECTED_EXIT = 5
 
     STAGE_LABELS = {
         STAGE_COMPILE: "Python compilation",
@@ -49,9 +67,15 @@ class VerificationExecutor:
             else sys.executable
         )
 
-        self.timeout = timeout
+        self.timeout = (
+            timeout
+            if timeout is not None
+            else self.DEFAULT_TIMEOUT
+        )
 
         self.cwd = cwd
+
+        self._pycache_prefix = None
 
     def verify_python_compile(
         self,
@@ -128,10 +152,22 @@ class VerificationExecutor:
         result = self.runner.run(
             command,
             timeout=self.timeout,
-            cwd=self.cwd
+            cwd=self.cwd,
+            env=self._env(),
         )
 
         passed = self._is_pass(result)
+
+        # P8_COMPILE_DIAG: narrow CI diagnostic for compile verification (no semantic change)
+        if os.environ.get("P8_COMPILE_DIAG") == "1":
+            print(
+                f"P8_COMPILE_DIAG "
+                f"stage={stage} argv={command} cwd={self.cwd!r} "
+                f"executable={self.python_executable!r} version={sys.version.split()[0]!r} "
+                f"pycache={self._pycache_prefix!r} exit_code={result.exit_code} "
+                f"timed_out={result.timed_out} error={result.error!r} "
+                f"stdout={result.stdout!r} stderr={result.stderr!r} passed={passed}"
+            )
 
         exit_code = (
             -1
@@ -179,6 +215,28 @@ class VerificationExecutor:
             and result.exit_code == 0
         )
 
+    def _env(self):
+
+        """Environment for the verification subprocess.
+
+        ``PYTHONPYCACHEPREFIX`` redirects the subprocess bytecode
+        cache away from the repository so compileall/pytest do not
+        mutate ``__pycache__`` directories inside the tree under
+        verification.
+        """
+
+        if self._pycache_prefix is None:
+
+            self._pycache_prefix = tempfile.mkdtemp(
+                prefix="esp-pycache-"
+            )
+
+        env = dict(os.environ)
+
+        env["PYTHONPYCACHEPREFIX"] = self._pycache_prefix
+
+        return env
+
     def _failure_reason(
         self,
         stage,
@@ -205,6 +263,17 @@ class VerificationExecutor:
             return (
                 f"{label} verification failed: "
                 f"{result.error}"
+            )
+
+        if (
+            result.exit_code
+            == self.NO_TESTS_COLLECTED_EXIT
+        ):
+
+            return (
+                f"{label} verification found no "
+                "tests to run; an empty or neutered "
+                "test target is never a pass."
             )
 
         return (

@@ -21,6 +21,10 @@ from simulation.agent.worker.patch_generator import (
     PatchGenerator
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 
 from simulation.agent.worker.worker_agent import (
     WorkerAgent
@@ -272,7 +276,8 @@ def test_patch_validator_accepts_valid_patch(
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=(str(target),)
     )
 
     assert valid is True
@@ -316,7 +321,8 @@ def test_patch_validator_rejects_stale_patch(
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=(str(target),)
     )
 
     assert valid is False
@@ -356,7 +362,8 @@ def test_patch_validator_rejects_no_change(
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=(str(target),)
     )
 
     assert valid is False
@@ -405,7 +412,8 @@ def test_patch_validator_rejects_out_of_scope_patch(
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=(str(allowed),)
     )
 
     assert valid is False
@@ -445,13 +453,14 @@ def test_patch_validator_rejects_empty_allowed_paths(
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=()
     )
 
     assert valid is False
 
     assert (
-        "allowed_paths"
+        "authoritative scope"
         in message
     )
 
@@ -492,13 +501,14 @@ def test_patch_validator_rejects_none_allowed_paths(
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=()
     )
 
     assert valid is False
 
     assert (
-        "allowed_paths"
+        "authoritative scope"
         in message
     )
 
@@ -528,7 +538,10 @@ def test_controller_approves_validated_patch():
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     assert decision.approved is True
@@ -562,8 +575,13 @@ def test_controller_rejects_invalid_validation():
 
     decision = controller.approve(
         patch,
-        "Patch is stale: current file content "
-        "does not match old_content."
+        ValidationResult(
+            valid=False,
+            message=(
+                "Patch is stale: current file content "
+                "does not match old_content."
+            ),
+        )
     )
 
     assert decision.approved is False
@@ -594,7 +612,10 @@ def test_controller_rejects_unsupported_action():
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     assert decision.approved is False
@@ -638,7 +659,8 @@ def test_worker_validator_controller_pipeline():
     validator = PatchValidator()
 
     valid, message = validator.validate(
-        patch
+        patch,
+        scope=("tests/",)
     )
 
     assert valid is True
@@ -651,7 +673,10 @@ def test_worker_validator_controller_pipeline():
 
     decision = controller.approve(
         patch,
-        message
+        ValidationResult(
+            valid=valid,
+            message=message,
+        )
     )
 
     assert decision.approved is True
@@ -853,7 +878,8 @@ def test_apply_executor_requires_controller_approval(
 
     result = executor.apply(
         patch,
-        decision
+        decision,
+        scope=(str(target),)
     )
 
     assert result.success is False
@@ -917,14 +943,18 @@ def test_apply_executor_accepts_controller_approval(
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     executor = ApplyExecutor()
 
     result = executor.apply(
         patch,
-        decision
+        decision,
+        scope=(str(target),)
     )
 
     assert result.success is True
@@ -979,7 +1009,8 @@ def test_file_applier_performs_real_write(
     applier = FileApplier()
 
     success, message = applier.apply(
-        patch
+        patch,
+        scope=(str(target),)
     )
 
     assert success is True
@@ -1024,7 +1055,8 @@ def test_file_applier_rejects_stale_patch(
     applier = FileApplier()
 
     success, message = applier.apply(
-        patch
+        patch,
+        scope=(str(target),)
     )
 
     assert success is False
@@ -1073,7 +1105,8 @@ def test_file_applier_rejects_unsupported_action(
     applier = FileApplier()
 
     success, message = applier.apply(
-        patch
+        patch,
+        scope=(str(target),)
     )
 
     assert success is False
@@ -1127,7 +1160,8 @@ def test_file_applier_rejects_out_of_scope_patch(
     applier = FileApplier()
 
     success, message = applier.apply(
-        patch
+        patch,
+        scope=(str(allowed),)
     )
 
     assert success is False
@@ -1174,13 +1208,14 @@ def test_file_applier_rejects_empty_allowed_paths(
     applier = FileApplier()
 
     success, message = applier.apply(
-        patch
+        patch,
+        scope=()
     )
 
     assert success is False
 
     assert (
-        "allowed_paths"
+        "authoritative scope"
         in message
     )
 
@@ -1221,13 +1256,14 @@ def test_file_applier_rejects_none_allowed_paths(
     applier = FileApplier()
 
     success, message = applier.apply(
-        patch
+        patch,
+        scope=()
     )
 
     assert success is False
 
     assert (
-        "allowed_paths"
+        "authoritative scope"
         in message
     )
 
@@ -1273,7 +1309,10 @@ def test_apply_executor_denies_empty_scope_patch(
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     executor = ApplyExecutor()
@@ -1286,7 +1325,7 @@ def test_apply_executor_denies_empty_scope_patch(
     assert result.success is False
 
     assert (
-        "allowed_paths"
+        "authoritative scope"
         in result.message
     )
 
@@ -1338,14 +1377,18 @@ def test_apply_executor_performs_approved_real_write(
 
     decision = controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     executor = ApplyExecutor()
 
     result = executor.apply(
         patch,
-        decision
+        decision,
+        scope=(str(target),)
     )
 
     assert result.success is True

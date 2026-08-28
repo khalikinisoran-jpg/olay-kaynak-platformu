@@ -29,6 +29,10 @@ from simulation.agent.worker.patch_proposal import (
     PatchProposal
 )
 
+from simulation.agent.worker.validation_result import (
+    ValidationResult
+)
+
 
 def make_verification_result(
     status=PASS,
@@ -100,7 +104,10 @@ def approved_decision(patch):
 
     return controller.approve(
         patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
 
@@ -148,7 +155,8 @@ def test_apply_success_verification_success(
 
     result = pipeline.execute(
         patch,
-        approved_decision(patch)
+        approved_decision(patch),
+        scope=(str(tmp_path),),
     )
 
     assert isinstance(
@@ -229,7 +237,8 @@ def test_apply_success_verification_failure_is_pipeline_failure(
 
     result = pipeline.execute(
         patch,
-        approved_decision(patch)
+        approved_decision(patch),
+        scope=(str(tmp_path),),
     )
 
     assert result.apply_result.success is True
@@ -257,11 +266,15 @@ def test_apply_success_verification_failure_is_pipeline_failure(
         in result.failure_reason
     )
 
+    assert result.rollback is not None
+
+    assert result.rollback.success is True
+
     assert (
         target.read_text(
             encoding="utf-8"
         )
-        == updated
+        == original
     )
 
 
@@ -291,7 +304,8 @@ def test_apply_failure_skips_verification(
 
     result = pipeline.execute(
         patch,
-        approved_decision(patch)
+        approved_decision(patch),
+        scope=(str(tmp_path),),
     )
 
     assert result.apply_result.success is False
@@ -356,7 +370,10 @@ def test_apply_denial_skips_verification(
 
     decision = Controller().approve(
         approved_patch,
-        "Patch validation passed."
+        ValidationResult(
+            valid=True,
+            message="Patch validation passed.",
+        )
     )
 
     different_patch = make_patch(
@@ -372,7 +389,8 @@ def test_apply_denial_skips_verification(
 
     denied = pipeline.execute(
         different_patch,
-        decision
+        decision,
+        scope=(str(tmp_path),),
     )
 
     assert denied.apply_result.success is False
@@ -467,7 +485,8 @@ def test_verification_evidence_preserved_upstream(
 
     result = pipeline.execute(
         patch,
-        approved_decision(patch)
+        approved_decision(patch),
+        scope=(str(tmp_path),),
     )
 
     assert (
@@ -541,6 +560,7 @@ def test_pipeline_uses_existing_verification_executor_contract(
         test_targets=(
             "tests/sample_test.py",
         ),
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -588,6 +608,7 @@ def test_pipeline_accepts_explicit_verify_paths(
             str(tmp_path / "util.py"),
         ),
         test_targets=(),
+        scope=(str(tmp_path),),
     )
 
     assert result.success is True
@@ -630,7 +651,8 @@ def test_existing_apply_executor_remains_backward_compatible(
 
     apply_result = executor.apply(
         patch,
-        decision
+        decision,
+        scope=(str(tmp_path),),
     )
 
     assert apply_result.success is True

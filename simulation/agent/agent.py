@@ -19,16 +19,13 @@ class Agent:
         kernel,
         dispatcher=None,
         provider=None,
-        worker_pipeline=None
+        worker_pipeline=None,
+        recovery_engine=None
     ):
 
         self.kernel = kernel
 
-        self.provider = (
-            provider
-            if provider is not None
-            else ProviderFactory.create()
-        )
+        self._provider = provider
 
         self.context_builder = ContextBuilder()
 
@@ -43,6 +40,25 @@ class Agent:
         )
 
         self.worker_pipeline = worker_pipeline
+
+        self.recovery_engine = recovery_engine
+
+    @property
+    def provider(self):
+
+        """Lazily resolved LLM provider.
+
+        The provider is only created when first accessed, so the
+        runtime does not require an API key for non-LLM strategies
+        (calculator, memory, worker-proposal). A real LLM call with no
+        credential still fails explicitly.
+        """
+
+        if self._provider is None:
+
+            self._provider = ProviderFactory.create()
+
+        return self._provider
 
     def chat(self, prompt):
 
@@ -79,6 +95,18 @@ class Agent:
         if isinstance(response, WorkerResult):
 
             self.loop.verifying()
+
+            if self.recovery_engine is not None:
+
+                result = self.recovery_engine.execute(
+                    self,
+                    prompt,
+                    initial_worker_result=response,
+                )
+
+                self.loop.complete()
+
+                return result
 
             if self.worker_pipeline is not None:
 

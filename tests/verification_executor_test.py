@@ -1,3 +1,4 @@
+import os
 import sys
 
 from simulation.agent.apply.apply_result import ApplyResult
@@ -41,13 +42,15 @@ class RecordingRunner:
         self,
         command,
         timeout=None,
-        cwd=None
+        cwd=None,
+        env=None
     ):
 
         self.calls.append({
             "command": tuple(command),
             "timeout": timeout,
             "cwd": cwd,
+            "env": env,
         })
 
         return self.results.pop(0)
@@ -316,6 +319,110 @@ def test_verification_executor_process_failure_is_fail():
         "failed to start"
         in result.failure_reason
     )
+
+
+def test_verification_executor_no_tests_collected_is_fail():
+
+    runner = RecordingRunner([
+        make_command_result(exit_code=0),
+        make_command_result(
+            exit_code=5,
+            stdout="no tests ran",
+        ),
+    ])
+
+    executor = VerificationExecutor(
+        runner=runner
+    )
+
+    result = executor.verify(
+        ["simulation/sample.py"],
+        ["tests/empty_target.py"],
+    )
+
+    assert result.status == "FAIL"
+
+    assert result.passed is False
+
+    assert result.exit_code == 5
+
+    assert (
+        "no tests"
+        in result.failure_reason.lower()
+    )
+
+
+def test_verification_executor_default_timeout_is_applied():
+
+    runner = RecordingRunner([
+        make_command_result(exit_code=0),
+        make_command_result(exit_code=0),
+    ])
+
+    executor = VerificationExecutor(
+        runner=runner
+    )
+
+    executor.verify(
+        ["simulation/sample.py"],
+        ["tests/sample_test.py"],
+    )
+
+    assert runner.calls[0]["timeout"] == (
+        VerificationExecutor.DEFAULT_TIMEOUT
+    )
+
+
+def test_verification_executor_redirects_bytecode_cache():
+
+    runner = RecordingRunner([
+        make_command_result(exit_code=0),
+        make_command_result(exit_code=0),
+    ])
+
+    executor = VerificationExecutor(
+        runner=runner
+    )
+
+    executor.verify(
+        ["simulation/sample.py"],
+        ["tests/sample_test.py"],
+    )
+
+    env = runner.calls[0]["env"]
+
+    assert env is not None
+
+    assert "PYTHONPYCACHEPREFIX" in env
+
+    assert env["PYTHONPYCACHEPREFIX"]
+
+    assert env["PYTHONPYCACHEPREFIX"] != os.environ.get(
+        "PYTHONPYCACHEPREFIX",
+        "",
+    )
+
+
+def test_verification_executor_no_tests_exit_is_never_pass():
+
+    runner = RecordingRunner([
+        make_command_result(
+            exit_code=5,
+            stdout="no tests ran",
+        ),
+    ])
+
+    executor = VerificationExecutor(
+        runner=runner
+    )
+
+    result = executor.verify_tests(
+        ["tests/empty/"],
+    )
+
+    assert result.status == "FAIL"
+
+    assert result.passed is False
 
 
 def test_verification_executor_builds_safe_command_args():

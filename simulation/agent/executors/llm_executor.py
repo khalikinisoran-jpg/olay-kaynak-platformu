@@ -12,9 +12,17 @@ class LLMExecutor:
 
     def __init__(self):
 
-        self.provider = ProviderFactory.create()
+        self._resolved_provider = None
 
         self.context_builder = ContextBuilder()
+
+    def _get_provider(self):
+
+        if self._resolved_provider is None:
+
+            self._resolved_provider = ProviderFactory.create()
+
+        return self._resolved_provider
 
     def execute(
         self,
@@ -50,6 +58,6 @@ class LLMExecutor:
 
         )
 
-        return self.provider.chat(
+        return self._get_provider().chat(
             request
         )
