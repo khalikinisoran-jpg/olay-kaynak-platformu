@@ -34,6 +34,12 @@ from simulation.security.governance_evaluator import GovernanceEvaluator
 from simulation.agent.pipeline.worker_action_pipeline import WorkerActionPipeline
 from simulation.agent.worker.patch_proposal import PatchProposal
 from simulation.agent.worker.worker_result import WorkerResult
+from simulation.agent.apply.external_action import ExternalAction
+from simulation.agent.apply.external_intent import create_intent
+from simulation.agent.apply.external_outcome_journal import ExternalOutcomeJournal
+from simulation.agent.apply.external_provider import AlwaysSuccessProvider
+from simulation.agent.apply.external_executor import ExternalActionExecutor
+from simulation.agent.pipeline.external_action_pipeline import ExternalActionPipeline
 
 
 def main():
@@ -228,6 +234,22 @@ def main():
     task_p.add_argument("--dry-run", action="store_true", help="Propose only; do not apply/verify (no mutation)")
     task_p.add_argument("--fake-analyzer", action="store_true", help="Use deterministic fake analyzer (for tests/offline, no LLM call)")
 
+    external_p = subparsers.add_parser(
+        "external",
+        help="Execute a governed external action via ExternalActionPipeline (T-B11-A)",
+        description="Governed external call via ExternalActionPipeline. Reuses GovernanceEvaluator, ApprovalStore, ExternalOutcomeJournal, ExternalActionExecutor. Fail-closed on scope/governance/approval/journal.",
+    )
+    external_p.add_argument("--provider", required=True, help="External provider name (e.g. secrets, payments)")
+    external_p.add_argument("--operation", required=True, help="Operation id (e.g. charge, send)")
+    external_p.add_argument("--payload", required=True, help="JSON payload string (secret-safe, stored as hash)")
+    external_p.add_argument("--idempotency-key", default="", dest="idempotency_key", help="Client idempotency key")
+    external_p.add_argument("--reason", default="external", help="Human reason")
+    external_p.add_argument("--workspace", required=True, help="Workspace root (authoritative scope for external://)")
+    external_p.add_argument("--data-dir", default=None, help="Platform data dir (default: <workspace>/.cli_platform)")
+    external_p.add_argument("--allowed-path", action="append", default=None, help="Allowed external scope (repeatable, e.g. external://). Defaults to external://")
+    external_p.add_argument("--intent-id", default=None, dest="intent_id", help="Stable intent_id for initial attempt (if omitted, derived via create_intent)")
+    external_p.add_argument("--request-nonce", default=None, dest="request_nonce", help="Nonce for intent_id derivation (default: idempotency-key or random)")
+
     args = parser.parse_args()
 
     # dispatch P2.1 subcommands before chat loop
@@ -241,6 +263,8 @@ def main():
         sys.exit(_cli_history(args))
     if args.command == "task":
         sys.exit(_cli_task(args))
+    if args.command == "external":
+        sys.exit(_cli_external(args))
 
     print("=" * 50)
     print(" Event-Sourced AI Runtime")
@@ -1038,6 +1062,97 @@ def _cli_task(args):
         for patch in worker_result.patches[1:]:
             gov2 = env["gov"].evaluate(patch)
             print(f"Additional patch: {patch.path} risk={gov2.risk_level.value} fingerprint={patch.fingerprint()[:12]}")
+    for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
+        if hasattr(sys, attr):
+            delattr(sys, attr)
+    return 0 if result.success else 1
+
+
+def _cli_build_external_pipeline(ws, data_dir, allowed):
+    # Isolated per-workspace platform state for external (T-B11-A)
+    gov = GovernanceEvaluator()
+    ledger_path = Path(getattr(sys, "_cli_approval_ledger", None) or (data_dir / "approval_ledger.jsonl"))
+    approval_store = ApprovalStore(ledger=ApprovalLedger(path=ledger_path))
+    journal = ExternalOutcomeJournal(path=str(data_dir / "external_journal.jsonl"))
+    ext_scope = tuple(allowed) if allowed else ("external://",)
+    # Preserve external:// prefix, don't resolve it as filesystem path
+    # _cli_resolve_workspace resolves allowed as filesystem paths, so for external we keep as-is if it starts with external://
+    executor = ExternalActionExecutor(approval_store=approval_store, governance=gov, journal=journal)
+    pipeline = ExternalActionPipeline(governance=gov, approval_store=approval_store, external_executor=executor, scope=ext_scope)
+    return {
+        "gov": gov,
+        "approval_store": approval_store,
+        "journal": journal,
+        "executor": executor,
+        "pipeline": pipeline,
+        "data_dir": data_dir,
+        "workspace": ws,
+        "scope": ext_scope,
+    }
+
+
+def _cli_print_external_result(action, gov_decision, result, journal):
+    print("=" * 60)
+    print("GOVERNED EXTERNAL — CURRENT OPERATION")
+    print("=" * 60)
+    print(f"Provider: {action.provider} Operation: {action.operation}")
+    print(f"Synthetic path: {action.synthetic_path()} Fingerprint: {action.fingerprint()[:12]}")
+    if gov_decision:
+        print(f"Risk: {gov_decision.risk_level.value} Approval required: {gov_decision.requires_human_approval}")
+    if result is None:
+        print("Execution: NOT RUN")
+        return
+    print(f"Success: {result.success} Failure stage: {result.failure_stage or '(none)'} Failure reason: {result.failure_reason or '(none)'}")
+    if result.external_result:
+        print(f"External outcome: {result.external_result.outcome} Reason: {result.external_result.reason}")
+    try:
+        recs = journal.load()
+        print("-" * 60)
+        print("EXTERNAL JOURNAL (last 5 records):")
+        for r in recs[-5:]:
+            print(f"  {r.get('record_type')} intent={str(r.get('intent_id',''))[:8]} attempt={str(r.get('attempt',''))} approval={str(r.get('approval_id',''))[:8]}")
+        print("-" * 60)
+    except Exception as e:
+        print(f"Journal error: {e}")
+    print("=" * 60)
+
+
+def _cli_external(args):
+    ws, data_dir, allowed = _cli_resolve_workspace(args)
+    # For external, allowed defaults to external:// if user did not provide explicit external scope
+    # _cli_resolve_workspace defaults to workspace path, so override for external
+    raw_allowed = getattr(args, "allowed_path", None)
+    if raw_allowed:
+        # Keep external:// as-is, resolve others as filesystem paths
+        allowed = tuple(p if p.startswith("external://") else str(Path(p).resolve()) for p in raw_allowed)
+    else:
+        allowed = ("external://",)
+    env = _cli_build_external_pipeline(ws, data_dir, allowed)
+    action = ExternalAction(
+        provider=args.provider,
+        operation=args.operation,
+        payload=args.payload,
+        idempotency_key=getattr(args, "idempotency_key", "") or "",
+        reason=getattr(args, "reason", "external") or "external",
+    )
+    intent_id = getattr(args, "intent_id", None)
+    if not intent_id:
+        nonce = getattr(args, "request_nonce", None) or getattr(args, "idempotency_key", "") or "cli-external"
+        intent_id = create_intent(action.provider, action.operation, action.payload, action.idempotency_key, action.reason, str(ws), str(nonce))
+        print(f"Derived intent_id: {intent_id}")
+    else:
+        print(f"Using intent_id: {intent_id}")
+    gov_decision = env["gov"].evaluate(action.to_patch_proposal(allowed_paths=allowed))
+    print(f"Workspace: {ws} Data dir: {data_dir} Scope: {allowed}")
+    print(f"Governance: risk={gov_decision.risk_level.value} allowed={gov_decision.allowed} approval_required={gov_decision.requires_human_approval}")
+    # For T-B11-A diagnostic/test: if payload contains timeout marker, use timeout provider to exercise ambiguous path
+    if "TIMEOUT_UNKNOWN" in action.payload or "timeout" in action.payload.lower():
+        from simulation.agent.apply.external_provider import ScriptedProvider, ExternalOutcome
+        provider = ScriptedProvider(script=[ExternalOutcome.TIMEOUT_UNKNOWN])
+    else:
+        provider = AlwaysSuccessProvider()
+    result = env["pipeline"].execute(action, provider=provider, intent_id=intent_id)
+    _cli_print_external_result(action, gov_decision, result, env["journal"])
     for attr in ("_cli_approval_ledger", "_cli_apply_journal"):
         if hasattr(sys, attr):
             delattr(sys, attr)
