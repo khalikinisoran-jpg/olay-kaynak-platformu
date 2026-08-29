@@ -1,9 +1,9 @@
 # ARCHITECTURE
 
 > Canonical architecture of what is ACTUALLY implemented on branch
-> `worker-action-pipeline` @ `50429ad` (2026-08-23; foundation `24c72d0` 986/974/12 conserved; HEAD 50429ad adds P2.1 CLI, P2.2 natural task entry, P2.2-FP pending exact parity, P2.3-A `demo_cli.ps1` + clean-clone verified locally).
+> `worker-action-pipeline` @ `d42736d` (`d42736d21822eb06fab9635eb7e716df1c3cf856`, current HEAD; 8 commits after the historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; current local full-suite evidence at `d42736d`: `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s — local Windows run, NOT hosted CI, NOT a production-correctness proof; historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures`, hosted run 32805095789 Ubuntu ~88s / Windows ~182s; foundation `24c72d0` 986 → P7 governed AgentSession → P8 multi-file atomicity → P9 → post-P9 governed ExternalAction additions to 1272; P2.1 CLI / P2.2 task entry / P2.2-FP pending parity / P2.3-A `demo_cli.ps1` conserved as lineage).
 > This document describes verified code only. Roadmap/future ideas are not
-> presented as current reality; see ROADMAP.md for the current strategic direction (A→C). History at `24c72d0`/`71d2353` preserved in docs/PROJECT_STATE.md.
+> presented as current reality; see ROADMAP.md for the current strategic direction (A→C, P9 FINAL PASS). History at `24c72d0`/`71d2353`/`50429ad` preserved in docs/PROJECT_STATE.md.
 
 ---
 
@@ -405,6 +405,70 @@ Thin wrappers over the same `WorkerActionPipeline`+`GovernanceEvaluator`+`Approv
   proposals referencing `[REDACTED]` are rejected.
 - **Lazy provider:** `Agent`/`LLMExecutor`/`LLMCodeAnalyzer` resolve the
   provider only on a real LLM call.
+
+---
+
+# 14c. Governed External-Action Pipeline (post-P9, `b2d6da7..d42736d`)
+
+Implemented and tested surface for governed external (non-file) provider
+calls, reusing the existing file-governance authority without a second
+execution path. Described strictly from current source and tests; no
+universal correctness or complete crash/interleaving coverage is claimed.
+
+- `ExternalAction` (`simulation/agent/apply/external_action.py`): frozen
+  contract; deterministic SHA-256 fingerprint over
+  provider/operation/payload/idempotency_key/reason; projects onto the
+  existing governance chain as a synthetic `PatchProposal` with path
+  `external://{provider}/{operation}` and action `modify`, so
+  `PathPolicy` scope checks remain meaningful (`allowed_paths` must
+  contain the external scope, e.g. `external://`). The `idempotency_key`
+  is deterministically encoded into the synthetic fingerprint, so
+  different keys produce different approval-binding identities.
+- `ExternalActionPipeline` (`simulation/agent/pipeline/external_action_pipeline.py`):
+  full governance chain (scope → governance/risk via the synthetic patch →
+  approval → controller → executor). Attempt authority comes ONLY from
+  `intent_id` (initial execution → attempt 1) or a journal-issued
+  `AttemptContext` (retry); a raw integer attempt is rejected fail-closed.
+  Retry additionally requires exact approval_id + attempt correlation
+  between the context, the store approval and the controller decision.
+- `ExternalActionExecutor` (`simulation/agent/apply/external_executor.py`):
+  fail-closed executor; requires an `ExternalOutcomeJournal` (no
+  in-memory fallback — a missing journal is a configuration failure);
+  records intent/started before the provider call and all four outcomes
+  (KNOWN_SUCCESS / KNOWN_FAILURE / TIMEOUT_UNKNOWN / AMBIGUOUS_UNKNOWN)
+  after it; ambiguous outcomes are never promoted to success; no
+  auto-retry, no compensation, no provider call on any authorization or
+  journal-validation failure.
+- `ExternalOutcomeJournal` (`simulation/agent/apply/external_outcome_journal.py`):
+  append-only, hash-chained, secret-safe JSONL (payload/idempotency stored
+  as SHA-256 hashes only), process-locked, fail-closed load (hash
+  mismatch / chain break / invalid transition raises). `open_attempt`
+  issues a hash-bound `AttemptContext` (intent_id, approval_id,
+  previous_hash, expected_previous_attempt); `start_opened_attempt`
+  validates the durable attempt, approval_id correlation, previous-hash
+  lineage and fingerprint before any provider call — the durable journal
+  lineage, not any in-memory session state, is the attempt authority.
+- `SessionGovernedBridge.execute_external`
+  (`simulation/agent/session/session_governed_bridge.py`): the only place
+  an `AgentSession` submits an external action; passes only
+  `intent_id`/`attempt_context` to the pipeline and never
+  `session.attempt`. Production code contains no
+  `AgentSession.next_attempt()` call — AgentSession is NOT the external
+  attempt authority (VERIFIED by `tests/test_external_t_b10_a.py`).
+- `external_reconciliation.py`: durable-lineage reconciliation for
+  external intents (detection over the journal).
+- Runtime wiring: `agent_run.py external` CLI subcommand (isolated
+  per-workspace `.cli_platform/external_journal.jsonl`); session wiring
+  via `session_governed_bridge.py` (commit `455090f`).
+- Test evidence: `tests/test_external_t_b1..b10*`,
+  `tests/test_external_model_b_production.py`,
+  `tests/test_external_idempotency_binding.py`,
+  `tests/test_external_f4_no_journal_bypass.py`,
+  `tests/test_external_runtime_wiring_m12.py`,
+  `tests/test_external_cli_t11a.py`,
+  `tests/test_pipeline_integration_p11.py` — included in the local
+  full-suite PASS at `d42736d` (1272/1259/13/0, local Windows run;
+  local evidence only, NOT hosted CI).
 
 ---
 

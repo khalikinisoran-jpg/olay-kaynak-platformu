@@ -33,17 +33,17 @@ canonical docs (Section 4) rather than duplicating their full content.
 
 | Field | Value | Class |
 |-------|-------|--------|
-| CURRENT DATE | 2026-08-23 | VERIFIED |
+| CURRENT DATE | 2026-08-29 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `50429ad540bc074a186141946c57f71f8447604a` (`50429ad`, "feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)") | VERIFIED (`git rev-parse HEAD`) |
-| WORKTREE STATE | clean — `git status` reports `nothing to commit, working tree clean`; local == origin/worker-action-pipeline | VERIFIED (`git status --porcelain`, `git fetch --prune`) |
-| CURRENT MISSION | P2.3-A REPRODUCIBLE GOVERNED CLI BASELINE — pending parity + demo_cli.ps1 + doc sync to 50429ad, clean-clone verified locally | VERIFIED (git log 71d2353..50429ad; 5 commits: 0a2f005 P2.1, 5390c0f observability, c03dfb8 P2.2, 2f49d9f P2.2-FP, 50429ad P2.3-A) |
-| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`) foundation conserved; P2.x **9 parity + 7 CLI apply + 6 CLI task + 5 observability + 48 boundary + 10 mp single-use** pass locally and in clean clone (2026-08-23); hosted CI not yet evidenced | VERIFIED (2026-08-22 foundation; 2026-08-23 CLI parity + clean clone) |
-| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93 + P2.1/P2.2/P2.2-FP/P2.3-A; foundation at 24c72d0, current 50429ad | VERIFIED (Section 18 + git log) |
-| ACTIVE MISSIONS | MISSION N.56 (Phase 1 Truth Alignment) | VERIFIED |
+| CURRENT HEAD | `d42736d21822eb06fab9635eb7e716df1c3cf856` (`d42736d`, "feat(runtime): wire governed ExternalAction through runtime entrypoint") — 8 commits after the historical P9 FINAL PASS baseline `b2d6da7` (`b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25) | VERIFIED (`git rev-parse HEAD`) |
+| WORKTREE STATE | 7 unstaged documentation modifications (P10.2 documentation synchronization: README.md, START-HERE.md, docs/ARCHITECTURE.md, docs/PROJECT_MASTER.md, docs/PROJECT_STATE.md, docs/ROADMAP.md, docs/SECURITY_MODEL.md); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files | VERIFIED (`git status --short`) |
+| CURRENT MISSION | P10.2 DOCUMENTATION SYNCHRONIZATION — canonical docs synchronized to current HEAD `d42736d` (historical P9 FINAL PASS @ `b2d6da7` preserved as verification evidence); P10.3 hygiene consolidation is future work (NOT executed here) | VERIFIED (this doc sync mission) |
+| LAST VERIFIED TEST RESULT | current local full-suite evidence at HEAD `d42736d`: **`1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s** (local Windows run 2026-08-29; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789) — foundation `24c72d0` 986 → P7 governed AgentSession + P8 multi-file atomicity + P9 → post-P9 governed ExternalAction additions to 1272 | VERIFIED (local `python -m pytest -q` at `d42736d`; historical: hosted run 32805095789) |
+| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93 + P2.1/P2.2/P2.2-FP/P2.3-A + P7 AgentSession + P8 multi-file atomicity + P9 FINAL PASS + post-P9 governed ExternalAction pipeline (`b2d6da7..d42736d`); foundation at 24c72d0, current `d42736d` | VERIFIED (Section 18 + git log) |
+| ACTIVE MISSIONS | P10.2 documentation synchronization (this mission); P10.3 hygiene consolidation (future, audit-only) | VERIFIED |
 | OPEN SECURITY RISKS | risk classification remains a deterministic heuristic (a secret deliberately hidden under an innocent key in a plain file can still classify LOW); human operator identity is not authenticated (authorizer is informational); approval UX is CLI/synchronous only; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; orphaned-mutation auto-repair is intentionally NOT implemented (detect-only, D-032) | VERIFIED (Section 20) |
 | UNKNOWN ITEMS | see Section 21 | — |
-| NEXT 3-5 PRIORITIES | 1) commit/push MISSION-016..019 + hosted CI run, 2) default-on gate decision (UX now exists), 3) MISSION-015 productization readiness, 4) benchmark/CI hardening on Linux/macOS, 5) doc-sync + hygiene commit | INFERRED (Section 22) |
+| NEXT 3-5 PRIORITIES | 1) complete P10.2 documentation synchronization, 2) review/commit documentation changes after verification, 3) P10.4 packaging hardening, 4) P10.3 hygiene consolidation after separate approval, 5) controlled productization decisions | INFERRED (Section 22) |
 
 Quick orientation: the repository is an **event-sourced, deterministic, human-governed file-editing agent runtime** (Secure Coding Agent Runtime). A worker (optionally LLM-driven) proposes file modifications; deterministic gates (validator → RiskEngine → GovernanceEvaluator → human approval when required → single-use authorization → atomic apply → verify) decide; every decision becomes a hash-chained event anchored by ChainAnchor. Principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** The risk/approval/authorization stack is a **real opt-in runtime path** (`agent_run.py --governed` / `--recovery`) with rollback on verification failure and durable approval ledger. Apply/recovery/governed mode remain **opt-in only**; the default runtime is proposal-only.
 
@@ -148,8 +148,8 @@ simulation/
   core/          Event, State, Reducer, Kernel (single write path)
   persistence/   EventStore (hash-chained JSONL), SnapshotStore/Manager, legacy backup/recovery
   replay/        ReplayEngine
-  recovery/      RecoveryEngine (snapshot + hash-integrity + replay)
-  snapshot/      snapshot manager (duplicate of persistence/snapshot_manager.py)
+   recovery/      RecoveryEngine (snapshot + hash-integrity + replay)
+   snapshot/      empty package (`__init__.py` only; no manager implementation)
   security/      PathPolicy, HashChain, HashVerifier, RiskLevel, RiskEngine,
                  RiskPolicy, SecretPolicy (read-side secret boundary)
   decision/      DecisionTrace (in-memory)
@@ -1004,27 +1004,16 @@ git history and the passing suites. "LAST VERIFIED" is the state at
 
 # 19. CURRENT LIVE STATE
 
-- Branch `worker-action-pipeline` @ `1f9088f`; 20 commits ahead of `main`
-  (VERIFIED `git log main..HEAD`).
-- Working tree: MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes
-  uncommitted (authoritative-scope enforcement, rollback authority,
-  governed retry budget, risk evidence, replay; RELEASE-03 secret guard +
-  pre-commit hook + CI secret scan, snapshot path isolation, hardened
-  .gitignore, .env.example, doc sync).
-- Test suite: **823 passed / 12 skipped** (2026-08-16); adversarial corpus
-  **80 passed / 1 skipped**; secret-guard corpus **39 passed**; snapshot
-  isolation **4 passed**; MISSION-M memory suites **38 passed**;
-  `compileall` exit 0; `git diff --check` clean.
-- Untracked: `scripts/secret_guard.py`, `scripts/install_hooks.py`,
-  `githooks/pre-commit`, `tests/security/secret_guard_test.py`,
-  `tests/snapshot_concurrency_test.py`, mission test files, `.gitattributes`,
-  `.env.example`; concurrent MISSION-M work adds
-  `tests/security/memory_security_test.py`, `tests/property/memory_property_test.py`.
+- Branch `worker-action-pipeline` @ `d42736d` (`d42736d21822eb06fab9635eb7e716df1c3cf856`, current HEAD; 8 commits after the historical P9 FINAL PASS baseline `b2d6da7`)
+  (VERIFIED `git rev-parse HEAD`).
+- Working tree: 7 unstaged documentation modifications (P10.2 documentation synchronization); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files.
+- Test suite: **1272 collected / 1259 passed / 13 skipped / 0 failures in 271.43s** (local Windows run at `d42736d`, 2026-08-29; local evidence only — NOT hosted CI, NOT a production-correctness proof); adversarial corpus + secret-guard + snapshot isolation + MISSION-M memory suites + post-P9 ExternalAction test suites included in the 1272 count; `python -m pytest --collect-only -q` = 1272. Historical P9 FINAL PASS @ `b2d6da7`: 1213/1200/13 (hosted run 32805095789).
+- P2.3-A `demo_cli.ps1` DENY→APPROVE→VERIFIED→replay DENY conserved (P9 does not re-verify clean-clone separately; P9 hosted CI is exact-HEAD evidence).
 - `.env` present locally (OPENROUTER_API_KEY, untracked/gitignored; not in
   release snapshot).
 - CI workflow (`.github/workflows/ci.yml`, ubuntu + windows, pytest +
-  compileall + **secret scan** + corpus + diff-check + packaging smoke);
-  `pyproject.toml` packaging metadata (`pip install -e .` verified locally).
+  compileall + **secret scan** + corpus + diff-check + packaging smoke) — exact-HEAD hosted run 32805095789 succeeded on Ubuntu and Windows;
+  `pyproject.toml` packaging metadata `0.6.0` (`pip install -e .` verified locally and via hosted packaging smoke).
 
 ---
 
