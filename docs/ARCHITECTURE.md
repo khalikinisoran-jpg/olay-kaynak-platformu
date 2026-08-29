@@ -66,10 +66,10 @@ evidence events (simulation/core/kernel.py:40).
   events after `last_sequence`. Raises RuntimeError on chain break.
 - `ReplayEngine` (`replay/replay_engine.py`): deterministic replay with
   optional `initial_state`.
-- `persistence/event_store_backup.py`: present but not used by Kernel
-  (VERIFIED: Kernel uses `simulation/recovery/recovery_engine.py`).
-  The legacy `persistence/recovery.py` (`Recovery.rebuild`) was removed
-  (commit `542c187`).
+- The legacy `persistence/recovery.py` (`Recovery.rebuild`) was removed
+  (commit `542c187`); the legacy unchained `persistence/event_store_backup.py`
+  duplicate was removed in the P10.3-B hygiene cleanup (zero imports; not
+  used by Kernel, which uses `simulation/recovery/recovery_engine.py`).
 
 ---
 
@@ -108,9 +108,10 @@ evidence events (simulation/core/kernel.py:40).
 # 6. Tool Framework (simulation/tools/, simulation/services/)
 
 - `BaseTool`, `Registry`, `Calculator` (arithmetic via safe exec).
-- `services/tool_executor.py` and `services/runtime_service.py` exist
-  (VERIFIED present); the executors path used by the dispatcher is
-  `agent/executors/`, not `services/`.
+- `services/tool_executor.py` remains (VERIFIED present);
+  `services/runtime_service.py` (unused `Kernel` facade) was removed in
+  the P10.3-B hygiene cleanup (zero imports). The executors path used by
+  the dispatcher is `agent/executors/`, not `services/`.
 
 ---
 
@@ -500,12 +501,12 @@ universal correctness or complete crash/interleaving coverage is claimed.
 - Rollback on verification failure is provided by the real `ApplyExecutor`;
   a custom executor without `rollback` leaves the failed state (documented).
 - `DecisionTrace` in-memory only.
-- `simulation/domain/`, `simulation/services/`,
-  `persistence/event_store_backup.py` overlap with active modules
-  (historical overlaps `persistence/recovery.py` and the
-  `snapshot/snapshot_manager.py` duplicate were removed in commits
-  `542c187` and `07dbd34`; `simulation/snapshot/` now holds only an
-  empty `__init__.py`).
+- `simulation/domain/` and the remaining `services/tool_executor.py`
+  overlap with active modules (historical overlaps `persistence/recovery.py`,
+  the `snapshot/snapshot_manager.py` duplicate, the empty
+  `simulation/snapshot/` package and `persistence/event_store_backup.py`
+  were removed in commits `542c187`, `07dbd34` and the P10.3-B hygiene
+  cleanup).
 - Empty test subpackages `tests/chaos|integration|property|unit/`.
 - Multi-process writers on one `EventStore` file are unsupported (same-store
   threads are safe via the internal lock).

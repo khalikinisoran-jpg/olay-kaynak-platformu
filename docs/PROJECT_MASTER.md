@@ -146,10 +146,9 @@ Top-level code layout (**VERIFIED** by directory listing):
 ```
 simulation/
   core/          Event, State, Reducer, Kernel (single write path)
-  persistence/   EventStore (hash-chained JSONL), SnapshotStore/Manager, legacy backup/recovery
+  persistence/   EventStore (hash-chained JSONL), SnapshotStore/Manager
   replay/        ReplayEngine
    recovery/      RecoveryEngine (snapshot + hash-integrity + replay)
-   snapshot/      empty package (`__init__.py` only; no manager implementation)
   security/      PathPolicy, HashChain, HashVerifier, RiskLevel, RiskEngine,
                  RiskPolicy, SecretPolicy (read-side secret boundary)
   decision/      DecisionTrace (in-memory)
@@ -176,7 +175,7 @@ simulation/
     recovery/           BoundedRecoveryEngine, RecoveryAttempt, RecoveryResult, recovery_assembly
     evidence/           WorkerEventType, build_worker_event, WorkerEvidenceRecorder
   domain/               legacy domain models (worker.py, task.py, enums.py)
-  services/             legacy tool_executor/runtime_service (overlap with agent/executors/)
+  services/             tool_executor (runtime_service removed in P10.3-B; overlap with agent/executors/)
 agent_run.py            CLI entry point (default proposal-only; --recovery; --governed)
 benchmarks/             event_store_benchmark.py (standalone append benchmark)
 .github/workflows/      ci.yml (ubuntu + windows)
@@ -1057,8 +1056,8 @@ VERIFIED where not marked:
     README/CHANGELOG/PROJECT_CONTEXT remains.
 13. Snapshot duplicate (`snapshot/snapshot_manager.py`) and legacy
     `persistence/recovery.py` were removed (commits `07dbd34`,
-    `542c187`); `event_store_backup.py` overlap remains (not removed
-    without proof of dead code).
+    `542c187`); `event_store_backup.py` was removed in the P10.3-B
+    hygiene cleanup (dead-code evidence: zero imports).
 14. `WorkerExecutor` hardcodes `task_id="worker-task"` and
     `allowed_actions=("read","inspect","propose")`.
 
@@ -1102,10 +1101,11 @@ is committed, MISSION-017 is implemented but uncommitted):
 3. **Synchronize remaining stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment** (planned).
-5. **Finish repository hygiene** (remaining: `event_store_backup.py`,
-   `services/` overlap; `persistence/recovery.py` and duplicate snapshots
-   already removed in `542c187`/`07dbd34`) with dead-code evidence per
-   component.
+5. **Finish repository hygiene** (completed for the audited candidates:
+   `persistence/recovery.py` and duplicate snapshots removed in
+   `542c187`/`07dbd34`; `event_store_backup.py` and
+   `services/runtime_service.py` removed in P10.3-B with dead-code
+   evidence per component).
 
 ---
 

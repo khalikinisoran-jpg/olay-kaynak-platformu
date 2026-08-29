@@ -415,10 +415,11 @@ Recommended (from audit findings, not a committed plan):
 3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment.**
-5. **Repository hygiene** (remaining: `event_store_backup.py`,
-   `services/` overlap; legacy `persistence/recovery.py` and duplicate
-   snapshot implementations already removed in `542c187`/`07dbd34`) with
-   dead-code evidence per component.
+5. **Repository hygiene** (completed for the audited candidates: legacy
+   `persistence/recovery.py` and duplicate snapshot implementations
+   removed in `542c187`/`07dbd34`; `event_store_backup.py` and
+   `services/runtime_service.py` removed in P10.3-B with dead-code
+   evidence per component).
 
 ---
 
