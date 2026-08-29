@@ -397,7 +397,8 @@ VERIFIED where not marked:
 - MISSION-009 was referenced as "state/documentation synchronization" but
   has no dedicated MISSION_LOG entry (commit `9b5c21e`).
 - Whether the tracked `.pyc` artifacts and junk files (`git`, `kernel.txt`)
-  should be removed from the repository.
+  should be removed from the repository — RESOLVED: removed in commit
+  `a8de82e`; none remain tracked at HEAD.
 
 ---
 
@@ -414,9 +415,10 @@ Recommended (from audit findings, not a committed plan):
 3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment.**
-5. **Repository hygiene** (legacy `persistence/recovery.py`,
-   `event_store_backup.py`, duplicate snapshot implementations,
-   `services/` overlap) with dead-code evidence per component.
+5. **Repository hygiene** (remaining: `event_store_backup.py`,
+   `services/` overlap; legacy `persistence/recovery.py` and duplicate
+   snapshot implementations already removed in `542c187`/`07dbd34`) with
+   dead-code evidence per component.
 
 ---
 

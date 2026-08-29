@@ -58,17 +58,18 @@ evidence events (simulation/core/kernel.py:40).
   record stores event_id, event_type, payload, sequence, previous_hash,
   current_hash (SHA-256 over the record, `HashChain.calculate`). Reads via
   `read_all` / `read_after`.
-- `SnapshotStore` / `SnapshotManager` (`persistence/snapshot*.py`,
-  `snapshot/snapshot_manager.py`): periodic snapshot every `interval`
+- `SnapshotStore` / `SnapshotManager` (`persistence/snapshot.py`,
+  `persistence/snapshot_manager.py`): periodic snapshot every `interval`
   events (default 2).
 - `RecoveryEngine` (`recovery/recovery_engine.py`): on Kernel start,
   verifies hash chain integrity, loads snapshot if present, replays only
   events after `last_sequence`. Raises RuntimeError on chain break.
 - `ReplayEngine` (`replay/replay_engine.py`): deterministic replay with
   optional `initial_state`.
-- `persistence/recovery.py` (legacy `Recovery.rebuild`) and
-  `persistence/event_store_backup.py`: present but not used by Kernel
+- `persistence/event_store_backup.py`: present but not used by Kernel
   (VERIFIED: Kernel uses `simulation/recovery/recovery_engine.py`).
+  The legacy `persistence/recovery.py` (`Recovery.rebuild`) was removed
+  (commit `542c187`).
 
 ---
 
@@ -500,10 +501,11 @@ universal correctness or complete crash/interleaving coverage is claimed.
   a custom executor without `rollback` leaves the failed state (documented).
 - `DecisionTrace` in-memory only.
 - `simulation/domain/`, `simulation/services/`,
-  `persistence/event_store_backup.py`, `persistence/recovery.py`,
-  `snapshot/snapshot_manager.py` duplicate/overlap with
-  `simulation/snapshot/` (multiple snapshot implementations exist:
-  `persistence/snapshot.py`, `snapshot/snapshot_manager.py`).
+  `persistence/event_store_backup.py` overlap with active modules
+  (historical overlaps `persistence/recovery.py` and the
+  `snapshot/snapshot_manager.py` duplicate were removed in commits
+  `542c187` and `07dbd34`; `simulation/snapshot/` now holds only an
+  empty `__init__.py`).
 - Empty test subpackages `tests/chaos|integration|property|unit/`.
 - Multi-process writers on one `EventStore` file are unsupported (same-store
   threads are safe via the internal lock).

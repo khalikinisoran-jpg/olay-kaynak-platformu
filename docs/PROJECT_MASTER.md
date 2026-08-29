@@ -939,9 +939,10 @@ compileall -q simulation tests`, `git diff --check`.
   `tests/security/adversarial_corpus_test.py`).
 - Remote: `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git.
 - `.gitignore` excludes `.env`, `.venv/`, `data/`, `__pycache__/`, `*.pyc`.
-- Tracked junk: `git` (0 bytes), `kernel.txt`, and tracked `.pyc` artifacts
-  under `simulation/domain/__pycache__/` and
-  `simulation/security/__pycache__/` (documented hygiene debt).
+- Tracked junk (historical): `git` (0 bytes), `kernel.txt`, and tracked
+  `.pyc` artifacts under `simulation/domain/__pycache__/` and
+  `simulation/security/__pycache__/` were removed in commit `a8de82e`;
+  no tracked junk remains at HEAD.
 
 Key commits for the security/worker work:
 
@@ -1051,12 +1052,13 @@ VERIFIED where not marked:
     still leak. Prompt-injection resistance is a mitigation, not a proof.
 11. `weather` planner branch removed (was unroutable); "hava" prompts route
     to the LLM strategy.
-12. Repository hygiene: tracked junk staged for removal (`git` 0 bytes,
-    `kernel.txt`, tracked `.pyc`); docs drift in README/CHANGELOG/
-    PROJECT_CONTEXT remains.
-13. Duplicate snapshot implementations and legacy
-    `persistence/recovery.py`/`event_store_backup.py` overlap remain
-    (not removed without proof of dead code).
+12. Repository hygiene: tracked junk (`git` 0 bytes, `kernel.txt`,
+    tracked `.pyc`) was removed (commit `a8de82e`); docs drift in
+    README/CHANGELOG/PROJECT_CONTEXT remains.
+13. Snapshot duplicate (`snapshot/snapshot_manager.py`) and legacy
+    `persistence/recovery.py` were removed (commits `07dbd34`,
+    `542c187`); `event_store_backup.py` overlap remains (not removed
+    without proof of dead code).
 14. `WorkerExecutor` hardcodes `task_id="worker-task"` and
     `allowed_actions=("read","inspect","propose")`.
 
@@ -1100,9 +1102,10 @@ is committed, MISSION-017 is implemented but uncommitted):
 3. **Synchronize remaining stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment** (planned).
-5. **Finish repository hygiene** (legacy `persistence/recovery.py`,
-   `event_store_backup.py`, duplicate snapshots, `services/` overlap) with
-   dead-code evidence per component.
+5. **Finish repository hygiene** (remaining: `event_store_backup.py`,
+   `services/` overlap; `persistence/recovery.py` and duplicate snapshots
+   already removed in `542c187`/`07dbd34`) with dead-code evidence per
+   component.
 
 ---
 
