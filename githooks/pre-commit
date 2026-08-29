@@ -20,10 +20,14 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
 fi
 
 # Collect staged file paths (safely, NUL-separated) and feed them to the guard.
+# Exclude staged deletions (--diff-filter D): a deleted path no longer exists
+# in the working tree, so scanning it would raise a spurious fail-closed
+# SCAN ERROR for legitimate deletion commits. ACMRT entries still exist on
+# disk and are scanned exactly as before.
 STAGED=""
 while IFS= read -r -d '' file; do
     STAGED="$STAGED $file"
-done < <(git diff --cached --name-only -z)
+done < <(git diff --cached --name-only -z --diff-filter=ACMRT)
 
 if [ -z "$STAGED" ]; then
     exit 0
