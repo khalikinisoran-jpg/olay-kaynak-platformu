@@ -540,7 +540,10 @@ class Handler(BaseHTTPRequestHandler):
                 continue
             risk_level = gov_dec.risk_level.value
             try:
-                appr = env["approval_store"].grant(patch_fingerprint=fp, path=patch.path, action=patch.action, risk_level=risk_level, attempt=1, authorizer=data.get("authorizer", "human-operator"))
+                # CLI parity (P10.6-P1): ConsoleApprovalGateway bounds human
+                # approvals with a 3600s TTL; UI grants must not be
+                # never-expiring (canonical contract: expiry-bound single-use).
+                appr = env["approval_store"].grant(patch_fingerprint=fp, path=patch.path, action=patch.action, risk_level=risk_level, attempt=1, authorizer=data.get("authorizer", "human-operator"), expires_at=3600)
                 granted.append({"approval_id": appr.approval_id, "fingerprint": fp, "risk": risk_level, "path": patch.path})
             except Exception:
                 continue
