@@ -202,3 +202,25 @@ def test_p5_low_visible_verified_without_approval():
         assert (ws / "demo.txt").read_text(encoding="utf-8") == "hello fixed\n"
     finally:
         srv.shutdown()
+
+def test_p5_execute_never_writes_dummy_into_workspace_root():
+    # UI != AUTHORITY: verification scaffolding must stay inside the
+    # UI-owned platform data dir, never in the workspace content area.
+    port = _free_port()
+    srv = _start_server(port)
+    base = f"http://127.0.0.1:{port}"
+    ws = _ws_with_demo()
+    try:
+        st, j = _post(base, "/api/execute", {"goal": "fix hello file", "workspace": str(ws), "file": "demo.txt"})
+        assert st == 200
+        assert j["status"] == "VERIFIED"
+        assert (ws / "demo.txt").read_text(encoding="utf-8") == "hello fixed\n"
+        # No UI-written file in the workspace content area (root level)
+        assert not (ws / "test_p5_dummy.py").exists()
+        assert not any(p.name == "test_p5_dummy.py" for p in ws.glob("*.py"))
+        # Scaffolding lives only in the UI-owned data dir
+        dummy = ws / ".p5_platform" / "test_p5_dummy.py"
+        assert dummy.exists()
+        assert dummy.read_text(encoding="utf-8") == "def test_p5_dummy():\n    assert True\n"
+    finally:
+        srv.shutdown()

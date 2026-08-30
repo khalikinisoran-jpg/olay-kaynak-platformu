@@ -1,9 +1,12 @@
 """P5 localhost UI — view layer over existing governed runtime.
 
-Security contract: UI != AUTHORITY. No direct file writes, no bypass.
-All mutations go through WorkerActionPipeline (PatchValidator + RiskEngine +
-GovernanceEvaluator + ApprovalStore + ApplyAuthorization + FileApplier +
-VerificationExecutor + rollback). LLM claims remain UNTRUSTED.
+Security contract: UI != AUTHORITY. No direct writes into the user
+workspace content; all content mutations go through WorkerActionPipeline
+(PatchValidator + RiskEngine + GovernanceEvaluator + ApprovalStore +
+ApplyAuthorization + FileApplier + VerificationExecutor + rollback).
+LLM claims remain UNTRUSTED. UI-owned bookkeeping (pending proposals,
+verification scaffolding) stays inside the platform data dir
+(`.p5_platform`) and never enters the workspace content area.
 
 P6 hardening:
  - Explicit validated config (p5/config.py) — localhost-only host, port, workspace_root, max_body, token
@@ -556,7 +559,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         ws_p, dd, allowed = _resolve(ws, data.get("data_dir"))
         env = _build_pipeline(ws_p, dd, allowed)
-        dummy = ws_p / "test_p5_dummy.py"
+        # Verification scaffolding lives in the UI-owned platform data dir,
+        # never in the workspace content area: the UI must not write user-
+        # visible files outside the governed pipeline.
+        dummy = dd / "test_p5_dummy.py"
         if not dummy.exists():
             dummy.write_text("def test_p5_dummy():\n    assert True\n", encoding="utf-8")
         if use_fake:
