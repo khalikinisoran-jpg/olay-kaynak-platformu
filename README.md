@@ -4,7 +4,7 @@
 >
 > **Every AI decision becomes an auditable event.**
 
-> **Current canonical identity (2026-08-29, `worker-action-pipeline` @ `d42736d` — current HEAD, 8 commits after the historical P9 FINAL PASS baseline `b2d6da7`):** An **event-sourced, deterministic, human-governed file-editing agent runtime** with a governed external-action execution surface (post-P9). Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply / Governed External Action → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Current local full-suite evidence at `d42736d`: **`1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s** (local Windows run; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`: **`1213 collected / 1200 passed / 13 skipped / 0 failures`** (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED; foundation `24c72d0` 986 → P7/P8/P9 additions to 1213).
+> **Current canonical identity (2026-08-30, `worker-action-pipeline` @ `9df6953` — current HEAD, 15 commits after the historical P9 FINAL PASS baseline `b2d6da7`):** An **event-sourced, deterministic, human-governed file-editing agent runtime** with a governed external-action execution surface (post-P9). Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply / Governed External Action → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Current local full-suite evidence at `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`: **`1213 collected / 1200 passed / 13 skipped / 0 failures`** (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED; foundation `24c72d0` 986 → P7/P8/P9 additions to 1213).
 
 An experimental AI runtime that treats every meaningful AI interaction as an immutable event.
 
@@ -60,9 +60,9 @@ Benefits include:
 
 # Current Version
 
-**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `d42736d`** (`d42736d21822eb06fab9635eb7e716df1c3cf856` — `feat(runtime): wire governed ExternalAction through runtime entrypoint`; 8 commits after the historical P9 FINAL PASS baseline `b2d6da7`, 2026-08-25)
+**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `9df6953`** (`9df6953b4a51071330d7584f0ed2b569f4ab434b` — `fix(p5): enforce approval expiry parity`; 15 commits after the historical P9 FINAL PASS baseline `b2d6da7`, 2026-08-25)
 
-Status: Active Development — current local full-suite evidence at HEAD `d42736d`: **`1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s** (local Windows run 2026-08-29; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED) — P7 governed AgentSession + P8 multi-file atomicity + P9 FINAL PASS verified; foundation `24c72d0` 986 → P7/P8/P9 → post-P9 governed ExternalAction additions to 1272.
+Status: Active Development — current local full-suite evidence at HEAD `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED) — P7 governed AgentSession + P8 multi-file atomicity + P9 FINAL PASS verified; foundation `24c72d0` 986 → P7/P8/P9 → post-P9 governed ExternalAction additions to 1272.
 
 Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is ahead of `main` (exact count via `git log main..HEAD`); `0.6.0` declared in `pyproject.toml` but not yet tagged/released
 
@@ -405,9 +405,9 @@ What it demonstrates (real UI/service path, not mocks): proposal visible (target
 
 # Roadmap
 
-> **Current strategic direction (2026-08-29, current HEAD `d42736d`):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C). Current local full-suite evidence at `d42736d`: `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s (local Windows run; local evidence only — NOT hosted CI). Historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped` (hosted Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is external limitation).
+> **Current strategic direction (2026-08-30, current HEAD `9df6953`):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C). Current local full-suite evidence at `9df6953`: `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s (local Windows run 2026-08-30; local evidence only — NOT hosted CI). Historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped` (hosted Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is external limitation).
 
-## Recently verified (worker-action-pipeline @ `d42736d` current HEAD; historical P9 FINAL PASS @ `b2d6da7`; foundation `24c72d0` 986 → 1272)
+## Recently verified (worker-action-pipeline @ `9df6953` current HEAD; historical P9 FINAL PASS @ `b2d6da7`; foundation `24c72d0` 986 → 1278)
 
 - [x] Worker Action Pipeline (Patch Proposal → Validation → Risk → Governance → Approval → Apply → Verify → Recovery)
 - [x] Deterministic Risk + Governance + Single-Use Approval + Atomic Apply
@@ -430,7 +430,8 @@ Historical v2.0 Phases 1-4 (Developer→Production→Enterprise→Autonomous) ar
 - [x] P5 visible product experience (`demo_p5.py` via real UI/service path, localhost `p5/server.py`)
 - [x] P6 hardening + P7 governed AgentSession (`simulation/agent/session/`) + P8 multi-file atomicity + P9 FINAL PASS (`b2d6da7` `1213/1200/13` — hosted Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is external limitation, not a hang)
 - [x] Post-P9 governed ExternalAction pipeline (`b2d6da7..d42736d`): durable governed external action execution (`ExternalAction` / `ExternalActionPipeline` / `ExternalActionExecutor` / `ExternalOutcomeJournal` / `AttemptContext`), UNKNOWN/ambiguous outcomes never promoted to success, approval/idempotency correlation, runtime + CLI wiring (`agent_run.py external`) — local full-suite PASS at `d42736d` (1272/1259/13/0, local evidence only)
-- [ ] P10.2 documentation synchronization (this mission) → P10.3 hygiene consolidation (future, NOT executed here)
+- [x] P10.2 documentation synchronization (commit `07326ce`) → P10.3 hygiene consolidation (executed: `2150fe3` / `acef450` / `8452e0e`)
+- [x] Post-P10.3 p5 authority/integrity fixes — OPERATOR-label series P10.4-P10.6 (NOT canonical roadmap phases; canonical "P10.4 packaging hardening" label collision preserved as AMBIGUITY): `f60fa13` (UI dummy relocated out of workspace), `31c46c2` (p5 unanchored EventStore/ApprovalLedger disclosure parity), `9df6953` (approval expiry parity, 3600s TTL) — local full-suite `1278 / 1265 / 13 / 0` @ `9df6953`
 - [ ] Controlled productization decisions (no autonomous/multi-agent expansion)
 
 ---

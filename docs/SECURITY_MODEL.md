@@ -1,9 +1,9 @@
 # SECURITY_MODEL.md
 
 Canonical security model of the implemented worker action pipeline and
-event-sourcing core, branch `worker-action-pipeline` @ `d42736d`
-(`d42736d21822eb06fab9635eb7e716df1c3cf856`, current HEAD; 8 commits after the historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; current local full-suite evidence at `d42736d`: `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s — local Windows run, NOT hosted CI, NOT a production-correctness proof; historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures`, hosted run 32805095789 Ubuntu ~88s / Windows ~182s; foundation `24c72d0` 986 → P7 governed AgentSession → P8 multi-file atomicity → P9 → post-P9 governed ExternalAction additions to 1272).
-Historical risk-layer status: MISSION-011..018B, MISSION-M/N/N.1/O (see history; historical P9 FINAL PASS baseline is `b2d6da7`; current HEAD is `d42736d` incl. the governed external-action surface, section 24a). Every claim
+event-sourcing core, branch `worker-action-pipeline` @ `9df6953`
+(`9df6953b4a51071330d7584f0ed2b569f4ab434b`, current HEAD; 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; current local full-suite evidence at `9df6953`: `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s — local Windows run 2026-08-30, NOT hosted CI, NOT a production-correctness proof; historical: full-suite at `d42736d` `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s (2026-08-29); historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures`, hosted run 32805095789 Ubuntu ~88s / Windows ~182s; foundation `24c72d0` 986 → P7 governed AgentSession → P8 multi-file atomicity → P9 → post-P9 governed ExternalAction additions to 1272).
+Historical risk-layer status: MISSION-011..018B, MISSION-M/N/N.1/O (see history; historical P9 FINAL PASS baseline is `b2d6da7`; current HEAD is `9df6953` incl. the governed external-action surface, section 24a). Every claim
 is classified VERIFIED (code + passing test), INFERRED (reasoned from
 code, no direct test), or UNKNOWN (cannot be determined). Complements
 docs/SECURITY_BASELINE.md (MISSION-005 audit).

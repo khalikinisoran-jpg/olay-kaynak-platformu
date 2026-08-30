@@ -16,13 +16,13 @@ results > documentation.
 | Status | Active Development | VERIFIED (git activity) |
 | Last Updated | 2026-08-29 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| Branch HEAD | `d42736d` (`d42736d21822eb06fab9635eb7e716df1c3cf856`, "feat(runtime): wire governed ExternalAction through runtime entrypoint") — current HEAD, 8 commits after the historical P9 FINAL PASS baseline `b2d6da7` (`b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25) | VERIFIED (`git rev-parse HEAD`, `git status`) |
+| Branch HEAD | `9df6953` (`9df6953b4a51071330d7584f0ed2b569f4ab434b`, "fix(p5): enforce approval expiry parity") — current HEAD, 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` (`b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; implementation chain `07326ce..9df6953` = P10.2 docs sync + P10.3 hygiene A/B/C + OPERATOR-label p5 authority/integrity series P10.4-P10.6) | VERIFIED (`git rev-parse HEAD`, `git status`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
 | Branch relationship | `worker-action-pipeline` is ahead of `main`; exact count is derived from `git log main..HEAD` (`main` has 0 commits not in `worker-action-pipeline`) | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Historical Evidence Archive | `C:\Projects\event-sourcing-platform-evidence-archive` — **185 files** (144 MISSION-N* + 19 LAYER-A-* + 22 remaining = 185, missing 0, unreadable 0) — **PRESERVED_RELOCATED, PASS** (N.92 verified, N.94-R re-verified deterministic enumeration, artifact `n94r_enum_raw.txt` SHA `C5C22B…`) | VERIFIED (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt`) |
 | Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch; `0.6.0` declared in `pyproject.toml` | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
-| Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — current local full-suite evidence at HEAD `d42736d`: **`1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s** (local Windows run 2026-08-29; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s is NOT COMPLETED) | VERIFIED (local `python -m pytest -q` at `d42736d`; historical: hosted run 32805095789) |
+| Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — current local full-suite evidence at HEAD `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — NOT hosted CI, NOT a production-correctness proof). Historical: full-suite at `d42736d` `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s (2026-08-29); P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s is NOT COMPLETED) | VERIFIED (local `python -m pytest -q` at `9df6953`; historical: hosted run 32805095789) |
 
 ---
 
@@ -250,13 +250,13 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Current authoritative run — **local full suite at HEAD `d42736d` (2026-08-29)** — `1272 collected / 1259 passed / 13 skipped / 0 failures` in **271.43s** (local Windows run; local evidence only — NOT hosted CI, NOT a production-correctness proof; valid only for the exact tested state HEAD `d42736d` + the then-current documentation working tree). Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted exact-HEAD run **32805095789** Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED). Foundation lineage: `24c72d0` established the earlier `986` collected baseline → P7 governed AgentSession → P8 multi-file atomicity → P9 FINAL PASS → post-P9 governed ExternalAction additions to 1272.
+Current authoritative run — **local full suite at HEAD `9df6953` (2026-08-30)** — `1278 collected / 1265 passed / 13 skipped / 0 failures` in **329.97s** (local Windows run; local evidence only — NOT hosted CI, NOT a production-correctness proof; valid only for the exact tested state HEAD `9df6953` + the then-current documentation working tree). Historical: full suite at `d42736d` (2026-08-29) — `1272 collected / 1259 passed / 13 skipped / 0 failures` in **271.43s**. Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted exact-HEAD run **32805095789** Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED). Foundation lineage: `24c72d0` established the earlier `986` collected baseline → P7 governed AgentSession → P8 multi-file atomicity → P9 FINAL PASS → post-P9 governed ExternalAction additions to 1272.
 
 ```
 .venv\Scripts\python.exe -m pytest --collect-only -q
-1272 collected  # current HEAD d42736d (post-P9 ExternalAction work included)
+1278 collected  # current HEAD 9df6953 (incl. P10.3-P10.6 implementation chain)
 .venv\Scripts\python.exe -m pytest -q
-1259 passed, 13 skipped in 271.43s (1272 collected)  # local Windows run at d42736d, 2026-08-29; local evidence only, NOT hosted CI
+1265 passed, 13 skipped in 329.97s (1278 collected)  # local Windows run at 9df6953, 2026-08-30; local evidence only, NOT hosted CI
 # historical P9 FINAL PASS @ b2d6da7: 1213 collected / 1200 passed / 13 skipped (hosted run 32805095789 Ubuntu ~88s / Windows ~182s)
 powershell -ExecutionPolicy Bypass -File demo_cli.ps1 -> OVERALL PASS (conserved lineage from P2.3-A)
 ```
@@ -329,8 +329,8 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              d42736d (2026-08-25, "feat(runtime): wire governed ExternalAction through runtime entrypoint") — d42736d21822eb06fab9635eb7e716df1c3cf856 (8 commits after the historical P9 FINAL PASS baseline b2d6da7)
-Working tree:      7 unstaged documentation modifications — P10.2 documentation synchronization (M README.md / M START-HERE.md / M docs/ARCHITECTURE.md / M docs/PROJECT_MASTER.md / M docs/PROJECT_STATE.md / M docs/ROADMAP.md / M docs/SECURITY_MODEL.md); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files; otherwise aligned with origin/worker-action-pipeline
+HEAD:              9df6953 (2026-08-30, "fix(p5): enforce approval expiry parity") — 9df6953b4a51071330d7584f0ed2b569f4ab434b (15 commits after the historical P9 FINAL PASS baseline b2d6da7; chain 07326ce..9df6953 = P10.2 docs sync + P10.3 hygiene A/B/C + operator-label p5 fixes P10.4-P10.6)
+Working tree:      clean at HEAD 9df6953 except unstaged P10.7-D canonical state synchronization edits (README.md / docs/ROADMAP.md / docs/PROJECT_MASTER.md / docs/PROJECT_STATE.md / docs/MISSION_STATUS.md); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files; 6 local commits ahead of origin/worker-action-pipeline (push = pending human decision)
 .gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
                    secrets/, .venv/, data/, __pycache__/, *.pyc,
                    .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
@@ -342,7 +342,7 @@ Packaging:         pyproject.toml 0.6.0 (pip install -e . verified locally and v
 Reproducible demo: demo_cli.ps1 (HIGH DENY -> approve --pending -> VERIFIED -> replay DENY, history read-only) — OVERALL PASS (conserved lineage; current evidence is P9 hosted run 32805095789)
 ```
 
-`main` is behind `worker-action-pipeline` (exact count via `git log main..HEAD`); `main` has 0 commits not in `worker-action-pipeline`. No release tag exists after v0.5.0 for the worker-action-pipeline work (current HEAD `d42736d`; historical P9 FINAL PASS baseline `b2d6da7`; foundation `24c72d0` 30 commits ahead lineage, P2.3-A 41 ahead retained as historical distance).
+`main` is behind `worker-action-pipeline` (exact count via `git log main..HEAD`); `main` has 0 commits not in `worker-action-pipeline`. No release tag exists after v0.5.0 for the worker-action-pipeline work (current HEAD `9df6953`; historical P9 FINAL PASS baseline `b2d6da7`; foundation `24c72d0` 30 commits ahead lineage, P2.3-A 41 ahead retained as historical distance).
 Historical archive: `C:\Projects\event-sourcing-platform-evidence-archive` — 185 files preserved (N.92 PASS, N.94-R independent repro PASS).
 
 ---
@@ -426,7 +426,7 @@ Recommended (from audit findings, not a committed plan):
 # Notes
 
 This document is synchronized with actual code, git history and the
-current HEAD `d42736d` `d42736d21822eb06fab9635eb7e716df1c3cf856` (local full-suite evidence `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s, 2026-08-29 — local only, NOT hosted CI, NOT a production-correctness proof). Historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2` (2026-08-25; `1213 collected / 1200 passed / 13 skipped / 0 failures`; hosted run 32805095789 Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED; foundation `24c72d0` 986 → P7 governed AgentSession + P8 multi-file atomicity + P9 additions to 1213; archive 185 = 144+19+22 PRESERVED_RELOCATED) is retained as historical verification evidence. Stale documentation must not be trusted over code and git history.
+current HEAD `9df6953` `9df6953b4a51071330d7584f0ed2b569f4ab434b` (local full-suite evidence `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s, 2026-08-30 — local only, NOT hosted CI, NOT a production-correctness proof). Historical evidence baselines are preserved unchanged: full-suite at `d42736d` `1272 collected / 1259 passed / 13 skipped / 0 failures` (2026-08-29) and P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2` (2026-08-25; `1213 collected / 1200 passed / 13 skipped / 0 failures`; hosted run 32805095789 Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED; foundation `24c72d0` 986 → P7 governed AgentSession + P8 multi-file atomicity + P9 additions to 1213; archive 185 = 144+19+22 PRESERVED_RELOCATED). Stale documentation must not be trusted over code and git history.
 
 Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93); `demo_cli.ps1` — reproducible governed CLI demo (HIGH DENY -> pending -> VERIFIED -> replay DENY, P9 conserved, OVERALL PASS).
 Archive: deterministic enumeration independently reproduced (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt` SHA `C5C22BB9…`, 185 readable, 0 missing — confirms N.92, corrects N.94 UNRESOLVED to PASS). P9 exact-HEAD hosted CI evidenced (run 32805095789 Ubuntu ~88s / Windows ~182s).
