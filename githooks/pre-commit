@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Pre-commit secret guard (RELEASE-03).
 #
 # Installed into .git/hooks/pre-commit by scripts/install_hooks.py.
