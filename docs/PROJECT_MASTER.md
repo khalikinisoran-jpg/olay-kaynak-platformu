@@ -1063,6 +1063,9 @@ VERIFIED where not marked:
 
 ---
 
+15. Hosted ubuntu CI intermittency in the multi-file rollback/verification family (registered 2026-08-30): P97B (tests/test_p97b_session_recovery.py::test_p97b_multi_file_failure_rollback) at `c64247f5801a4566727d09000a4dd262ae1f59ae`: hosted ubuntu observations 1 FAIL + 2 rerun PASS on the identical immutable SHA; windows PASS throughout. P8 (tests/test_p8_multi_file.py::test_p8_verify_failure_after_multiple_rollback_all) at `45f31b6a83e5442ff05667127573b3a86e1c8ff1`: hosted ubuntu observations 1 FAIL (push run 33310598127) + 1 PASS (PR run 33310600167) + 1 rerun PASS; windows PASS throughout. Identical immutable SHAs produced contradictory ubuntu outcomes with zero repository delta. Classification: intermittent/flaky (INFERENCE); root cause, trigger and frequency UNVERIFIED; P8 and P97B are distinct tests with no established shared mechanism. Tracked as known release-readiness risks (READY WITH KNOWN RISKS).
+16. P10.6-P2 keyed snapshot anchor: DEFERRED ACCEPTABLE hardening item — snapshots are not authority-bearing; the unkeyed self-hash may be forgeable if storage is writable, but the current authority flow does not rely on snapshots as an approval authority source.
+
 # 21. UNKNOWN / UNPROVEN ITEMS
 
 Keep these unresolved â€” do not write them as solved:

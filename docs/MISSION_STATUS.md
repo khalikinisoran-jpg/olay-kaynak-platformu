@@ -414,9 +414,9 @@ here. Historical evidence baselines (d42736d, b2d6da7) are unchanged.
 | 9df6953 | P10.6-FIX-A | p5 approvals bound to 3600s TTL (CLI expiry parity) + regression | targeted 17/17 |
 | dbda99c | P10.8-FIX-A | pre-commit hook executable-mode restoration (100644 -> 100755); content unchanged | targeted 3/3; hosted run 33300752293 ubuntu FAILED (pre-fix dash syntax error) |
 | ab77f9f | P10.8-FIX-B | pre-commit hook shebang -> bash (POSIX-sh incompatibility resolved) | targeted 3/3 + bash -n; HOSTED CI PASS (run 33301276606: ubuntu + windows) |
+| c64247f | P10.9 | hosted CI evidence recorded in canonical docs | docs-only; hosted ubuntu intermittent: 1 FAIL (P97B) + 2 rerun PASS |
+| 45f31b6 | P10.12-B | approval lifecycle: durable revoke + idempotent duplicate grants | targeted 15/15; full suite 1280/13/0; hosted ubuntu intermittent: 1 FAIL (P8) + PR PASS + rerun PASS |
 
 Latest full-suite evidence: HEAD 9df6953 - 1278 collected / 1265 passed /
 13 skipped / 0 failures / 0 errors in 329.97s (2026-08-30, local Windows;
-HOSTED CI VERIFIED AT `ab77f9f` (PUSH RUN `33301276606` SUCCESS: UBUNTU + WINDOWS)). Deferred operator candidates (non-canonical):
-P10.6-P2 keyed snapshot anchor, P10.6-P3 approval revoke/duplicate-grant
-policy.
+HOSTED CI VERIFIED AT `ab77f9f` (PUSH RUN `33301276606` SUCCESS: UBUNTU + WINDOWS)). Deferred operator candidates (non-canonical): P10.6-P2 keyed snapshot anchor (DEFERRED ACCEPTABLE hardening item; snapshots are not authority-bearing). P10.6-P3 approval revoke/duplicate-grant policy: IMPLEMENTED at 45f31b6. Known intermittent CI risks (P8/P97B, hosted ubuntu): registered 2026-08-30; root cause UNVERIFIED.

@@ -252,6 +252,18 @@ Recovery is NOT active by default in the shipped runtime
 
 Current authoritative run — **local full suite at HEAD `9df6953` (2026-08-30)** — `1278 collected / 1265 passed / 13 skipped / 0 failures` in **329.97s** (local Windows run; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof; valid only for the exact tested state HEAD `9df6953` + the then-current documentation working tree). Historical: full suite at `d42736d` (2026-08-29) — `1272 collected / 1259 passed / 13 skipped / 0 failures` in **271.43s**. Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted exact-HEAD run **32805095789** Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED). Foundation lineage: `24c72d0` established the earlier `986` collected baseline → P7 governed AgentSession → P8 multi-file atomicity → P9 FINAL PASS → post-P9 governed ExternalAction additions to 1272.
 
+## Known Intermittent CI Risks (registered 2026-08-30)
+
+Release readiness: **READY WITH KNOWN RISKS** at HEAD `45f31b6`.
+
+FACT: P97B (tests/test_p97b_session_recovery.py::test_p97b_multi_file_failure_rollback) at `c64247f5801a4566727d09000a4dd262ae1f59ae`: hosted ubuntu observations 1 FAIL + 2 rerun PASS on the identical immutable SHA; windows PASS throughout. P8 (tests/test_p8_multi_file.py::test_p8_verify_failure_after_multiple_rollback_all) at `45f31b6a83e5442ff05667127573b3a86e1c8ff1`: hosted ubuntu observations 1 FAIL (push run 33310598127) + 1 PASS (PR run 33310600167) + 1 rerun PASS; windows PASS throughout.
+
+INFERENCE: intermittent/flaky classification for both; Both are distinct tests in the multi-file rollback/verification family (expected failure/rollback state, observed verification-success-type outcome); they share observable family characteristics only. Inference: possible family-level sensitivity. A shared root cause has NOT been established; exact trigger, frequency and mechanism remain UNVERIFIED. Approval-lifecycle tests passed in every hosted ubuntu observation; the P8 failure is not demonstrated to be caused by the approval-lifecycle delta (`45f31b6`).
+
+UNVERIFIED: exact root cause, trigger, frequency and a shared P8/P97B mechanism. These are tracked known risks, NOT silently ignored failures and NOT resolved defects. A dedicated deterministic investigation remains a deferred open item.
+
+P10.6-P2 (keyed snapshot anchor): DEFERRED ACCEPTABLE — hardening item. Snapshots are not authority-bearing (session snapshots strip authority-shaped fields and never approve; kernel snapshot recovery falls back to chain-verified replay), so the unkeyed self-hash is a hardening gap, not a demonstrated authority-bound security blocker.
+
 ```
 .venv\Scripts\python.exe -m pytest --collect-only -q
 1278 collected  # current HEAD 9df6953 (incl. P10.3-P10.6 implementation chain)
@@ -337,7 +349,7 @@ Working tree:      clean at HEAD 9df6953 except unstaged P10.7-D canonical state
                    (with !.env.example exception)
 Local env:         .env present with OPENROUTER_API_KEY (untracked; ignored;
                    not part of any release snapshot)
-CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step) — exact-HEAD hosted run 32805095789 succeeded (Ubuntu ~88s / Windows ~182s); local ~254s with 300s budget (120s is NOT COMPLETED)
+CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step) — exact-HEAD hosted run 32805095789 succeeded (Ubuntu ~88s / Windows ~182s); local ~254s with 300s budget (120s is NOT COMPLETED). Current checkpoint hosted CI: ab77f9f PASS; c64247f PASS (after 2 reruns; original ubuntu run failed on P97B); 45f31b6 ubuntu intermittent FAIL (P8) with PR PASS and rerun PASS
 Packaging:         pyproject.toml 0.6.0 (pip install -e . verified locally and via hosted packaging smoke)
 Reproducible demo: demo_cli.ps1 (HIGH DENY -> approve --pending -> VERIFIED -> replay DENY, history read-only) — OVERALL PASS (conserved lineage; current evidence is P9 hosted run 32805095789)
 ```
