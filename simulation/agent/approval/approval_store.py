@@ -59,6 +59,8 @@ class ApprovalStore:
 
         self._applied = set()
 
+        self._revoked = set()
+
         if ledger is not None:
 
             self._reload_from_ledger()
@@ -118,6 +120,16 @@ class ApprovalStore:
                 )
 
             elif record_type == (
+                ApprovalLedger.TYPE_REVOKED
+            ):
+
+                # P10.12-B: a REVOKED grant is permanently disabled.
+                # Rehydration must never resurrect it as pending.
+                self._revoked.add(
+                    record["approval_id"]
+                )
+
+            elif record_type == (
                 ApprovalLedger.TYPE_ANCHORED
             ):
 
@@ -149,9 +161,31 @@ class ApprovalStore:
         Returns the immutable ``Approval``. The approval is bound to
         the full context passed here; ``find_valid`` will only release
         it for the exact same context.
+
+        P10.12-B duplicate-grant policy: at most ONE active grant may
+        exist per logical request (fingerprint + path + action +
+        risk_level + attempt). If an unconsumed, unexpired, unrevoked
+        grant already matches, it is returned idempotently and no new
+        authority object is minted. Grants that are consumed, expired
+        or revoked do not block a legitimately new grant. The ledger
+        path serializes the check under the process lock, so concurrent
+        requests cannot mint duplicate active grants; lock contention
+        fails closed (raises) instead of minting a duplicate.
         """
 
         if approval is None:
+
+            existing = self._find_active_duplicate(
+                patch_fingerprint,
+                path,
+                action,
+                risk_level,
+                attempt,
+            )
+
+            if existing is not None:
+
+                return existing
 
             approval = Approval.create(
                 patch_fingerprint=patch_fingerprint,
@@ -248,6 +282,10 @@ class ApprovalStore:
 
                 self._applied.add(record.get("approval_id"))
 
+            elif record_type == ApprovalLedger.TYPE_REVOKED:
+
+                self._revoked.add(record.get("approval_id"))
+
     def find_valid(
         self,
         fingerprint,
@@ -307,6 +345,10 @@ class ApprovalStore:
 
                     continue
 
+                if approval_id in self._revoked:
+
+                    continue
+
                 if required_approval_id is not None and approval_id != required_approval_id:
                     continue
 
@@ -362,6 +404,10 @@ class ApprovalStore:
                 ):
 
                     if approval_id in self._consumed:
+
+                        continue
+
+                    if approval_id in self._revoked:
 
                         continue
 
@@ -459,6 +505,10 @@ class ApprovalStore:
 
                 return False
 
+            if approval_id in self._revoked:
+
+                return False
+
             if self._bindings.get(approval_id) is not patch:
 
                 return False
@@ -505,6 +555,10 @@ class ApprovalStore:
 
                     return False
 
+                if approval_id in self._revoked:
+
+                    return False
+
                 if self._bindings.get(approval_id) is not patch:
 
                     return False
@@ -537,6 +591,159 @@ class ApprovalStore:
         except EventStoreBusyError:
 
             return False
+
+    def _find_active_duplicate(
+        self,
+        patch_fingerprint,
+        path,
+        action,
+        risk_level,
+        attempt,
+    ):
+
+        """P10.12-B duplicate-grant policy lookup.
+
+        Returns the existing active (unconsumed, unexpired, unrevoked)
+        grant matching the full logical request context, or ``None``.
+        The ledger path serializes the check under the process lock so
+        concurrent grant requests cannot mint duplicate active grants;
+        lock contention raises (fail closed) instead of minting a
+        duplicate. Revoked grants never satisfy the duplicate check.
+        """
+
+        if self.ledger is not None:
+
+            with self.ledger._process_lock:
+
+                self.ledger._sync_if_stale()
+
+                self._sync_consumed_from_ledger()
+
+                return self._active_duplicate_unlocked(
+                    patch_fingerprint,
+                    path,
+                    action,
+                    risk_level,
+                    attempt,
+                )
+
+        return self._active_duplicate_unlocked(
+            patch_fingerprint,
+            path,
+            action,
+            risk_level,
+            attempt,
+        )
+
+    def _active_duplicate_unlocked(
+        self,
+        patch_fingerprint,
+        path,
+        action,
+        risk_level,
+        attempt,
+    ):
+
+        for approval_id in self._by_fingerprint.get(
+            patch_fingerprint,
+            (),
+        ):
+
+            if approval_id in self._consumed:
+
+                continue
+
+            if approval_id in self._revoked:
+
+                continue
+
+            approval = self._approvals[approval_id]
+
+            if approval.is_expired():
+
+                continue
+
+            if approval.path != path:
+
+                continue
+
+            if approval.action != action:
+
+                continue
+
+            if approval.risk_level != risk_level:
+
+                continue
+
+            if approval.attempt != attempt:
+
+                continue
+
+            return approval
+
+        return None
+
+    def revoke(self, approval_id) -> bool:
+
+        """Durably revoke a grant (P10.12-B duplicate/revoke policy).
+
+        A revoked grant can never be consumed or applied again; the
+        revocation is persisted as a REVOKED ledger record and survives
+        restart/rehydration. Idempotent: revoking an already-revoked
+        grant returns ``False``. Revoking a consumed or applied grant is
+        permitted as an audit record and has no authorization effect.
+        Unknown approval ids fail loudly. Revocation never creates
+        approval authority. The ledger path serializes under the process
+        lock so revocation cannot interleave with consumption; lock
+        contention raises (fail closed).
+        """
+
+        if not isinstance(approval_id, str) or not approval_id:
+
+            raise ValueError(
+                "approval_id must be a non-empty string"
+            )
+
+        if self.ledger is None:
+
+            if approval_id not in self._approvals:
+
+                raise ValueError(
+                    f"unknown approval id: {approval_id!r}"
+                )
+
+            if approval_id in self._revoked:
+
+                return False
+
+            self._revoked.add(approval_id)
+
+            return True
+
+        with self.ledger._process_lock:
+
+            self.ledger._sync_if_stale()
+
+            self._sync_consumed_from_ledger()
+
+            if approval_id not in self._approvals:
+
+                raise ValueError(
+                    f"unknown approval id: {approval_id!r}"
+                )
+
+            if approval_id in self._revoked:
+
+                return False
+
+            self._revoked.add(approval_id)
+
+            self.ledger.append_revoked(
+                approval_id,
+                self._approvals[approval_id].patch_fingerprint,
+            )
+
+            return True
 
     def is_consumed(self, approval) -> bool:
 

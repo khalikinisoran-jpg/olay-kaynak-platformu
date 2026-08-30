@@ -69,6 +69,7 @@ class ApprovalLedger:
     TYPE_GRANT = "grant"
     TYPE_CONSUMED = "consumed"
     TYPE_APPLIED = "applied"
+    TYPE_REVOKED = "revoked"
     TYPE_ANCHORED = "anchored"
 
     def __init__(
@@ -207,6 +208,26 @@ class ApprovalLedger:
 
         self._append({
             "record_type": self.TYPE_CONSUMED,
+            "approval_id": approval_id,
+            "patch_fingerprint": patch_fingerprint,
+        })
+
+    def append_revoked(
+        self,
+        approval_id,
+        patch_fingerprint
+    ):
+
+        """Durably record grant revocation (P10.12-B).
+
+        A REVOKED record permanently disables the referenced grant:
+        rehydration feeds it into the store's revoked set, so the grant
+        can never be consumed or applied again. Revocation never creates
+        approval authority.
+        """
+
+        self._append({
+            "record_type": self.TYPE_REVOKED,
             "approval_id": approval_id,
             "patch_fingerprint": patch_fingerprint,
         })
