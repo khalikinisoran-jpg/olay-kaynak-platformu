@@ -703,6 +703,21 @@ def run(host="127.0.0.1", port=8765):
     Handler.config = cfg
     print(f"P5 UI serving at http://{cfg.host}:{cfg.port}/ (view layer, governance is authority)")
     print(f"workspace_root={cfg.workspace_root} max_body={cfg.max_body} log_level={cfg.log_level} token={'set' if cfg.local_token else 'not set'}")
+    # Disclosure parity with the CLI (agent_run.py): the CLI prints these
+    # exact integrity limitations at governed startup; the P5 runtime runs
+    # the same unanchored trust model and must not conceal it.
+    print(
+        "[security] EventStore UNANCHORED: no external keyed chain-head "
+        "anchor is configured. Tail deletion / tail edit of the persisted "
+        "event log is NOT detected."
+    )
+    print(
+        "[security] ApprovalLedger UNANCHORED: the ledger's unkeyed chain "
+        "can be truncated/forged by a data-directory writer; a consumed "
+        "approval could be resurrected on reload. For security-sensitive "
+        "deployments run the governed CLI with --anchor-path / "
+        "--approval-ledger-anchor-path (key via CHAIN_ANCHOR_KEY)."
+    )
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

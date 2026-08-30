@@ -19,7 +19,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 
-from p5.server import ThreadingHTTPServer, Handler
+from p5.server import ThreadingHTTPServer, Handler, run
 
 
 def _free_port():
@@ -224,3 +224,22 @@ def test_p5_execute_never_writes_dummy_into_workspace_root():
         assert dummy.read_text(encoding="utf-8") == "def test_p5_dummy():\n    assert True\n"
     finally:
         srv.shutdown()
+
+def test_p5_startup_discloses_unanchored_trust_model(capsys, monkeypatch):
+    # Disclosure parity with the CLI: run() must disclose the unanchored
+    # EventStore/ApprovalLedger trust model at real startup (the exercise
+    # goes through the actual run() path; only the blocking serve loop is
+    # stubbed so the test can return).
+    monkeypatch.setattr("p5.server.CONFIG", None)
+
+    def _fake_serve(self, *args, **kwargs):
+        self.server_close()
+
+    monkeypatch.setattr(ThreadingHTTPServer, "serve_forever", _fake_serve)
+    run(host="127.0.0.1", port=_free_port())
+
+    out = capsys.readouterr().out
+    assert "EventStore UNANCHORED" in out
+    assert "NOT detected" in out
+    assert "ApprovalLedger UNANCHORED" in out
+    assert "resurrected" in out
