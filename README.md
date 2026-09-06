@@ -1,10 +1,27 @@
 # Event-Sourced AI Runtime
 
+> **Tanuq — AI works. You stay in control.**
+>
+> Tanuq is the user-facing product built on this runtime: it governs
+> AI coding agents' file changes with deterministic policies, binds
+> risky changes to single-use human approval, rolls back failed
+> changes automatically, and records tamper-evident evidence.
+
+```bash
+pip install -e .
+tanuq init      # protect a workspace (interactive)
+tanuq status
+```
+
+See `docs/QUICKSTART.md` and `docs/USER_GUIDE.md`.
+
+---
+
 > **Building trustworthy AI through Event Sourcing, Replay, and Verification.**
 >
 > **Every AI decision becomes an auditable event.**
 
-> **Current canonical identity (2026-08-24, `worker-action-pipeline` @ `effde20` + P6):** An **event-sourced, deterministic, human-governed file-editing agent runtime.** Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Verified baseline: **`986 collected / 974 passed / 12 skipped / 0 failures`** (foundation N.55 at 24c72d0 conserved; HEAD 71d2353 adds N.89 portability, N.91 cleanup, N.93 demo, N.92/N.94-R archive 185 PASS; HEAD 2f49d9f adds P2.1+P2.2+P2.2-FP; HEAD effde20 adds P5 visible UI + P6 hardening baseline pending).
+> **Current canonical identity (2026-08-30, `worker-action-pipeline` @ `9df6953` — current HEAD, 15 commits after the historical P9 FINAL PASS baseline `b2d6da7`):** An **event-sourced, deterministic, human-governed file-editing agent runtime** with a governed external-action execution surface (post-P9). Flow: `LLM / User / Memory → Change Intent / Patch Proposal → Deterministic Validation → Risk + Governance → Human Approval when required → Single-Use Authorization → Atomic File Apply / Governed External Action → Verification / Event Evidence / Recovery`. Core principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** See `START-HERE.md` → `docs/ARCHITECTURE.md` + `docs/SECURITY_MODEL.md`. Current local full-suite evidence at `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`: **`1213 collected / 1200 passed / 13 skipped / 0 failures`** (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED; foundation `24c72d0` 986 → P7/P8/P9 additions to 1213).
 
 An experimental AI runtime that treats every meaningful AI interaction as an immutable event.
 
@@ -60,11 +77,11 @@ Benefits include:
 
 # Current Version
 
-**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `50429ad`** (`feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)`)
+**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `9df6953`** (`9df6953b4a51071330d7584f0ed2b569f4ab434b` — `fix(p5): enforce approval expiry parity`; 15 commits after the historical P9 FINAL PASS baseline `b2d6da7`, 2026-08-25)
 
-Status: Active Development — **Foundation + N.94/N.94-R verified 2026-08-22, P2.1/P2.2/P2.2-FP verified 2026-08-23, P2.3-A reproducible baseline verified 2026-08-23 via clean clone + clean venv + `demo_cli.ps1`** (`986 collected / 974 passed / 12 skipped / 0 failures` foundation conserved; CLI parity 9 + CLI apply/task 13 + observability 5 + boundary 48 + mp single-use 10 pass locally and in clean clone; hosted CI not yet evidenced)
+Status: Active Development — current local full-suite evidence at HEAD `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED) — P7 governed AgentSession + P8 multi-file atomicity + P9 FINAL PASS verified; foundation `24c72d0` 986 → P7/P8/P9 → post-P9 governed ExternalAction additions to 1272.
 
-Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is `41` commits ahead of `main` (no release tag after `v0.5.0` for this branch; `0.6.0` declared in `pyproject.toml` but not yet tagged/released)
+Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is ahead of `main` (exact count via `git log main..HEAD`); `0.6.0` declared in `pyproject.toml` but not yet tagged/released
 
 ---
 
@@ -386,7 +403,7 @@ powershell -ExecutionPolicy Bypass -File demo_cli.ps1
 
 The script creates a temp workspace, writes `demo.txt` as exactly `hello` (no BOM), runs the HIGH-risk `task`, `approve --pending`, re-runs `task`, tests replay, and prints `history`. Exit 0 + `OVERALL PASS` only if all governance checks observed.
 
-**Clean reproduction (prerequisites explicit):** `Windows 10/11 + Python 3.12 + PowerShell 5.1 + git`. Clean steps: `git clone <repo> && cd <repo> && python -m venv .venv && .venv\Scripts\python -m pip install -e . && .venv\Scripts\python -m pip install pytest==9.1.1 && .venv\Scripts\python -m pytest tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py -v && powershell -ExecutionPolicy Bypass -File demo_cli.ps1`. Clean-clone verified locally 2026-08-23 (fresh `vrepro` venv + `pip install -e .` + 9+7+6+5+48+10 PASS + demo `OVERALL PASS`); hosted CI not yet evidenced — see `START-HERE.md` First Commands.
+**Clean reproduction (prerequisites explicit):** `Windows 10/11 + Python 3.12 + PowerShell 5.1 + git`. Clean steps: `git clone <repo> && cd <repo> && python -m venv .venv && .venv\Scripts\python -m pip install -e . && .venv\Scripts\python -m pip install pytest==9.1.1 && .venv\Scripts\python -m pytest -q && powershell -ExecutionPolicy Bypass -File demo_cli.ps1`. P9 FINAL PASS @ `b2d6da7` `1213 collected / 1200 passed / 13 skipped` — hosted run 32805095789 (Ubuntu ~88s / Windows ~182s) succeeded; local full suite ~254s with 300s budget (120s budget is NOT COMPLETED). Historical P2.3-A clean-clone `9+7+6+5+48+10` + `demo_cli` `OVERALL PASS` (2026-08-23) conserved as lineage — see `START-HERE.md` First Commands.
 
 # P5 Visible Product Experience (view layer, not authority)
 
@@ -405,9 +422,9 @@ What it demonstrates (real UI/service path, not mocks): proposal visible (target
 
 # Roadmap
 
-> **Current strategic direction (2026-08-21):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C).
+> **Current strategic direction (2026-08-30, current HEAD `9df6953`):** **A — Secure Coding Agent Runtime FIRST, then C — Controlled Productization.** General-purpose runtime expansion (Multi-Agent / Distributed / Autonomous) is **explicitly deferred**. See `docs/ROADMAP.md` (v2.0 superseded; current direction is A→C). Current local full-suite evidence at `9df6953`: `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s (local Windows run 2026-08-30; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows)). Historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped` (hosted Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is external limitation).
 
-## Recently verified (worker-action-pipeline @ 60b37ff + P5; foundation 24c72d0)
+## Recently verified (worker-action-pipeline @ `9df6953` current HEAD; historical P9 FINAL PASS @ `b2d6da7`; foundation `24c72d0` 986 → 1278)
 
 - [x] Worker Action Pipeline (Patch Proposal → Validation → Risk → Governance → Approval → Apply → Verify → Recovery)
 - [x] Deterministic Risk + Governance + Single-Use Approval + Atomic Apply
@@ -428,7 +445,10 @@ Historical v2.0 Phases 1-4 (Developer→Production→Enterprise→Autonomous) ar
 ## Next (controlled productization, not general expansion)
 
 - [x] P5 visible product experience (`demo_p5.py` via real UI/service path, localhost `p5/server.py`)
-- [ ] Packaging / CI hardening on current governed runtime (hosted runner evidence still missing)
+- [x] P6 hardening + P7 governed AgentSession (`simulation/agent/session/`) + P8 multi-file atomicity + P9 FINAL PASS (`b2d6da7` `1213/1200/13` — hosted Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is external limitation, not a hang)
+- [x] Post-P9 governed ExternalAction pipeline (`b2d6da7..d42736d`): durable governed external action execution (`ExternalAction` / `ExternalActionPipeline` / `ExternalActionExecutor` / `ExternalOutcomeJournal` / `AttemptContext`), UNKNOWN/ambiguous outcomes never promoted to success, approval/idempotency correlation, runtime + CLI wiring (`agent_run.py external`) — local full-suite PASS at `d42736d` (1272/1259/13/0, local evidence only)
+- [x] P10.2 documentation synchronization (commit `07326ce`) → P10.3 hygiene consolidation (executed: `2150fe3` / `acef450` / `8452e0e`)
+- [x] Post-P10.3 p5 authority/integrity fixes — OPERATOR-label series P10.4-P10.6 (NOT canonical roadmap phases; canonical "P10.4 packaging hardening" label collision preserved as AMBIGUITY): `f60fa13` (UI dummy relocated out of workspace), `31c46c2` (p5 unanchored EventStore/ApprovalLedger disclosure parity), `9df6953` (approval expiry parity, 3600s TTL) — local full-suite `1278 / 1265 / 13 / 0` @ `9df6953`
 - [ ] Controlled productization decisions (no autonomous/multi-agent expansion)
 
 ---

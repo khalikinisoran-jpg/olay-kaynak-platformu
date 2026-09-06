@@ -534,7 +534,7 @@ def test_prompt_recognizes_all_approve_phrases(tmp_path):
         approval = None
 
 
-def test_duplicate_approval_each_is_single_use(tmp_path):
+def test_duplicate_approval_is_idempotent_and_single_use(tmp_path):
 
     _, patch = make_high_patch(tmp_path)
 
@@ -546,9 +546,12 @@ def test_duplicate_approval_each_is_single_use(tmp_path):
 
     second = grant_via_console(store, patch, assessment)
 
-    assert first.approval_id != second.approval_id
+    # P10.12-B duplicate-grant policy: repeated approval of the same
+    # pending patch reuses the single active authority object instead of
+    # minting a second one.
+    assert first.approval_id == second.approval_id
 
-    assert len(store) == 2
+    assert len(store) == 1
 
     released = store.find_valid(
         patch.fingerprint(),
@@ -560,6 +563,8 @@ def test_duplicate_approval_each_is_single_use(tmp_path):
 
     assert released is not None
 
+    # Single-use: after consumption a duplicate request no longer sees
+    # the consumed grant; a fresh console approval mints a new authority.
     again = store.find_valid(
         patch.fingerprint(),
         path=patch.path,
@@ -568,7 +573,7 @@ def test_duplicate_approval_each_is_single_use(tmp_path):
         attempt=1,
     )
 
-    assert again is not None
+    assert again is None
 
     third = store.find_valid(
         patch.fingerprint(),

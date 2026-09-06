@@ -33,17 +33,17 @@ canonical docs (Section 4) rather than duplicating their full content.
 
 | Field | Value | Class |
 |-------|-------|--------|
-| CURRENT DATE | 2026-08-23 | VERIFIED |
+| CURRENT DATE | 2026-08-30 | VERIFIED |
 | CURRENT BRANCH | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| CURRENT HEAD | `50429ad540bc074a186141946c57f71f8447604a` (`50429ad`, "feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)") | VERIFIED (`git rev-parse HEAD`) |
-| WORKTREE STATE | clean — `git status` reports `nothing to commit, working tree clean`; local == origin/worker-action-pipeline | VERIFIED (`git status --porcelain`, `git fetch --prune`) |
-| CURRENT MISSION | P2.3-A REPRODUCIBLE GOVERNED CLI BASELINE — pending parity + demo_cli.ps1 + doc sync to 50429ad, clean-clone verified locally | VERIFIED (git log 71d2353..50429ad; 5 commits: 0a2f005 P2.1, 5390c0f observability, c03dfb8 P2.2, 2f49d9f P2.2-FP, 50429ad P2.3-A) |
-| LAST VERIFIED TEST RESULT | full suite **986 collected / 974 passed / 12 skipped / 0 failures** (`python -m pytest -q`) foundation conserved; P2.x **9 parity + 7 CLI apply + 6 CLI task + 5 observability + 48 boundary + 10 mp single-use** pass locally and in clean clone (2026-08-23); hosted CI not yet evidenced | VERIFIED (2026-08-22 foundation; 2026-08-23 CLI parity + clean clone) |
-| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93 + P2.1/P2.2/P2.2-FP/P2.3-A; foundation at 24c72d0, current 50429ad | VERIFIED (Section 18 + git log) |
-| ACTIVE MISSIONS | MISSION N.56 (Phase 1 Truth Alignment) | VERIFIED |
+| CURRENT HEAD | `9df6953b4a51071330d7584f0ed2b569f4ab434b` (`9df6953`, "fix(p5): enforce approval expiry parity") — 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` (`b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25) | VERIFIED (`git rev-parse HEAD`) |
+| WORKTREE STATE | clean at HEAD `9df6953` except unstaged P10.7-D documentation synchronization edits (README.md, docs/ROADMAP.md, docs/PROJECT_MASTER.md, docs/PROJECT_STATE.md, docs/MISSION_STATUS.md); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files | VERIFIED (`git status --short`) |
+| CURRENT MISSION | P10.7-D CANONICAL STATE SYNCHRONIZATION — canonical docs synced to current HEAD `9df6953`; implementation chain `07326ce..9df6953` recorded (P10.2/P10.3 canonical items + P10.3-P10.6 OPERATOR-label series, canonical/label distinction preserved); historical P9 FINAL PASS @ `b2d6da7` preserved as verification evidence | VERIFIED (this doc sync mission) |
+| LAST VERIFIED TEST RESULT | current local full-suite evidence at HEAD `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only; hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789) — foundation `24c72d0` 986 → P7 governed AgentSession + P8 multi-file atomicity + P9 → post-P9 governed ExternalAction additions to 1272 → P10.3-P10.6 additions to 1278 | VERIFIED (local `python -m pytest -q` at `9df6953`; historical: hosted run 32805095789) |
+| COMPLETED MISSIONS | through MISSION-O + MISSION-H/J series + MISSION-M/N/N.1/O + N.89/N.91/N.93 + P2.1/P2.2/P2.2-FP/P2.3-A + P7 AgentSession + P8 multi-file atomicity + P9 FINAL PASS + post-P9 governed ExternalAction pipeline (`b2d6da7..d42736d`) + P10.2 docs sync (`07326ce`) + P10.3 hygiene A/B/C (`2150fe3`/`acef450`/`8452e0e`) + OPERATOR-label p5 authority/integrity fixes P10.4-P10.6 (`f60fa13`/`31c46c2`/`9df6953`); foundation at 24c72d0, current `9df6953` | VERIFIED (Section 18 + git log) |
+| ACTIVE MISSIONS | P10.7-D canonical state synchronization (this mission) | VERIFIED |
 | OPEN SECURITY RISKS | risk classification remains a deterministic heuristic (a secret deliberately hidden under an innocent key in a plain file can still classify LOW); human operator identity is not authenticated (authorizer is informational); approval UX is CLI/synchronous only; symlink behavior beyond Windows junction coverage untested; approval state is durable only when a ledger is wired; orphaned-mutation auto-repair is intentionally NOT implemented (detect-only, D-032) | VERIFIED (Section 20) |
 | UNKNOWN ITEMS | see Section 21 | — |
-| NEXT 3-5 PRIORITIES | 1) commit/push MISSION-016..019 + hosted CI run, 2) default-on gate decision (UX now exists), 3) MISSION-015 productization readiness, 4) benchmark/CI hardening on Linux/macOS, 5) doc-sync + hygiene commit | INFERRED (Section 22) |
+| NEXT 3-5 PRIORITIES | 1) review/commit the P10.7-D documentation synchronization after verification, 2) hosted CI evidence gate (push local commits — HUMAN DECISION; all current evidence is local-only), 3) canonical "P10.4 packaging hardening" (AMBIGUITY / LABEL COLLISION: collides with the OPERATOR "P10.4 architectural audit" series — the two meanings are preserved, NOT merged; human decision required), 4) controlled productization decisions (default-on gate etc.), 5) deferred approval-lifecycle hardening (P10.6-P2 snapshot anchor / P10.6-P3 revoke + duplicate-grant policy) | INFERRED (Section 22 + post-P10.6 audit) |
 
 Quick orientation: the repository is an **event-sourced, deterministic, human-governed file-editing agent runtime** (Secure Coding Agent Runtime). A worker (optionally LLM-driven) proposes file modifications; deterministic gates (validator → RiskEngine → GovernanceEvaluator → human approval when required → single-use authorization → atomic apply → verify) decide; every decision becomes a hash-chained event anchored by ChainAnchor. Principle: **LLM MAY PROPOSE. LLM MUST NOT BE THE FINAL AUTHORITY.** The risk/approval/authorization stack is a **real opt-in runtime path** (`agent_run.py --governed` / `--recovery`) with rollback on verification failure and durable approval ledger. Apply/recovery/governed mode remain **opt-in only**; the default runtime is proposal-only.
 
@@ -146,10 +146,9 @@ Top-level code layout (**VERIFIED** by directory listing):
 ```
 simulation/
   core/          Event, State, Reducer, Kernel (single write path)
-  persistence/   EventStore (hash-chained JSONL), SnapshotStore/Manager, legacy backup/recovery
+  persistence/   EventStore (hash-chained JSONL), SnapshotStore/Manager
   replay/        ReplayEngine
-  recovery/      RecoveryEngine (snapshot + hash-integrity + replay)
-  snapshot/      snapshot manager (duplicate of persistence/snapshot_manager.py)
+   recovery/      RecoveryEngine (snapshot + hash-integrity + replay)
   security/      PathPolicy, HashChain, HashVerifier, RiskLevel, RiskEngine,
                  RiskPolicy, SecretPolicy (read-side secret boundary)
   decision/      DecisionTrace (in-memory)
@@ -176,7 +175,7 @@ simulation/
     recovery/           BoundedRecoveryEngine, RecoveryAttempt, RecoveryResult, recovery_assembly
     evidence/           WorkerEventType, build_worker_event, WorkerEvidenceRecorder
   domain/               legacy domain models (worker.py, task.py, enums.py)
-  services/             legacy tool_executor/runtime_service (overlap with agent/executors/)
+  services/             tool_executor (runtime_service removed in P10.3-B; overlap with agent/executors/)
 agent_run.py            CLI entry point (default proposal-only; --recovery; --governed)
 benchmarks/             event_store_benchmark.py (standalone append benchmark)
 .github/workflows/      ci.yml (ubuntu + windows)
@@ -939,9 +938,10 @@ compileall -q simulation tests`, `git diff --check`.
   `tests/security/adversarial_corpus_test.py`).
 - Remote: `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git.
 - `.gitignore` excludes `.env`, `.venv/`, `data/`, `__pycache__/`, `*.pyc`.
-- Tracked junk: `git` (0 bytes), `kernel.txt`, and tracked `.pyc` artifacts
-  under `simulation/domain/__pycache__/` and
-  `simulation/security/__pycache__/` (documented hygiene debt).
+- Tracked junk (historical): `git` (0 bytes), `kernel.txt`, and tracked
+  `.pyc` artifacts under `simulation/domain/__pycache__/` and
+  `simulation/security/__pycache__/` were removed in commit `a8de82e`;
+  no tracked junk remains at HEAD.
 
 Key commits for the security/worker work:
 
@@ -1004,27 +1004,16 @@ git history and the passing suites. "LAST VERIFIED" is the state at
 
 # 19. CURRENT LIVE STATE
 
-- Branch `worker-action-pipeline` @ `1f9088f`; 20 commits ahead of `main`
-  (VERIFIED `git log main..HEAD`).
-- Working tree: MISSION-H/J/J.1/J.2/J.3/J.3.1 + RELEASE-03 changes
-  uncommitted (authoritative-scope enforcement, rollback authority,
-  governed retry budget, risk evidence, replay; RELEASE-03 secret guard +
-  pre-commit hook + CI secret scan, snapshot path isolation, hardened
-  .gitignore, .env.example, doc sync).
-- Test suite: **823 passed / 12 skipped** (2026-08-16); adversarial corpus
-  **80 passed / 1 skipped**; secret-guard corpus **39 passed**; snapshot
-  isolation **4 passed**; MISSION-M memory suites **38 passed**;
-  `compileall` exit 0; `git diff --check` clean.
-- Untracked: `scripts/secret_guard.py`, `scripts/install_hooks.py`,
-  `githooks/pre-commit`, `tests/security/secret_guard_test.py`,
-  `tests/snapshot_concurrency_test.py`, mission test files, `.gitattributes`,
-  `.env.example`; concurrent MISSION-M work adds
-  `tests/security/memory_security_test.py`, `tests/property/memory_property_test.py`.
+- Branch `worker-action-pipeline` @ `d42736d` (`d42736d21822eb06fab9635eb7e716df1c3cf856`, current HEAD; 8 commits after the historical P9 FINAL PASS baseline `b2d6da7`)
+  (VERIFIED `git rev-parse HEAD`).
+- Working tree: 7 unstaged documentation modifications (P10.2 documentation synchronization); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files.
+- Test suite: **1272 collected / 1259 passed / 13 skipped / 0 failures in 271.43s** (local Windows run at `d42736d`, 2026-08-29; local evidence only — NOT hosted CI, NOT a production-correctness proof); adversarial corpus + secret-guard + snapshot isolation + MISSION-M memory suites + post-P9 ExternalAction test suites included in the 1272 count; `python -m pytest --collect-only -q` = 1272. Historical P9 FINAL PASS @ `b2d6da7`: 1213/1200/13 (hosted run 32805095789).
+- P2.3-A `demo_cli.ps1` DENY→APPROVE→VERIFIED→replay DENY conserved (P9 does not re-verify clean-clone separately; P9 hosted CI is exact-HEAD evidence).
 - `.env` present locally (OPENROUTER_API_KEY, untracked/gitignored; not in
   release snapshot).
 - CI workflow (`.github/workflows/ci.yml`, ubuntu + windows, pytest +
-  compileall + **secret scan** + corpus + diff-check + packaging smoke);
-  `pyproject.toml` packaging metadata (`pip install -e .` verified locally).
+  compileall + **secret scan** + corpus + diff-check + packaging smoke) — exact-HEAD hosted run 32805095789 succeeded on Ubuntu and Windows;
+  `pyproject.toml` packaging metadata `0.6.0` (`pip install -e .` verified locally and via hosted packaging smoke).
 
 ---
 
@@ -1062,16 +1051,20 @@ VERIFIED where not marked:
     still leak. Prompt-injection resistance is a mitigation, not a proof.
 11. `weather` planner branch removed (was unroutable); "hava" prompts route
     to the LLM strategy.
-12. Repository hygiene: tracked junk staged for removal (`git` 0 bytes,
-    `kernel.txt`, tracked `.pyc`); docs drift in README/CHANGELOG/
-    PROJECT_CONTEXT remains.
-13. Duplicate snapshot implementations and legacy
-    `persistence/recovery.py`/`event_store_backup.py` overlap remain
-    (not removed without proof of dead code).
+12. Repository hygiene: tracked junk (`git` 0 bytes, `kernel.txt`,
+    tracked `.pyc`) was removed (commit `a8de82e`); docs drift in
+    README/CHANGELOG/PROJECT_CONTEXT remains.
+13. Snapshot duplicate (`snapshot/snapshot_manager.py`) and legacy
+    `persistence/recovery.py` were removed (commits `07dbd34`,
+    `542c187`); `event_store_backup.py` was removed in the P10.3-B
+    hygiene cleanup (dead-code evidence: zero imports).
 14. `WorkerExecutor` hardcodes `task_id="worker-task"` and
     `allowed_actions=("read","inspect","propose")`.
 
 ---
+
+15. Hosted ubuntu CI intermittency in the multi-file rollback/verification family (registered 2026-08-30): P97B (tests/test_p97b_session_recovery.py::test_p97b_multi_file_failure_rollback) at `c64247f5801a4566727d09000a4dd262ae1f59ae`: hosted ubuntu observations 1 FAIL + 2 rerun PASS on the identical immutable SHA; windows PASS throughout. P8 (tests/test_p8_multi_file.py::test_p8_verify_failure_after_multiple_rollback_all) at `45f31b6a83e5442ff05667127573b3a86e1c8ff1`: hosted ubuntu observations 1 FAIL (push run 33310598127) + 1 PASS (PR run 33310600167) + 1 rerun PASS; windows PASS throughout. Identical immutable SHAs produced contradictory ubuntu outcomes with zero repository delta. Classification: intermittent/flaky (INFERENCE); root cause, trigger and frequency UNVERIFIED; P8 and P97B are distinct tests with no established shared mechanism. Tracked as known release-readiness risks (READY WITH KNOWN RISKS).
+16. P10.6-P2 keyed snapshot anchor: DEFERRED ACCEPTABLE hardening item — snapshots are not authority-bearing; the unkeyed self-hash may be forgeable if storage is writable, but the current authority flow does not rely on snapshots as an approval authority source.
 
 # 21. UNKNOWN / UNPROVEN ITEMS
 
@@ -1111,9 +1104,11 @@ is committed, MISSION-017 is implemented but uncommitted):
 3. **Synchronize remaining stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment** (planned).
-5. **Finish repository hygiene** (legacy `persistence/recovery.py`,
-   `event_store_backup.py`, duplicate snapshots, `services/` overlap) with
-   dead-code evidence per component.
+5. **Finish repository hygiene** (completed for the audited candidates:
+   `persistence/recovery.py` and duplicate snapshots removed in
+   `542c187`/`07dbd34`; `event_store_backup.py` and
+   `services/runtime_service.py` removed in P10.3-B with dead-code
+   evidence per component).
 
 ---
 

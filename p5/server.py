@@ -1,9 +1,12 @@
 """P5 localhost UI — view layer over existing governed runtime.
 
-Security contract: UI != AUTHORITY. No direct file writes, no bypass.
-All mutations go through WorkerActionPipeline (PatchValidator + RiskEngine +
-GovernanceEvaluator + ApprovalStore + ApplyAuthorization + FileApplier +
-VerificationExecutor + rollback). LLM claims remain UNTRUSTED.
+Security contract: UI != AUTHORITY. No direct writes into the user
+workspace content; all content mutations go through WorkerActionPipeline
+(PatchValidator + RiskEngine + GovernanceEvaluator + ApprovalStore +
+ApplyAuthorization + FileApplier + VerificationExecutor + rollback).
+LLM claims remain UNTRUSTED. UI-owned bookkeeping (pending proposals,
+verification scaffolding) stays inside the platform data dir
+(`.p5_platform`) and never enters the workspace content area.
 
 P6 hardening:
  - Explicit validated config (p5/config.py) — localhost-only host, port, workspace_root, max_body, token
@@ -537,7 +540,10 @@ class Handler(BaseHTTPRequestHandler):
                 continue
             risk_level = gov_dec.risk_level.value
             try:
-                appr = env["approval_store"].grant(patch_fingerprint=fp, path=patch.path, action=patch.action, risk_level=risk_level, attempt=1, authorizer=data.get("authorizer", "human-operator"))
+                # CLI parity (P10.6-P1): ConsoleApprovalGateway bounds human
+                # approvals with a 3600s TTL; UI grants must not be
+                # never-expiring (canonical contract: expiry-bound single-use).
+                appr = env["approval_store"].grant(patch_fingerprint=fp, path=patch.path, action=patch.action, risk_level=risk_level, attempt=1, authorizer=data.get("authorizer", "human-operator"), expires_at=3600)
                 granted.append({"approval_id": appr.approval_id, "fingerprint": fp, "risk": risk_level, "path": patch.path})
             except Exception:
                 continue
@@ -556,7 +562,10 @@ class Handler(BaseHTTPRequestHandler):
             return
         ws_p, dd, allowed = _resolve(ws, data.get("data_dir"))
         env = _build_pipeline(ws_p, dd, allowed)
-        dummy = ws_p / "test_p5_dummy.py"
+        # Verification scaffolding lives in the UI-owned platform data dir,
+        # never in the workspace content area: the UI must not write user-
+        # visible files outside the governed pipeline.
+        dummy = dd / "test_p5_dummy.py"
         if not dummy.exists():
             dummy.write_text("def test_p5_dummy():\n    assert True\n", encoding="utf-8")
         if use_fake:
@@ -697,6 +706,21 @@ def run(host="127.0.0.1", port=8765):
     Handler.config = cfg
     print(f"P5 UI serving at http://{cfg.host}:{cfg.port}/ (view layer, governance is authority)")
     print(f"workspace_root={cfg.workspace_root} max_body={cfg.max_body} log_level={cfg.log_level} token={'set' if cfg.local_token else 'not set'}")
+    # Disclosure parity with the CLI (agent_run.py): the CLI prints these
+    # exact integrity limitations at governed startup; the P5 runtime runs
+    # the same unanchored trust model and must not conceal it.
+    print(
+        "[security] EventStore UNANCHORED: no external keyed chain-head "
+        "anchor is configured. Tail deletion / tail edit of the persisted "
+        "event log is NOT detected."
+    )
+    print(
+        "[security] ApprovalLedger UNANCHORED: the ledger's unkeyed chain "
+        "can be truncated/forged by a data-directory writer; a consumed "
+        "approval could be resurrected on reload. For security-sensitive "
+        "deployments run the governed CLI with --anchor-path / "
+        "--approval-ledger-anchor-path (key via CHAIN_ANCHOR_KEY)."
+    )
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

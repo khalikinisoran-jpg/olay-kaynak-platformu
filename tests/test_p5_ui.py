@@ -14,12 +14,13 @@ import json
 import tempfile
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 
-from p5.server import ThreadingHTTPServer, Handler
+from p5.server import ThreadingHTTPServer, Handler, run
 
 
 def _free_port():
@@ -200,5 +201,79 @@ def test_p5_low_visible_verified_without_approval():
         assert j["status"] == "VERIFIED"
         assert j["result"]["success"] is True
         assert (ws / "demo.txt").read_text(encoding="utf-8") == "hello fixed\n"
+    finally:
+        srv.shutdown()
+
+def test_p5_execute_never_writes_dummy_into_workspace_root():
+    # UI != AUTHORITY: verification scaffolding must stay inside the
+    # UI-owned platform data dir, never in the workspace content area.
+    port = _free_port()
+    srv = _start_server(port)
+    base = f"http://127.0.0.1:{port}"
+    ws = _ws_with_demo()
+    try:
+        st, j = _post(base, "/api/execute", {"goal": "fix hello file", "workspace": str(ws), "file": "demo.txt"})
+        assert st == 200
+        assert j["status"] == "VERIFIED"
+        assert (ws / "demo.txt").read_text(encoding="utf-8") == "hello fixed\n"
+        # No UI-written file in the workspace content area (root level)
+        assert not (ws / "test_p5_dummy.py").exists()
+        assert not any(p.name == "test_p5_dummy.py" for p in ws.glob("*.py"))
+        # Scaffolding lives only in the UI-owned data dir
+        dummy = ws / ".p5_platform" / "test_p5_dummy.py"
+        assert dummy.exists()
+        assert dummy.read_text(encoding="utf-8") == "def test_p5_dummy():\n    assert True\n"
+    finally:
+        srv.shutdown()
+
+def test_p5_startup_discloses_unanchored_trust_model(capsys, monkeypatch):
+    # Disclosure parity with the CLI: run() must disclose the unanchored
+    # EventStore/ApprovalLedger trust model at real startup (the exercise
+    # goes through the actual run() path; only the blocking serve loop is
+    # stubbed so the test can return).
+    monkeypatch.setattr("p5.server.CONFIG", None)
+
+    def _fake_serve(self, *args, **kwargs):
+        self.server_close()
+
+    monkeypatch.setattr(ThreadingHTTPServer, "serve_forever", _fake_serve)
+    run(host="127.0.0.1", port=_free_port())
+
+    out = capsys.readouterr().out
+    assert "EventStore UNANCHORED" in out
+    assert "NOT detected" in out
+    assert "ApprovalLedger UNANCHORED" in out
+    assert "resurrected" in out
+
+def test_p5_approvals_are_expiry_bound():
+    # P10.6-P1 parity: UI-granted approvals must carry the same 3600s TTL
+    # bound as CLI approvals; a never-expiring UI grant is the bug this
+    # regression test catches (proof via the persisted grant record).
+    port = _free_port()
+    srv = _start_server(port)
+    base = f"http://127.0.0.1:{port}"
+    ws = _ws_with_demo()
+    try:
+        st, j = _post(base, "/api/propose", {"goal": "add api_key secret to file", "workspace": str(ws), "file": "demo.txt"})
+        assert st == 200
+        assert j["governance"]["approval_required"] is True
+        st, j = _post(base, "/api/approve", {"workspace": str(ws)})
+        assert st == 200
+        assert j["granted"]
+        ledger = ws / ".p5_platform" / "approval_ledger.jsonl"
+        assert ledger.exists()
+        grants = [
+            json.loads(line)
+            for line in ledger.read_text(encoding="utf-8").splitlines()
+            if line.strip() and json.loads(line).get("record_type") == "grant"
+        ]
+        assert grants, "no grant record persisted"
+        now = datetime.now(timezone.utc)
+        for rec in grants:
+            assert rec.get("expires_at"), "UI-granted approval must not be never-expiring"
+            expires = datetime.strptime(rec["expires_at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+            delta = (expires - now).total_seconds()
+            # CLI parity: ~3600s TTL, bounded without sleeping
+            assert 3500 < delta <= 3600
     finally:
         srv.shutdown()

@@ -9,9 +9,19 @@ description = "Event-sourced AI runtime with deterministic, governed AI action e
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
+keywords = ["ai", "agent", "governance", "security", "event-sourcing", "audit"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
 dependencies = [
     "requests",
     "python-dotenv",
+    "pytest>=9",
 ]
 
 [project.optional-dependencies]
@@ -21,9 +31,14 @@ dev = [
 
 [project.scripts]
 p5-server = "p5.server:main"
+tanuq = "tanuq.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["simulation*", "p5*"]
+include = ["simulation*", "p5*", "tanuq*"]
+
+[tool.setuptools.package-data]
+tanuq = ["static/*.html", "static/*.js"]
+p5 = ["static/*.html"]
 
 [tool.pytest.ini_options]
 minversion = "9.0"

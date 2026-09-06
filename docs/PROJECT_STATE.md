@@ -14,15 +14,15 @@ results > documentation.
 |-------|-------|----------------|
 | Project Name | Event-Sourced AI Runtime | VERIFIED (docs) |
 | Status | Active Development | VERIFIED (git activity) |
-| Last Updated | 2026-08-23 | VERIFIED |
+| Last Updated | 2026-08-29 | VERIFIED |
 | Active Branch | `worker-action-pipeline` | VERIFIED (`git branch --show-current`) |
-| Branch HEAD | `50429ad` (`50429ad540bc074a186141946c57f71f8447604a`, "feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)") — clean, local == remote | VERIFIED (`git rev-parse HEAD`, `git status`) |
+| Branch HEAD | `9df6953` (`9df6953b4a51071330d7584f0ed2b569f4ab434b`, "fix(p5): enforce approval expiry parity") — current HEAD, 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` (`b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; implementation chain `07326ce..9df6953` = P10.2 docs sync + P10.3 hygiene A/B/C + OPERATOR-label p5 authority/integrity series P10.4-P10.6) | VERIFIED (`git rev-parse HEAD`, `git status`) |
 | Remote | `origin` = https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git | VERIFIED (`git remote -v`) |
-| Branch relationship | `worker-action-pipeline` is 41 commits ahead of `main`; `main` has 0 commits not in `worker-action-pipeline` | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
+| Branch relationship | `worker-action-pipeline` is ahead of `main`; exact count is derived from `git log main..HEAD` (`main` has 0 commits not in `worker-action-pipeline`) | VERIFIED (`git log main..HEAD`, `git log HEAD..main`) |
 | Historical Evidence Archive | `C:\Projects\event-sourcing-platform-evidence-archive` — **185 files** (144 MISSION-N* + 19 LAYER-A-* + 22 remaining = 185, missing 0, unreadable 0) — **PRESERVED_RELOCATED, PASS** (N.92 verified, N.94-R re-verified deterministic enumeration, artifact `n94r_enum_raw.txt` SHA `C5C22B…`) | VERIFIED (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt`) |
-| Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch | VERIFIED (`git tag`) |
+| Latest release tag | v0.5.0 (2026-08-07, "Memory Recall Runtime") — no tag after v0.5.0 for this branch; `0.6.0` declared in `pyproject.toml` | VERIFIED (`git tag`) |
 | Tags | v0.1.0-alpha, v0.3.0, v0.4.0, v0.5.0 | VERIFIED |
-| Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — suite **`986 collected / 974 passed / 12 skipped / 0 failures`** | VERIFIED (`.venv\Scripts\python.exe -m pytest --version`, MISSION N.55) |
+| Python | 3.12 (pyc artifacts indicate cpython-312); pytest 9.1.1 in `.venv` — current local full-suite evidence at HEAD `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof). Historical: full-suite at `d42736d` `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s (2026-08-29); P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s is NOT COMPLETED) | VERIFIED (local `python -m pytest -q` at `9df6953`; historical: hosted run 32805095789) |
 
 ---
 
@@ -114,6 +114,7 @@ What is actually implemented and verifiable today:
    agent-claimed approval ids, replayed approvals, evidence-only metadata
    and approval objects bound to a different patch cannot reach apply.
 - **Governed CLI (P2.1/P2.2/P2.2-FP):** thin `agent_run.py` wrappers `apply`/`approve`/`history`/`status`/`task` over `WorkerActionPipeline`+`GovernanceEvaluator`+`ApprovalStore`+`ApplyOutcomeJournal` (isolated per-workspace `.cli_platform`). `task` runs Worker (`--fake-analyzer` deterministic) -> governed pipeline; `approve --pending` mechanically approves the exact `pending_proposals.json` proposal (fingerprint parity fix for shell quoting/BOM/newlines). Verified by `tests/test_cli_apply.py` (7), `tests/test_cli_task.py` (6), `tests/test_p22_exact_parity.py` (9), `tests/test_cli_observability.py` (5).
+- **Governed external-action pipeline (post-P9, `b2d6da7..d42736d`):** `ExternalAction` (frozen contract; SHA-256 fingerprint over provider/operation/payload/idempotency_key/reason; synthetic `external://{provider}/{operation}` path projected onto the existing file-governance chain; `idempotency_key` deterministically bound into the synthetic fingerprint), `ExternalActionPipeline` (attempt authority ONLY via `intent_id` -> attempt 1, or a journal-issued `AttemptContext`; raw integer attempt rejected fail-closed; retry requires exact approval_id + attempt correlation), `ExternalActionExecutor` (fail-closed; requires `ExternalOutcomeJournal` — no in-memory fallback; records all four outcomes KNOWN_SUCCESS / KNOWN_FAILURE / TIMEOUT_UNKNOWN / AMBIGUOUS_UNKNOWN; ambiguous is never promoted to success; no auto-retry, no compensation), `ExternalOutcomeJournal` (append-only hash-chained JSONL, secret-safe payload/idempotency hashes, process-locked, fail-closed load; `open_attempt` issues a hash-bound `AttemptContext`; `start_opened_attempt` validates durable attempt / approval_id / previous-hash lineage before any provider call), `external_reconciliation.py` (durable lineage reconciliation) and `agent_run.py external` CLI wiring (isolated per-workspace `.cli_platform/external_journal.jsonl`). AgentSession is NOT the external attempt authority: production code never calls `AgentSession.next_attempt()`; `SessionGovernedBridge.execute_external` passes only `intent_id`/`attempt_context`. VERIFIED by the local full-suite PASS at `d42736d` (1272/1259/13/0) incl. `tests/test_external_t_b1..b10*`, `tests/test_external_model_b_production.py`, `tests/test_external_idempotency_binding.py`, `tests/test_external_f4_no_journal_bypass.py`, `tests/test_external_runtime_wiring_m12.py`, `tests/test_external_cli_t11a.py`.
 
 ---
 
@@ -249,23 +250,31 @@ Recovery is NOT active by default in the shipped runtime
 
 # Test State
 
-Authoritative run on 2026-08-23 (N.94 exit gate HEAD `7d274bf` + N.94-R reconciliation HEAD `71d2353` + P2.2-FP HEAD `2f49d9f` → P2.3-A HEAD `50429ad`; foundation `24c72d0` at N.55 conserved):
+Current authoritative run — **local full suite at HEAD `9df6953` (2026-08-30)** — `1278 collected / 1265 passed / 13 skipped / 0 failures` in **329.97s** (local Windows run; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof; valid only for the exact tested state HEAD `9df6953` + the then-current documentation working tree). Historical: full suite at `d42736d` (2026-08-29) — `1272 collected / 1259 passed / 13 skipped / 0 failures` in **271.43s**. Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted exact-HEAD run **32805095789** Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED). Foundation lineage: `24c72d0` established the earlier `986` collected baseline → P7 governed AgentSession → P8 multi-file atomicity → P9 FINAL PASS → post-P9 governed ExternalAction additions to 1272.
+
+## Known Intermittent CI Risks (registered 2026-08-30)
+
+Release readiness: **READY WITH KNOWN RISKS** at HEAD `45f31b6`.
+
+FACT: P97B (tests/test_p97b_session_recovery.py::test_p97b_multi_file_failure_rollback) at `c64247f5801a4566727d09000a4dd262ae1f59ae`: hosted ubuntu observations 1 FAIL + 2 rerun PASS on the identical immutable SHA; windows PASS throughout. P8 (tests/test_p8_multi_file.py::test_p8_verify_failure_after_multiple_rollback_all) at `45f31b6a83e5442ff05667127573b3a86e1c8ff1`: hosted ubuntu observations 1 FAIL (push run 33310598127) + 1 PASS (PR run 33310600167) + 1 rerun PASS; windows PASS throughout.
+
+INFERENCE: intermittent/flaky classification for both; Both are distinct tests in the multi-file rollback/verification family (expected failure/rollback state, observed verification-success-type outcome); they share observable family characteristics only. Inference: possible family-level sensitivity. A shared root cause has NOT been established; exact trigger, frequency and mechanism remain UNVERIFIED. Approval-lifecycle tests passed in every hosted ubuntu observation; the P8 failure is not demonstrated to be caused by the approval-lifecycle delta (`45f31b6`).
+
+UNVERIFIED: exact root cause, trigger, frequency and a shared P8/P97B mechanism. These are tracked known risks, NOT silently ignored failures and NOT resolved defects. A dedicated deterministic investigation remains a deferred open item.
+
+P10.6-P2 (keyed snapshot anchor): DEFERRED ACCEPTABLE — hardening item. Snapshots are not authority-bearing (session snapshots strip authority-shaped fields and never approve; kernel snapshot recovery falls back to chain-verified replay), so the unkeyed self-hash is a hardening gap, not a demonstrated authority-bound security blocker.
 
 ```
+.venv\Scripts\python.exe -m pytest --collect-only -q
+1278 collected  # current HEAD 9df6953 (incl. P10.3-P10.6 implementation chain)
 .venv\Scripts\python.exe -m pytest -q
-974 passed, 12 skipped in 78.55s (986 collected)  # 2026-08-22 baseline
-.venv\Scripts\python.exe -m pytest -q tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py -v
-9 + 7 + 6 + 5 passed  # 2026-08-23 P2.x parity (local)
-C:\Users\...\clean_clone_test\vrepro\Scripts\python.exe -m pytest -q tests/test_p22_exact_parity.py tests/test_cli_apply.py tests/test_cli_task.py tests/test_cli_observability.py tests/approval_boundary_test.py tests/test_n6_mp_single_use.py
-9 + 7 + 6 + 5 + 48 + 10 passed  # 2026-08-23 P2.3-A clean clone + clean venv verified; hosted CI not yet evidenced
-powershell -ExecutionPolicy Bypass -File demo_cli.ps1 -> OVERALL PASS (local and clean clone)
+1265 passed, 13 skipped in 329.97s (1278 collected)  # local Windows run at 9df6953, 2026-08-30; local evidence only, hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows)
+# historical P9 FINAL PASS @ b2d6da7: 1213 collected / 1200 passed / 13 skipped (hosted run 32805095789 Ubuntu ~88s / Windows ~182s)
+powershell -ExecutionPolicy Bypass -File demo_cli.ps1 -> OVERALL PASS (conserved lineage from P2.3-A)
 ```
 
-- 12 skipped: 3 opt-in `live_llm` integration tests (never run in the
-  normal suite) + 9 symlink-dependent tests that skip where the OS denies
-  symlink creation (junction variants pass on this Windows environment;
-  the symlink records run in CI on ubuntu-latest).
-- MISSION N.55 reproduced the baseline **`986 collected / 974 passed / 12 skipped / 0 failures`** via `python -m pytest -q` (FULL method). Previous close-outs (902/881) are superseded.
+- 13 skipped: 3 opt-in `live_llm` integration tests (never run in the normal suite) + 10 symlink/OS-dependent tests that skip where the OS denies symlink creation (junction variants pass on Windows; symlink records now evidenced on hosted Ubuntu via run 32805095789).
+- P9 FINAL PASS reproduced the baseline **`1213 collected / 1200 passed / 13 skipped / 0 failures`** via `python -m pytest -q` (FULL method with 300s budget) and exact-HEAD hosted CI; foundation `24c72d0` `986/974/12` retained as historical lineage, not current baseline.
 - Gated live run (real provider): `RUN_LIVE_LLM=1 python -m pytest -m
   live_llm tests/live_llm_e2e_test.py -q` → opt-in; skipped in normal suite.
 
@@ -332,21 +341,20 @@ Test directories `tests/chaos/`, `tests/integration/`, `tests/property/`,
 
 ```
 Branch:            worker-action-pipeline
-HEAD:              50429ad (2026-08-23, "feat(demo): reproducible governed CLI demo and canonical state sync (P2.3-A)") — 50429ad540bc074a186141946c57f71f8447604a
-Working tree:      clean (nothing to commit); local == origin/worker-action-pipeline (P2.3-A 41 ahead, clean-clone verified)
+HEAD:              9df6953 (2026-08-30, "fix(p5): enforce approval expiry parity") — 9df6953b4a51071330d7584f0ed2b569f4ab434b (15 commits after the historical P9 FINAL PASS baseline b2d6da7; chain 07326ce..9df6953 = P10.2 docs sync + P10.3 hygiene A/B/C + operator-label p5 fixes P10.4-P10.6)
+Working tree:      clean at HEAD 9df6953 except unstaged P10.7-D canonical state synchronization edits (README.md / docs/ROADMAP.md / docs/PROJECT_MASTER.md / docs/PROJECT_STATE.md / docs/MISSION_STATUS.md); docs/ADR/ADR-001-Recovery-Orchestration.md clean; no staged files; 6 local commits ahead of origin/worker-action-pipeline (push = pending human decision)
 .gitignore:        excludes .env, .env.*, *.pem, *.key, credentials.json,
                    secrets/, .venv/, data/, __pycache__/, *.pyc,
                    .pytest_cache/, .mypy_cache/, .ruff_cache/, logs, IDE files
                    (with !.env.example exception)
 Local env:         .env present with OPENROUTER_API_KEY (untracked; ignored;
                    not part of any release snapshot)
-CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step) — not yet evidenced on hosted runner
-Packaging:         pyproject.toml 0.6.0 (pip install -e . verified locally and in clean clone vrepro)
-Reproducible demo: demo_cli.ps1 (HIGH DENY -> approve --pending -> VERIFIED -> replay DENY, history read-only) — OVERALL PASS locally and in clean clone; hosted CI not yet evidenced
+CI:                .github/workflows/ci.yml (ubuntu + windows + packaging smoke step) — exact-HEAD hosted run 32805095789 succeeded (Ubuntu ~88s / Windows ~182s); local ~254s with 300s budget (120s is NOT COMPLETED). Current checkpoint hosted CI: ab77f9f PASS; c64247f PASS (after 2 reruns; original ubuntu run failed on P97B); 45f31b6 ubuntu intermittent FAIL (P8) with PR PASS and rerun PASS
+Packaging:         pyproject.toml 0.6.0 (pip install -e . verified locally and via hosted packaging smoke)
+Reproducible demo: demo_cli.ps1 (HIGH DENY -> approve --pending -> VERIFIED -> replay DENY, history read-only) — OVERALL PASS (conserved lineage; current evidence is P9 hosted run 32805095789)
 ```
 
-`main` is 41 commits behind `worker-action-pipeline`. No release tag exists
-after v0.5.0 for the worker-action-pipeline work (HEAD 50429ad is 41 ahead; 2f49d9f was 40, 71d2353 was 35, foundation 24c72d0 was 30).
+`main` is behind `worker-action-pipeline` (exact count via `git log main..HEAD`); `main` has 0 commits not in `worker-action-pipeline`. No release tag exists after v0.5.0 for the worker-action-pipeline work (current HEAD `9df6953`; historical P9 FINAL PASS baseline `b2d6da7`; foundation `24c72d0` 30 commits ahead lineage, P2.3-A 41 ahead retained as historical distance).
 Historical archive: `C:\Projects\event-sourcing-platform-evidence-archive` — 185 files preserved (N.92 PASS, N.94-R independent repro PASS).
 
 ---
@@ -381,14 +389,12 @@ VERIFIED where not marked:
 9. **Secret redaction is heuristic, not a guarantee**; secret files are
    skipped wholesale but a missed inline pattern could still leak. Prompt
    injection resistance is a mitigation, not a proof.
-10. **Docs drift:** README.md, CHANGELOG.md, docs/PROJECT_CONTEXT.md,
-    docs/ROADMAP.md, docs/SESSION_NOTES.md, docs/MILESTONE-2.md still describe
-    older versions/sprints.
+10. **Docs drift (P10.2 progress):** README.md, START-HERE.md, and docs/PROJECT_MASTER.md synchronized to P9 FINAL PASS in P10.2-R1/R2; remaining drift in docs/PROJECT_CONTEXT.md (human-gated historical notice decision), docs/CHANGELOG.md (empty, human-gated redirect decision), CHANGELOG.md (historical chronology retained), docs/SESSION_NOTES.md and docs/MILESTONE-2.md (historical session snapshots, intentionally preserved) requires no automatic rewrite.
 11. **MISSION_LOG encoding corruption (mojibake)** in older entries, kept
-    unchanged by policy.
-12. **CI exists but has not been exercised externally** (no hosted run yet).
+     unchanged by policy.
+12. **CI:** exact-HEAD hosted run 32805095789 succeeded on Ubuntu (~88s) and Windows (~182s) at P9 FINAL PASS; local full suite ~254s with realistic 300s budget (120s is NOT COMPLETED / external budget limitation).
 13. **No production benchmarks**; the append benchmark
-    (`benchmarks/event_store_benchmark.py`) is a local sanity number.
+     (`benchmarks/event_store_benchmark.py`) is a local sanity number.
 
 ---
 
@@ -403,7 +409,8 @@ VERIFIED where not marked:
 - MISSION-009 was referenced as "state/documentation synchronization" but
   has no dedicated MISSION_LOG entry (commit `9b5c21e`).
 - Whether the tracked `.pyc` artifacts and junk files (`git`, `kernel.txt`)
-  should be removed from the repository.
+  should be removed from the repository — RESOLVED: removed in commit
+  `a8de82e`; none remain tracked at HEAD.
 
 ---
 
@@ -420,17 +427,18 @@ Recommended (from audit findings, not a committed plan):
 3. **Synchronize stale docs** (README, CHANGELOG, PROJECT_CONTEXT,
    docs/ROADMAP) with the verified baseline.
 4. **MISSION-015 Productization Readiness Assessment.**
-5. **Repository hygiene** (legacy `persistence/recovery.py`,
-   `event_store_backup.py`, duplicate snapshot implementations,
-   `services/` overlap) with dead-code evidence per component.
+5. **Repository hygiene** (completed for the audited candidates: legacy
+   `persistence/recovery.py` and duplicate snapshot implementations
+   removed in `542c187`/`07dbd34`; `event_store_backup.py` and
+   `services/runtime_service.py` removed in P10.3-B with dead-code
+   evidence per component).
 
 ---
 
 # Notes
 
 This document is synchronized with actual code, git history and the
-2026-08-23 P2.3-A reproducible baseline (HEAD 50429ad, foundation 24c72d0 at N.55 conserved; 986/974/12 + P2.x 22 CLI + 9 parity + 5 observability + 48 boundary + 10 mp pass; clean, local == remote; archive 185 = 144+19+22 PRESERVED_RELOCATED; clean clone + clean venv verified locally). Stale documentation must not
-be trusted over code and git history.
+current HEAD `9df6953` `9df6953b4a51071330d7584f0ed2b569f4ab434b` (local full-suite evidence `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s, 2026-08-30 — local only, hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof). Historical evidence baselines are preserved unchanged: full-suite at `d42736d` `1272 collected / 1259 passed / 13 skipped / 0 failures` (2026-08-29) and P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2` (2026-08-25; `1213 collected / 1200 passed / 13 skipped / 0 failures`; hosted run 32805095789 Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED; foundation `24c72d0` 986 → P7 governed AgentSession + P8 multi-file atomicity + P9 additions to 1213; archive 185 = 144+19+22 PRESERVED_RELOCATED). Stale documentation must not be trusted over code and git history.
 
-Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93); `demo_cli.ps1` — reproducible governed CLI demo (HIGH DENY -> pending -> VERIFIED -> replay DENY, P2.3-A, OVERALL PASS locally + clean clone).
-Archive: deterministic enumeration independently reproduced (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt` SHA `C5C22BB9…`, 185 readable, 0 missing — confirms N.92, corrects N.94 UNRESOLVED to PASS). Hosted CI not yet evidenced.
+Demo: `python demo_vertical_slice.py` — governed vertical slice (Scenarios A LOW pass, B HIGH denied→approved, C rollback) using real `WorkerActionPipeline` (MISSION N.93); `demo_cli.ps1` — reproducible governed CLI demo (HIGH DENY -> pending -> VERIFIED -> replay DENY, P9 conserved, OVERALL PASS).
+Archive: deterministic enumeration independently reproduced (`Get-ChildItem -Recurse`, `n94r_enum_raw.txt` SHA `C5C22BB9…`, 185 readable, 0 missing — confirms N.92, corrects N.94 UNRESOLVED to PASS). P9 exact-HEAD hosted CI evidenced (run 32805095789 Ubuntu ~88s / Windows ~182s).

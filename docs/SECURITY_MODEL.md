@@ -1,9 +1,9 @@
 # SECURITY_MODEL.md
 
 Canonical security model of the implemented worker action pipeline and
-event-sourcing core, branch `worker-action-pipeline` @ `24c72d0`
-(2026-08-21; MISSION N.55 foundation: `986 collected / 974 passed / 12 skipped / 0 failures`, clean).
-Historical risk-layer status: MISSION-011..018B, MISSION-M/N/N.1/O (see history; current baseline is 24c72d0). Every claim
+event-sourcing core, branch `worker-action-pipeline` @ `9df6953`
+(`9df6953b4a51071330d7584f0ed2b569f4ab434b`, current HEAD; 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; current local full-suite evidence at `9df6953`: `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s — local Windows run 2026-08-30; hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof; historical: full-suite at `d42736d` `1272 collected / 1259 passed / 13 skipped / 0 failures` in 271.43s (2026-08-29); historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures`, hosted run 32805095789 Ubuntu ~88s / Windows ~182s; foundation `24c72d0` 986 → P7 governed AgentSession → P8 multi-file atomicity → P9 → post-P9 governed ExternalAction additions to 1272).
+Historical risk-layer status: MISSION-011..018B, MISSION-M/N/N.1/O (see history; historical P9 FINAL PASS baseline is `b2d6da7`; current HEAD is `9df6953` incl. the governed external-action surface, section 24a). Every claim
 is classified VERIFIED (code + passing test), INFERRED (reasoned from
 code, no direct test), or UNKNOWN (cannot be determined). Complements
 docs/SECURITY_BASELINE.md (MISSION-005 audit).
@@ -920,6 +920,69 @@ Security principle (MISSION-M): **DATA != AUTHORITY**,
 **STATUS: VERIFIED (MISSION-M).** `tests/security/memory_security_test.py`
 (M-01..M-32) and `tests/property/memory_property_test.py`
 (4 seeded invariants) pass; full suite 821 passed / 12 skipped.
+
+---
+
+## 24a. Governed External-Action Security Surface (post-P9, `b2d6da7..d42736d`)
+
+**Implementation:** `simulation/agent/apply/external_action.py`,
+`external_executor.py`, `external_outcome_journal.py`,
+`external_intent.py`, `external_provider.py`,
+`simulation/agent/pipeline/external_action_pipeline.py`,
+`simulation/agent/recovery/external_reconciliation.py`,
+`simulation/agent/session/session_governed_bridge.py`,
+`agent_run.py` (`external` subcommand).
+
+Evidence-bounded description from current source and tests; no absolute
+security guarantee and no claim of coverage for all possible
+crash/interleaving scenarios is made.
+
+- **Durable journaled outcomes:** every governed external execution
+  requires an `ExternalOutcomeJournal` (append-only, hash-chained,
+  secret-safe: payload/idempotency stored as SHA-256 hashes only,
+  process-locked, fail-closed load). A missing journal is a
+  configuration failure — the executor returns KNOWN_FAILURE before any
+  provider call (no in-memory fallback, no fake journal). **VERIFIED** —
+  `tests/test_external_f4_no_journal_bypass.py`.
+- **Ambiguous outcomes are never promoted to success:** the executor
+  records all four outcomes (KNOWN_SUCCESS / KNOWN_FAILURE /
+  TIMEOUT_UNKNOWN / AMBIGUOUS_UNKNOWN) exactly as the provider reports
+  them; it never synthesizes success/failure from an ambiguous result,
+  never auto-retries and never compensates. **VERIFIED** —
+  `tests/test_external_t_b4.py`, `tests/test_external_t_b5.py`,
+  `tests/test_external_t_b10.py`.
+- **Attempt authority is durable, not session state:** the pipeline
+  derives the authoritative attempt ONLY from `intent_id` (initial →
+  attempt 1) or a journal-issued `AttemptContext` (retry); a raw integer
+  attempt is rejected fail-closed. `open_attempt` issues a hash-bound
+  context; `start_opened_attempt` validates the durable attempt,
+  approval_id correlation, previous-hash lineage and fingerprint before
+  any provider call. Production code contains no
+  `AgentSession.next_attempt()` call; `SessionGovernedBridge.execute_external`
+  passes only `intent_id`/`attempt_context`. **VERIFIED** —
+  `tests/test_external_t_b10_a.py` (spy + durable-lineage assertions on
+  the production path).
+- **Approval / attempt / idempotency correlation:** retry requires exact
+  approval_id + attempt correlation between the `AttemptContext`, the
+  store approval and the controller decision; the `idempotency_key` is
+  deterministically bound into the synthetic patch fingerprint, so
+  different keys produce different approval-binding identities.
+  **VERIFIED** — `tests/test_external_idempotency_binding.py`,
+  `tests/test_external_t_b10.py`.
+- **Controlled retry / attempt lineage:** a second attempt exists only
+  through `journal.open_attempt` on the SAME journal (single durable
+  owner); the journal's hash chain makes intent lineage tamper-evident
+  and `load()` fails closed on corruption. **VERIFIED** —
+  `tests/test_external_t_b10.py` (crash/recovery scenarios).
+- **Scope:** external actions are governed through a synthetic
+  `external://{provider}/{operation}` path; `allowed_paths` must contain
+  the external scope exactly as file scope is checked.
+  **VERIFIED** — `tests/test_external_t_b1.py` and pipeline scope tests.
+- **Limitations (UNVERIFIED / by design):** behavior under all possible
+  crash/interleaving combinations is not exhaustively tested; the
+  executor never assumes provider-side reconciliation support; no
+  hosted-CI evidence exists for this surface yet (local full-suite PASS
+  at `d42736d` only).
 
 ---
 

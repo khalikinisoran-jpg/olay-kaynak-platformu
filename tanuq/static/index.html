@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tanuq — AI works. You stay in control.</title>
+<style>
+:root { --ok:#1a7f37; --warn:#9a6700; --bad:#c62828; --line:#d8dee4; --bg:#f6f8fa; }
+* { box-sizing:border-box; font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif; }
+body { margin:0; background:var(--bg); color:#1f2328; }
+header { background:#10151c; color:#fff; padding:12px 20px; display:flex; align-items:center; gap:16px; }
+header h1 { margin:0; font-size:18px; letter-spacing:2px; }
+header .tag { color:#9fb0c0; font-size:12px; }
+#limits { background:#fff8e6; border-bottom:1px solid var(--line); padding:6px 20px; font-size:12px; color:#6a5300; }
+nav { display:flex; gap:4px; padding:10px 20px 0; background:#fff; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+nav button { border:1px solid var(--line); border-bottom:none; background:var(--bg); padding:8px 14px; cursor:pointer; border-radius:6px 6px 0 0; font-size:13px; }
+nav button.active { background:#fff; font-weight:600; }
+main { padding:16px 20px; max-width:1100px; margin:0 auto; }
+.card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:12px; }
+.card h3 { margin:0 0 8px; font-size:14px; }
+.card.critical { border-color:var(--bad); }
+.kv { display:grid; grid-template-columns:220px 1fr; gap:4px 12px; font-size:13px; }
+.kv div:nth-child(odd) { color:#656d76; }
+.badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; font-weight:600; }
+.ok { background:#dafbe1; color:var(--ok); } .warn { background:#fff8c5; color:var(--warn); }
+.bad { background:#ffebe9; color:var(--bad); } .muted { background:#eaeef2; color:#57606a; }
+pre.diff { background:#0d1117; color:#c9d1d9; padding:10px; border-radius:6px; font-size:12px; overflow:auto; max-height:220px; white-space:pre-wrap; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:#656d76; font-weight:600; background:var(--bg); }
+button.act { border:1px solid var(--line); background:#fff; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; }
+button.primary { background:#1f6feb; border-color:#1f6feb; color:#fff; }
+button.danger { background:#fff; border-color:var(--bad); color:var(--bad); }
+#tokenbox { background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; max-width:520px; margin:40px auto; }
+input[type=password] { width:100%; padding:8px; border:1px solid var(--line); border-radius:6px; margin:8px 0; }
+.small { font-size:12px; color:#656d76; }
+.empty { color:#656d76; font-size:13px; padding:8px 0; }
+.refresh { float:right; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tanuq</h1><span class="tag">AI works. You stay in control.</span>
+  <span style="flex:1"></span>
+  <span id="hdrstate" class="badge muted">…</span>
+</header>
+<div id="limits">
+  Honest limits: Tanuq governs changes proposed <b>through Tanuq</b> · workspace/path containment only ·
+  <b>no OS sandbox</b> · <b>no network enforcement</b> · evidence is <b>tamper-evident (detectable), not tamper-proof</b>.
+</div>
+
+<div id="tokenbox">
+  <h3>Local access token</h3>
+  <p class="small">Every state-changing action requires your device token. Run <code>tanuq token</code> and paste it here. It is stored only in this browser.</p>
+  <input type="password" id="token" placeholder="paste token">
+  <button class="act primary" id="unlock">Unlock</button>
+</div>
+
+<main id="app" style="display:none">
+<nav id="tabs">
+  <button data-t="dashboard" class="active">Dashboard</button>
+  <button data-t="pending">Pending Approvals</button>
+  <button data-t="activity">Operations</button>
+  <button data-t="incidents">Incidents</button>
+  <button data-t="evidence">Evidence</button>
+  <button data-t="blocked">Blocked Actions</button>
+  <button data-t="status">Status</button>
+  <button class="act refresh" data-action="refresh">Refresh</button>
+</nav>
+<div id="view"></div>
+</main>
+
+<script src="app.js" defer></script>
+</body>
+</html>

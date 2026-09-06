@@ -25,6 +25,7 @@ from simulation.agent.apply.external_provider import (
 )
 from simulation.agent.approval.approval_ledger import ApprovalLedger
 from simulation.agent.approval.approval_store import ApprovalStore
+from simulation.agent.approval.approval import Approval
 from simulation.agent.pipeline.external_action_pipeline import ExternalActionPipeline
 from simulation.agent.apply.external_executor import ExternalActionExecutor
 from simulation.security.governance_evaluator import GovernanceEvaluator
@@ -385,7 +386,30 @@ def test_p_b6_approval_attempt_binding(tmp_path: Path):
     ctx2 = journal.open_attempt(intent_id, expected_current_attempt=1, new_approval_id=appr2.approval_id)
     # Try to use attempt 1 approval for attempt 2: create a new approval for attempt 1 but try to use it for retry (should fail exact ID)
     # Generate another approval for attempt 2 but different ID (otherwise valid)
-    other_appr2 = _grant(store, gov, action, 2)  # different ID, also attempt 2
+        # P10.12-B: plain re-grant is now idempotent (same attempt-2
+        # authority is reused). To construct a genuinely different
+        # approval id for the mismatch scenario below, mint it explicitly
+        # via the sanctioned caller-supplied approval= parameter.
+    _syn2 = action.to_patch_proposal(allowed_paths=("external://",))
+    _dec2 = gov.evaluate(_syn2)
+    other_appr2 = store.grant(
+        patch_fingerprint=_syn2.fingerprint(),
+        path=_syn2.path,
+        action=_syn2.action,
+        risk_level=_dec2.risk_level.value,
+        attempt=2,
+        authorizer="tester",
+        expires_at=3600,
+        approval=Approval.create(
+            patch_fingerprint=_syn2.fingerprint(),
+            path=_syn2.path,
+            action=_syn2.action,
+            risk_level=_dec2.risk_level.value,
+            attempt=2,
+            authorizer="tester",
+            expires_at=3600,
+        ),
+    )  # different ID, also attempt 2
     # Create forged context with other_appr2's ID would succeed if not for exact correlation, but we test that pipeline requires exact ctx approval_id
     # To prove attempt 1 approval cannot authorize attempt 2, we create a context with attempt 2 but approval_id = appr1 (attempt 1's ID)
     forged_ctx_attempt1_for_2 = AttemptContext(intent_id=intent_id, attempt=2, synthetic=None, approval_id=appr1.approval_id, previous_hash=ctx2.previous_hash, expected_previous_attempt=1)
