@@ -457,6 +457,7 @@ def test_verification_executor_builds_safe_command_args():
         "-m",
         "compileall",
         "-q",
+        "-f",
         "simulation/sample.py",
         "simulation/util.py",
     )

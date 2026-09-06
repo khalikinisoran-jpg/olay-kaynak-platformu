@@ -82,11 +82,17 @@ class VerificationExecutor:
         paths
     ) -> VerificationResult:
 
+        # ``-f`` forces recompilation of every source file. Without it
+        # compileall skips sources whose recorded source mtime is not
+        # newer than the cached bytecode's, so a syntax error applied
+        # within the same second as the previous verification could be
+        # silently missed (hosted-Ubuntu CI intermittency, P8/P96).
         command = self._argv(
             self.python_executable,
             "-m",
             "compileall",
             "-q",
+            "-f",
             *paths,
         )
 
