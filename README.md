@@ -1,5 +1,22 @@
 # Event-Sourced AI Runtime
 
+> **Tanuq — AI works. You stay in control.**
+>
+> Tanuq is the user-facing product built on this runtime: it governs
+> AI coding agents' file changes with deterministic policies, binds
+> risky changes to single-use human approval, rolls back failed
+> changes automatically, and records tamper-evident evidence.
+
+```bash
+pip install -e .
+tanuq init      # protect a workspace (interactive)
+tanuq status
+```
+
+See `docs/QUICKSTART.md` and `docs/USER_GUIDE.md`.
+
+---
+
 > **Building trustworthy AI through Event Sourcing, Replay, and Verification.**
 >
 > **Every AI decision becomes an auditable event.**

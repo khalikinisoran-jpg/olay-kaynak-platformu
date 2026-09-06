@@ -37,9 +37,11 @@ jobs:
           python -m p5.server --help
           p5-server --help || python -m p5.server --help
           python -c "from p5.config import load_config; cfg=load_config(); print(f'config-ok host={cfg.host} port={cfg.port}')"
+          tanuq --version
+          tanuq --help
 
       - name: Compile all packages
-        run: python -m compileall -q simulation tests p5
+        run: python -m compileall -q simulation tests p5 tanuq
 
       - name: Secret scan (repo-local guard)
         run: python scripts/secret_guard.py
@@ -49,6 +51,32 @@ jobs:
 
       - name: Run the adversarial corpus
         run: python -m pytest tests/security/adversarial_corpus_test.py -q
+
+  packaging:
+    name: packaging-gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Packaging regression gate (wheel -> clean venv -> product smoke)
+        run: python -m pytest tests/test_tanuq_packaging.py -q
 
       - name: Whitespace check
         shell: bash

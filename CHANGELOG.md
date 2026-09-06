@@ -4,6 +4,38 @@ All notable changes to this project will be documented here.
 
 ---
 
+# v0.6.0 (UNRELEASED — release candidate)
+
+Status
+
+TANUQ Release Foundation
+
+Highlights
+
+- Product identity migration: the product is now **TANUQ** (package
+  import name `tanuq`, CLI `tanuq`, runtime dirs `.tanuq` / `~/.tanuq`,
+  auth header `X-TANUQ-Token`). Distribution name stays
+  `event-sourced-ai-runtime`. Controlled, secret-safe legacy migration
+  from `.hermes` layouts is included (rename-only, fail-closed).
+- Product shell over the proven governance core: `tanuq init / status /
+  workspace / propose / approve / execute / history / lineage /
+  incidents / verify / token / ui / export`.
+- Governed-by-default runtime with anchored (HMAC) evidence chains by
+  default; single-use, fingerprint-bound human approvals (TTL 3600s).
+- Session labels, explainable governance (deterministic risk signals),
+  multi-process safe pending store, incident center (detect-only,
+  recovery ≠ authorization), evidence export bundle.
+- Packaging regression gate: wheel → clean venv → product smoke
+  (Ubuntu + Windows) as a CI job.
+
+Known gaps
+
+- No OS sandbox and no network enforcement (by design; documented).
+- No real vendor agent integration yet (generic hook protocol only).
+- Verification is Python-focused (compileall + pytest).
+
+---
+
 # v0.1.0-alpha
 
 Release Date
