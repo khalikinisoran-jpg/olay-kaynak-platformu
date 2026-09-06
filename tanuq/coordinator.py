@@ -1,9 +1,9 @@
 """Tanuq OperationCoordinator — single orchestration facade over the
-existing TANUQ projections.
+existing TANUQ projections and the governed execution chain.
 
 BOUNDARY CONTRACT: the coordinator is NOT a governance authority and
 computes nothing on its own. Every method delegates to the existing,
-tested projection layer:
+tested layers:
 
     operations      -> tanuq.evidence.operations
     lineage         -> tanuq.evidence.lineage
@@ -11,12 +11,22 @@ tested projection layer:
     incidents       -> tanuq.incidents.collect_incidents
     export          -> tanuq.evidence.export_evidence
     status          -> chain_status + pending count + config summary
+    execute         -> tanuq.agent_adapter.execute (governed pipeline)
 
-The facade is stateless: no persistent store, no cache, no in-memory
-registry, no governance decision, no approval action. CLI and Web call
-the SAME methods so both surfaces can never drift on what happened.
+``execute`` is pure orchestration/delegation: it never grants, never
+consumes, never revokes, never applies and never recomputes a
+governance decision — the full governed chain inside agent_adapter /
+WorkerActionPipeline remains the only authority.
+
+In-flight state is RAM-only orchestration bookkeeping (thread-safe,
+process-local): it tracks that an execute is running, is cleared in a
+``finally`` block on every outcome, and is never persisted or treated
+as durable reality. Durable reality remains the four hash-chained
+journals and their projections.
 """
-from tanuq.config import tanuq_data_dir
+import threading
+
+from tanuq.config import tanuq_data_dir, now_iso
 from tanuq.evidence import (
     chain_status,
     export_evidence,
@@ -37,6 +47,8 @@ class OperationCoordinator:
 
     def __init__(self, env):
         self.env = env
+        self._in_flight = {}
+        self._in_flight_lock = threading.Lock()
 
     @property
     def workspace(self):
@@ -94,3 +106,69 @@ class OperationCoordinator:
             "pending": len(load_pending(self.env.workspace)),
             "limits": dict(_LIMITS),
         }
+
+    # ---- execute orchestration (delegation only; RAM-only state) ----
+
+    def _in_flight_key(self, fingerprint, run_all):
+        if fingerprint:
+            return f"fp:{fingerprint}"
+        if run_all:
+            return "ALL"
+        return "NEXT"
+
+    def execute(self, fingerprint=None, run_all=False, session=None):
+        """Orchestrate one governed execution via agent_adapter.
+
+        Delegation-only: the full governed chain (PatchValidator ->
+        GovernanceEvaluator -> ApprovalStore -> Controller ->
+        ApplyAuthorization -> FileApplier -> VerificationExecutor ->
+        journals) runs inside agent_adapter/WorkerActionPipeline and
+        the result is returned unchanged. The coordinator only
+        reserves a RAM-only in-flight slot so two concurrent calls for
+        the same selector cannot interleave; the slot is cleared in a
+        ``finally`` block on every outcome (success, denial, exception).
+        """
+        from tanuq import agent_adapter
+
+        key = self._in_flight_key(fingerprint, run_all)
+        with self._in_flight_lock:
+            if key in self._in_flight:
+                return {
+                    "executed": False,
+                    "error": (
+                        "an execution for this selector is already "
+                        "in flight"
+                    ),
+                    "in_flight": True,
+                    "selector": key,
+                    "terminal": None,
+                }
+            self._in_flight[key] = {
+                "key": key,
+                "fingerprint": fingerprint,
+                "run_all": bool(run_all),
+                "session": session,
+                "state": "IN_FLIGHT",
+                "started_at": now_iso(),
+            }
+        try:
+            return agent_adapter.execute(
+                self.env,
+                fingerprint=fingerprint,
+                run_all=run_all,
+                session=session,
+            )
+        finally:
+            with self._in_flight_lock:
+                self._in_flight.pop(key, None)
+
+    def in_flight(self):
+        """Read-only snapshot of RAM-only in-flight executions."""
+        with self._in_flight_lock:
+            return {
+                "in_flight": [
+                    dict(record)
+                    for record in self._in_flight.values()
+                ],
+                "count": len(self._in_flight),
+            }
