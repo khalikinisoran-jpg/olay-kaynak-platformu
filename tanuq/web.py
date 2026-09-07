@@ -265,7 +265,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, _reject(data), rid, t0)
                 return
             if path == "/api/execute":
-                self._json(200, _execute(data), rid, t0)
+                result, in_flight = _execute(data)
+                # 409 CONFLICT: RAM-only in-flight slot busy (fail-closed
+                # orchestration conflict, not a governance decision).
+                self._json(409 if in_flight else 200, result, rid, t0)
                 return
         except Exception:
             self._json(500, {"error": "internal error"}, rid, t0)
@@ -397,12 +400,13 @@ def _reject(data):
 
 
 def _execute(data):
-    from tanuq import agent_adapter
-    return agent_adapter.execute(
-        SERVICE.env,
-        data.get("fingerprint"),
+    from tanuq.coordinator import OperationCoordinator
+    result = OperationCoordinator(SERVICE.env).execute(
+        fingerprint=data.get("fingerprint"),
         run_all=bool(data.get("all")),
+        session=data.get("session"),
     )
+    return result, bool(result.get("in_flight"))
 
 
 def _dashboard():

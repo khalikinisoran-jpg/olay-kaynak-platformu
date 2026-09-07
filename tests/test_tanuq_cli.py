@@ -175,3 +175,53 @@ def test_verify_reports_valid_chain(workspace, capsys):
     out = capsys.readouterr().out
     assert "Evidence chain:  VALID" in out
     assert "Anchor:          ACTIVE" in out
+
+
+def test_execute_uses_coordinator_delegation(workspace, capsys, monkeypatch):
+    """Faz 2b: CLI execute must route through OperationCoordinator."""
+    from tanuq.coordinator import OperationCoordinator
+
+    _feed_proposal(workspace, monkeypatch, {
+        "path": str(workspace / "demo.txt"),
+        "old_content": "hello",
+        "new_content": "hello v2",
+        "reason": "delegation probe",
+    })
+    calls = {}
+    sentinel = {"executed": True, "terminal": "FAKE_TERMINAL",
+                "failure_stage": "", "apply_success": True,
+                "verification_passed": True, "patches": []}
+
+    class FakeCoordinator:
+        def __init__(self, env):
+            calls["env_is_same"] = env is not None
+        def execute(self, fingerprint=None, run_all=False, session=None):
+            calls["fingerprint"] = fingerprint
+            calls["run_all"] = run_all
+            calls["session"] = session
+            return sentinel
+
+    monkeypatch.setattr(
+        "tanuq.coordinator.OperationCoordinator", FakeCoordinator
+    )
+    exit_code = cli.main(["execute", "--workspace", str(workspace)])
+    assert exit_code == 1  # FAKE_TERMINAL is not a verified state
+    assert calls["env_is_same"] is True
+    assert calls["run_all"] is False
+    assert calls["session"] is None
+    out = capsys.readouterr().out
+    assert "terminal state: FAKE_TERMINAL" in out
+
+
+def test_execute_cli_cannot_bypass_governance(workspace, capsys, monkeypatch):
+    """Onaysiz HIGH proposal: CLI -> coordinator -> DENIED (approval)."""
+    _feed_proposal(workspace, monkeypatch, {
+        "path": str(workspace / "demo.txt"),
+        "old_content": "hello",
+        "new_content": 'hello\napi_key = "sk-test-aaaaaaaaaaaaaaaa"\n',
+        "reason": "cli apply",
+    })
+    assert cli.main(["execute", "--workspace", str(workspace)]) == 1
+    out = capsys.readouterr().out
+    assert "terminal state: DENIED" in out
+    assert (workspace / "demo.txt").read_text(encoding="utf-8") == "hello"

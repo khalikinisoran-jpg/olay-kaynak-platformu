@@ -163,6 +163,32 @@ Every outcome (including rollbacks and denials) is appended to the
 hash-chained, anchored evidence journals and is visible via
 `tanuq history` / `tanuq verify` / the UI.
 
+### Execution orchestration (OperationCoordinator)
+
+Both `tanuq execute` (CLI) and `POST /api/execute` (Web UI) route
+through a single orchestration surface — `OperationCoordinator.execute()`
+— which delegates to the same governed pipeline. The coordinator is
+**not** a governance authority: it never grants, consumes, applies or
+recomputes a decision; validation, risk, approval, apply-boundary
+authorization, verification and rollback all run inside the existing
+governed chain unchanged.
+
+If the same selector is already executing, the second call is rejected
+as an **orchestration conflict** (fail-closed; this is not a governance
+decision):
+
+| Surface | Behavior |
+|---|---|
+| CLI | `Tanuq: an execution for this selector is already in flight.` + `Fail-closed: wait for the running execution to finish, then retry.` — exit `1` |
+| Web `POST /api/execute` | **HTTP 409 CONFLICT** with JSON body `{"executed": false, "in_flight": true, "error": "...", "terminal": null}` |
+
+The Web execute request additionally accepts an optional additive
+`"session"` field (same semantics as CLI `--session`). All other
+response codes are unchanged: `200` (normal result), `403` (missing or
+invalid `X-TANUQ-Token`), `400` (malformed JSON), `413` (payload too
+large). The in-flight slot is RAM-only and process-local; durable
+reality remains the four hash-chained journals.
+
 ---
 
 ## Tanuq limits (honest)

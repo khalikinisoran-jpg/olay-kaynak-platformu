@@ -103,6 +103,13 @@ treated as verification success:
   `ROLLED_BACK`
 - out of scope / policy → `DENIED`
 
+If you run `tanuq execute` while another execution for the same
+selection is still running, Tanuq refuses the second run (fail-closed):
+`an execution for this selector is already in flight` — wait for the
+running execution to finish, then retry. In the Web UI the equivalent
+request returns **HTTP 409 CONFLICT**. This is an orchestration
+conflict only; it is never a governance or authorization decision.
+
 ### 4. Inspect history and evidence
 
 ```bash

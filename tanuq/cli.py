@@ -178,7 +178,6 @@ def cmd_approve(args) -> int:
 
 
 def cmd_execute(args) -> int:
-    from tanuq import agent_adapter
     env = _load_env_or_error_quiet(args.workspace)
     ws = env.workspace
     pending = load_pending(ws)
@@ -196,10 +195,20 @@ def cmd_execute(args) -> int:
             "one. Use --all for the whole queue or --fingerprint for a "
             "specific proposal."
         )
-    response = agent_adapter.execute(
-        env, args.fingerprint, run_all=args.all, session=args.session
+    from tanuq.coordinator import OperationCoordinator
+    response = OperationCoordinator(env).execute(
+        fingerprint=args.fingerprint,
+        run_all=args.all,
+        session=args.session,
     )
     if response.get("error"):
+        if response.get("in_flight"):
+            print(f"Tanuq: {response['error']}.")
+            print(
+                "Fail-closed: wait for the running execution to finish, "
+                "then retry."
+            )
+            return 1
         return _fail(response["error"])
     state, stage = response["terminal"], response["failure_stage"]
     print("=" * 60)

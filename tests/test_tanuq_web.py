@@ -175,3 +175,63 @@ def test_dashboard_shows_governed_active(ui_server):
     assert body["governed"] is True
     assert body["anchor"] == "ACTIVE"
     assert body["limits"]["os_sandbox"] is False
+
+
+def test_execute_endpoint_uses_coordinator_delegation(ui_server, monkeypatch):
+    ws, token, base = ui_server
+    import tanuq.coordinator as coord_module
+
+    calls = {}
+    sentinel = {"executed": True, "terminal": "FAKE_TERMINAL"}
+
+    class FakeCoordinator:
+        def __init__(self, env):
+            calls["env"] = env
+        def execute(self, fingerprint=None, run_all=False, session=None):
+            calls.update(fingerprint=fingerprint, run_all=run_all,
+                         session=session)
+            return sentinel
+
+    monkeypatch.setattr(
+        coord_module, "OperationCoordinator", FakeCoordinator
+    )
+    status, body = _request(base, "/api/execute", token=token, payload={})
+    assert status == 200
+    assert body == sentinel
+    assert calls["run_all"] is False
+    assert calls["session"] is None
+
+
+def test_execute_endpoint_conflict_returns_409(ui_server, monkeypatch):
+    ws, token, base = ui_server
+    import tanuq.coordinator as coord_module
+
+    class BusyCoordinator:
+        def __init__(self, env):
+            pass
+        def execute(self, fingerprint=None, run_all=False, session=None):
+            return {"executed": False, "in_flight": True,
+                    "error": "an execution for this selector is already "
+                             "in flight", "terminal": None}
+
+    monkeypatch.setattr(
+        coord_module, "OperationCoordinator", BusyCoordinator
+    )
+    status, body = _request(base, "/api/execute", token=token, payload={})
+    assert status == 409
+    assert body["in_flight"] is True
+
+
+def test_execute_endpoint_cannot_bypass_governance(ui_server):
+    ws, token, base = ui_server
+    target = str(ws / "demo.txt")
+    status, body = _request(base, "/api/propose", token=token, payload={
+        "path": target, "old_content": "hello",
+        "new_content": 'hello\napi_key = "sk-test-aaaaaaaaaaaaaaaa"\n',
+        "reason": "cli apply",
+    })
+    assert body["proposals"][0]["state"] == "APPROVAL_REQUIRED"
+    status, body = _request(base, "/api/execute", token=token, payload={})
+    assert body["terminal"] == "DENIED"
+    assert body["failure_stage"] == "approval"
+    assert (ws / "demo.txt").read_text(encoding="utf-8") == "hello"
