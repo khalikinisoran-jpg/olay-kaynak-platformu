@@ -107,6 +107,18 @@ class OperationCoordinator:
             "limits": dict(_LIMITS),
         }
 
+    # ---- propose orchestration (delegation only) ----
+
+    def propose(self, payload_text, session=None):
+        """Delegate to agent_adapter.propose (no authority).
+
+        Translates the generic proposal payload through the existing
+        governance evaluation + pending registration chain and returns
+        the machine-readable verdict unchanged.
+        """
+        from tanuq import agent_adapter
+        return agent_adapter.propose(self.env, payload_text, session=session)
+
     # ---- execute orchestration (delegation only; RAM-only state) ----
 
     def _in_flight_key(self, fingerprint, run_all):

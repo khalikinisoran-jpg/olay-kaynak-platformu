@@ -332,7 +332,7 @@ def _evaluate_patch(patch):
 
 
 def _propose(data):
-    from tanuq import agent_adapter
+    from tanuq.coordinator import OperationCoordinator
     items = data.get("proposals")
     if items is None and data.get("path"):
         items = [data]
@@ -340,9 +340,13 @@ def _propose(data):
         return {"error": "proposal JSON with path/old_content/new_content required"}
     session = data.get("session")
     try:
-        response = agent_adapter.propose(SERVICE.env, json.dumps(items), session=session)
-    except agent_adapter.ProtocolError as exc:
-        return {"error": str(exc)}
+        response = OperationCoordinator(SERVICE.env).propose(
+            json.dumps(items), session=session)
+    except Exception as exc:
+        from tanuq.agent_adapter import ProtocolError
+        if isinstance(exc, ProtocolError):
+            return {"error": str(exc)}
+        raise
     return response
 
 

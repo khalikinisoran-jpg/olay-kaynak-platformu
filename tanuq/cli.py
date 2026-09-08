@@ -105,7 +105,7 @@ def cmd_init(args) -> int:
 
 
 def cmd_propose(args) -> int:
-    from tanuq import agent_adapter
+    from tanuq.coordinator import OperationCoordinator
     env = _load_env_or_error_quiet(args.workspace)
     ws = env.workspace
     if args.stdin_json:
@@ -126,9 +126,13 @@ def cmd_propose(args) -> int:
             "new_content": args.new_content,
         }])
     try:
-        response = agent_adapter.propose(env, payload_text, session=args.session)
-    except agent_adapter.ProtocolError as exc:
-        return _fail(str(exc))
+        response = OperationCoordinator(env).propose(
+            payload_text, session=args.session)
+    except Exception as exc:
+        from tanuq.agent_adapter import ProtocolError
+        if isinstance(exc, ProtocolError):
+            return _fail(str(exc))
+        raise
     results = response["proposals"]
     if args.json:
         print(json.dumps(response, ensure_ascii=False, indent=2))
