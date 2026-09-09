@@ -467,6 +467,8 @@ def test_verification_executor_builds_safe_command_args():
         "-m",
         "pytest",
         "-q",
+        "-p",
+        "no:cacheprovider",
         "tests/sample_test.py",
         "tests/util_test.py",
     )

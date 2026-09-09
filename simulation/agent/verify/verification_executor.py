@@ -106,11 +106,23 @@ class VerificationExecutor:
         test_targets
     ) -> VerificationResult:
 
+        # ``-p no:cacheprovider`` prevents the pytest cacheprovider
+        # plugin from calling tempfile.mkdtemp() during
+        # pytest_sessionfinish. On Windows, under the Tanuq runtime
+        # parent after os.replace + fsync, this call intermittently
+        # blocks on filesystem I/O (minifilter scan window), keeping
+        # the child alive past the verification timeout and turning
+        # VERIFIED outcomes into spurious ROLLED_BACKs. Disabling
+        # cacheprovider does not affect test correctness: the cache
+        # is only a session-level convenience, not a verification
+        # result source.
         command = self._argv(
             self.python_executable,
             "-m",
             "pytest",
             "-q",
+            "-p",
+            "no:cacheprovider",
             *test_targets,
         )
 
