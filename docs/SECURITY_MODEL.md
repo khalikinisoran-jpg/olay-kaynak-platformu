@@ -1322,6 +1322,39 @@ behaviour.
 **STATUS: VERIFIED (MISSION-O).** Full suite **902 passed / 12
 skipped**; `compileall` exit 0; `git diff --check` clean.
 
+## 29. Tanuq Verification Profile (related-tests-v1)
+
+- In the Tanuq product flow a governed execute selects its pytest
+  targets deterministically from the governed patch path
+  (convention-based: a patched test module verifies itself; otherwise
+  `test_<stem>.py` / `<stem>_test.py` in the workspace root or
+  `tests/`). The agent cannot choose its own verifiers — only the
+  patch target influences selection, the candidate set is bounded and
+  capped (`MAX_RELATED_TEST_TARGETS = 16`). **VERIFIED** —
+  `tests/test_tanuq_verification_profile.py`.
+- No candidate outside the workspace is ever selected and `.tanuq`
+  itself is never a candidate; when no related test exists the
+  selection falls back to the guaranteed dummy floor under `.tanuq`
+  (`dummy_floor` mode). **VERIFIED** — same test file.
+- Symlink containment: a candidate is selected only if its RESOLVED
+  path is still inside the workspace; a symlinked/junctioned
+  `tests/` directory or test file pointing outside is silently
+  skipped. **VERIFIED** on Windows via the unprivileged junction
+  (reparse-point) test; symlink variants skip on accounts without
+  symlink privilege.
+- `VerificationExecutor` remains the ONLY pass/fail authority; the
+  profile adds target selection only (no decision authority).
+  Timeout, exit-code-5-is-FAIL and `-p no:cacheprovider` are
+  unchanged. **VERIFIED** — `tests/verification_executor_test.py`.
+- The journaled verification event records the executed commands AND
+  the verification profile (`profile` / `mode` / `test_targets`)
+  exactly as used in the same execute flow — never recomputed and
+  never sourced from the agent. **VERIFIED** — journal correlation
+  tests in `tests/test_tanuq_verification_profile.py`.
+- Fail-closed preserved: a failing, timed-out or missing related test
+  yields FAIL -> ROLLED_BACK exactly as before. **VERIFIED** —
+  `test_failing_related_test_rolls_back_fail_closed`.
+
 ---
 
 ## Overall Security Posture

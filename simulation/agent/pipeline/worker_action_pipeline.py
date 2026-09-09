@@ -357,6 +357,7 @@ class WorkerActionPipeline:
         worker_result: WorkerResult,
         verify_paths=None,
         test_targets=(),
+        verification_profile=None,
         attempt=None
     ) -> WorkerPipelineResult:
 
@@ -646,6 +647,7 @@ class WorkerActionPipeline:
                         worker_result.task_id,
                         patch,
                         pipeline_result.verification,
+                        verification_profile=verification_profile,
                     )
 
                 if pipeline_result.rollback is not None:

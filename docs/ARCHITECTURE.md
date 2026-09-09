@@ -231,6 +231,16 @@ approval metadata is never authority. Grants are recorded as
   depths are tested (MISSION-011); the risk policy currently selects
   `compile+tests` for every non-deny level.
 - `CommandRunner`: subprocess.run with timeout; captures stdout/stderr.
+- Tanuq product flow (verification profile `related-tests-v1`):
+  pytest targets are selected deterministically from the governed
+  patch path — convention-based (`test_<stem>.py` / `<stem>_test.py`
+  in the workspace root or `tests/`, or the patched test module
+  itself), resolved-path workspace containment only (symlink/junction
+  escapes skipped), dummy-floor fallback under `.tanuq`.
+  `VerificationExecutor` stays the sole pass/fail authority, and the
+  journaled verification event records both the executed commands and
+  the profile used in the same execute flow. **VERIFIED** —
+  `tests/test_tanuq_verification_profile.py`.
 
 ---
 

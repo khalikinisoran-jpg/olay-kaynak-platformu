@@ -26,6 +26,7 @@ from simulation.security.path_policy import PathPolicy
 from tanuq.config import APPROVAL_TTL_SECONDS
 from tanuq.evidence import terminal_state
 from tanuq.pending import load_pending, patch_from_record, remove_pending, save_pending
+from tanuq.verification_profile import select_test_targets
 
 REQUIRED_FIELDS = ("path", "old_content", "new_content")
 ALLOWED_ACTIONS = ("modify",)
@@ -265,7 +266,9 @@ def execute(env, fingerprint=None, run_all=False, session=None):
             "error": f"pending proposal could not be reconstructed: {exc}",
             "terminal": None,
         }
-    dummy = env.ensure_dummy_test()
+    test_targets, verification_profile = select_test_targets(
+        env, [p.path for p in patches]
+    )
     selected_sessions = sorted({
         r.get("session", "") for r in pending if r.get("session")
     })
@@ -284,7 +287,8 @@ def execute(env, fingerprint=None, run_all=False, session=None):
             patches=tuple(patches),
         ),
         verify_paths=[str(env.workspace)],
-        test_targets=(str(dummy),),
+        test_targets=test_targets,
+        verification_profile=verification_profile,
     )
     state, stage = terminal_state(result)
     fingerprints = [p.fingerprint() for p in patches]
@@ -317,6 +321,7 @@ def execute(env, fingerprint=None, run_all=False, session=None):
         "failure_stage": stage,
         "apply_success": bool(result.apply_success) if result else False,
         "verification_passed": bool(result.verification_passed) if result else False,
+        "verification_profile": verification_profile,
         "patches": [
             {"path": p.path, "fingerprint": p.fingerprint(), "fingerprint_short": p.fingerprint()[:12]}
             for p in patches

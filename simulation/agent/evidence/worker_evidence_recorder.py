@@ -281,7 +281,8 @@ class WorkerEvidenceRecorder:
         self,
         task_id,
         patch,
-        verification_result
+        verification_result,
+        verification_profile=None,
     ):
 
         passed = bool(verification_result.passed)
@@ -293,7 +294,22 @@ class WorkerEvidenceRecorder:
             "passed": passed,
             "exit_code": verification_result.exit_code,
             "failure_reason": verification_result.failure_reason,
+            "commands": [
+                {
+                    "stage": evidence.stage,
+                    "command": list(evidence.command),
+                }
+                for evidence in verification_result.evidence
+            ],
         }
+
+        if verification_profile is not None:
+
+            # Supplied by the caller that selected the test targets in
+            # the SAME execute flow (never recomputed here). Explains
+            # WHY the recorded commands were chosen. Metadata only:
+            # no patch content, no verification output.
+            payload["verification_profile"] = verification_profile
 
         event_type = (
             WorkerEventType.VERIFICATION_COMPLETED

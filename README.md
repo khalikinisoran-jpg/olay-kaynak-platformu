@@ -15,6 +15,23 @@ tanuq status
 
 See `docs/QUICKSTART.md` and `docs/USER_GUIDE.md`.
 
+### What `VERIFIED` means (Tanuq)
+
+A governed Tanuq execute verifies in two stages: `compileall -q -f`
+over the protected workspace, then pytest over real workspace tests
+selected deterministically from the patch path (`related-tests-v1`
+profile: a patched test module verifies itself; otherwise
+`test_<stem>.py` / `<stem>_test.py` in the workspace root or
+`tests/`). Only resolved paths inside the workspace qualify — a
+symlink/junction pointing outside is skipped — and the agent cannot
+choose its own verifiers. With no matching test, selection falls back
+to the guaranteed dummy floor under `.tanuq` (`dummy_floor` mode).
+`VerificationExecutor` remains the only pass/fail authority (120s
+timeout, pytest exit code 5 is FAIL); a failing verification rolls
+the change back. The journaled evidence records both the executed
+commands and the verification profile actually used. **VERIFIED** —
+`tests/test_tanuq_verification_profile.py`.
+
 ---
 
 > **Building trustworthy AI through Event Sourcing, Replay, and Verification.**
