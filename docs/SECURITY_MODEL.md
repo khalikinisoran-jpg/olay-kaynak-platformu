@@ -1326,11 +1326,29 @@ skipped**; `compileall` exit 0; `git diff --check` clean.
 
 - In the Tanuq product flow a governed execute selects its pytest
   targets deterministically from the governed patch path
-  (convention-based: a patched test module verifies itself; otherwise
-  `test_<stem>.py` / `<stem>_test.py` in the workspace root or
-  `tests/`). The agent cannot choose its own verifiers — only the
-  patch target influences selection, the candidate set is bounded and
-  capped (`MAX_RELATED_TEST_TARGETS = 16`). **VERIFIED** —
+  (convention-based: `test_<stem>.py` / `<stem>_test.py` in the
+  workspace root or `tests/`). The agent cannot choose its own
+  verifiers — only the patch target influences selection, the
+  candidate set is bounded and capped (`MAX_RELATED_TEST_TARGETS = 16`).
+  **VERIFIED** — `tests/test_tanuq_verification_profile.py`.
+- RT-1 (R1) selection integrity: a candidate that is itself a pending
+  patch target of the same execution is excluded — a patch can never
+  be verified by content it (or a same-run companion patch) just
+  wrote; excluded selections fall back to the dummy floor.
+  **VERIFIED** — `tests/test_tanuq_verification_profile.py` (RT-1
+  section).
+- RT-1 (G1) authorization gate: modifying an EXISTING verification
+  test module (`test_*.py` / `*_test.py` / `conftest.py`) is a
+  Governance Core risk signal
+  (`modifies_existing_test_module`) elevated to HIGH, so the
+  weakening of a verifier requires human authorization
+  (Human=AUTHORIZATION). New-file creation is not auto-approved by
+  this gate (it is handled by the normal validation/apply gates).
+  Known residual: verification-auxiliary files outside the test
+  naming convention (imported helpers) are not covered; pre-existing
+  weak tests predate the gate. **VERIFIED** —
+  `tests/governance_evaluator_test.py` (RT-1 G1 section) +
+  governed-chain exploit regression in
   `tests/test_tanuq_verification_profile.py`.
 - No candidate outside the workspace is ever selected and `.tanuq`
   itself is never a candidate; when no related test exists the
@@ -1351,6 +1369,17 @@ skipped**; `compileall` exit 0; `git diff --check` clean.
   exactly as used in the same execute flow — never recomputed and
   never sourced from the agent. **VERIFIED** — journal correlation
   tests in `tests/test_tanuq_verification_profile.py`.
+- Verification subprocess ISOLATION (RT-2): the pytest invocation uses
+  an explicit Tanuq-owned config (`-c`) so workspace configuration
+  (pyproject.toml / pytest.ini / tox.ini / setup.cfg `addopts`) cannot
+  steer verification (e.g. `--collect-only` cannot fake VERIFIED);
+  `--confcutdir` bounds conftest loading to the protected path
+  (legitimate workspace conftests still load), and
+  `PYTEST_ADDOPTS` / `PYTEST_PLUGINS` are scrubbed from the subprocess
+  environment. Verification execution authority stays with Tanuq;
+  workspace configuration and inherited environment cannot steer it.
+  **VERIFIED** — adversarial regression tests in
+  `tests/verification_executor_test.py` (RT-2 section).
 - Fail-closed preserved: a failing, timed-out or missing related test
   yields FAIL -> ROLLED_BACK exactly as before. **VERIFIED** —
   `test_failing_related_test_rolls_back_fail_closed`.

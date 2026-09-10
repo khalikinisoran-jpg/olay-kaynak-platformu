@@ -320,3 +320,66 @@ def test_gateway_reuses_shared_evaluator():
 
     assert gateway.governance is evaluator
     assert gateway.risk_engine is custom_engine
+
+
+# ---- RT-1 (G1): modifying an EXISTING verification test module
+# requires human authorization ----
+
+
+def _rt1_patch(tmp_path, name="test_guard.py", create=True):
+    target = tmp_path / name
+    if create:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("assert True\n", encoding="utf-8")
+    return PatchProposal(
+        path=str(target),
+        action="modify",
+        reason="RT-1 G1 gate test.",
+        old_content="assert True\n",
+        new_content="assert False\n",
+        allowed_paths=(str(tmp_path),),
+    )
+
+
+def test_modifying_existing_test_module_requires_human_approval(tmp_path):
+    decision = GovernanceEvaluator().evaluate(
+        _rt1_patch(tmp_path, name="test_guard.py")
+    )
+    assert decision.allowed is True
+    assert decision.requires_human_approval is True
+    assert decision.risk_level == RiskLevel.HIGH
+    assert any(
+        signal[0] == "modifies_existing_test_module"
+        for signal in decision.assessment.signals
+    )
+
+
+def test_modifying_existing_conftest_requires_human_approval(tmp_path):
+    decision = GovernanceEvaluator().evaluate(
+        _rt1_patch(tmp_path, name="conftest.py")
+    )
+    assert decision.requires_human_approval is True
+    assert decision.risk_level == RiskLevel.HIGH
+
+
+def test_nonexistent_test_module_is_not_elevated(tmp_path):
+    decision = GovernanceEvaluator().evaluate(
+        _rt1_patch(tmp_path, name="test_new.py", create=False)
+    )
+    assert decision.requires_human_approval is False
+    assert decision.risk_level != RiskLevel.HIGH
+    assert not any(
+        signal[0] == "modifies_existing_test_module"
+        for signal in decision.assessment.signals
+    )
+
+
+def test_modifying_existing_non_test_file_is_not_elevated(tmp_path):
+    decision = GovernanceEvaluator().evaluate(
+        _rt1_patch(tmp_path, name="helper_impl.py")
+    )
+    assert decision.requires_human_approval is False
+    assert not any(
+        signal[0] == "modifies_existing_test_module"
+        for signal in decision.assessment.signals
+    )

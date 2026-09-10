@@ -1,6 +1,7 @@
 import os
 import sys
 import tempfile
+from pathlib import Path
 
 from simulation.agent.verify.command_runner import (
     CommandResult,
@@ -33,6 +34,15 @@ class VerificationExecutor:
       subprocess is redirected to a temporary directory via
       ``PYTHONPYCACHEPREFIX`` so verification does not mutate the
       repository it verifies.
+    - The subprocess is ISOLATED from verification steering vectors:
+      an explicit Tanuq-owned pytest config (``-c``) replaces workspace
+      config discovery (pyproject.toml / pytest.ini / tox.ini /
+      setup.cfg addopts cannot alter the invocation), ``--confcutdir``
+      bounds conftest loading to the protected path, and
+      pytest-steering environment variables (``PYTEST_ADDOPTS``,
+      ``PYTEST_PLUGINS``) are scrubbed from the subprocess
+      environment. A failing test can therefore never be reported as
+      VERIFIED by configuration alone.
     """
 
     DEFAULT_TIMEOUT = 120
@@ -77,6 +87,8 @@ class VerificationExecutor:
 
         self._pycache_prefix = None
 
+        self._config_dir = None
+
     def verify_python_compile(
         self,
         paths
@@ -103,7 +115,8 @@ class VerificationExecutor:
 
     def verify_tests(
         self,
-        test_targets
+        test_targets,
+        confcutdir=None
     ) -> VerificationResult:
 
         # ``-p no:cacheprovider`` prevents the pytest cacheprovider
@@ -116,6 +129,13 @@ class VerificationExecutor:
         # cacheprovider does not affect test correctness: the cache
         # is only a session-level convenience, not a verification
         # result source.
+        #
+        # ``-c`` points pytest at a Tanuq-owned config file so
+        # workspace configuration (pyproject.toml / pytest.ini /
+        # tox.ini / setup.cfg ``addopts``) cannot steer the
+        # invocation (RT-2). ``--confcutdir`` bounds conftest loading
+        # to the protected path so legitimate workspace conftests
+        # still resolve while nothing outside is pulled in.
         command = self._argv(
             self.python_executable,
             "-m",
@@ -123,6 +143,9 @@ class VerificationExecutor:
             "-q",
             "-p",
             "no:cacheprovider",
+            "-c",
+            self._pytest_config_file(),
+            *(["--confcutdir", str(confcutdir)] if confcutdir else []),
             *test_targets,
         )
 
@@ -152,7 +175,8 @@ class VerificationExecutor:
             )
 
         test_result = self.verify_tests(
-            test_targets
+            test_targets,
+            confcutdir=self._confcutdir(paths),
         )
 
         stages.append(test_result)
@@ -241,6 +265,10 @@ class VerificationExecutor:
         cache away from the repository so compileall/pytest do not
         mutate ``__pycache__`` directories inside the tree under
         verification.
+
+        ``PYTEST_ADDOPTS`` and ``PYTEST_PLUGINS`` are scrubbed so an
+        inherited environment cannot steer pytest invocation behavior
+        (RT-2): verification flags come only from this executor.
         """
 
         if self._pycache_prefix is None:
@@ -253,7 +281,58 @@ class VerificationExecutor:
 
         env["PYTHONPYCACHEPREFIX"] = self._pycache_prefix
 
+        env.pop("PYTEST_ADDOPTS", None)
+
+        env.pop("PYTEST_PLUGINS", None)
+
         return env
+
+    def _pytest_config_file(self) -> str:
+
+        """Tanuq-owned pytest config used via ``-c``.
+
+        Lives in a private temp directory so workspace configuration
+        files (pyproject.toml / pytest.ini / tox.ini / setup.cfg) are
+        never consulted by the verification subprocess. The config is
+        intentionally empty: the executor's own argv is the single
+        source of invocation behavior.
+        """
+
+        if self._config_dir is None:
+
+            self._config_dir = tempfile.mkdtemp(
+                prefix="esp-verify-cfg-"
+            )
+
+            config = Path(self._config_dir) / "pytest.ini"
+
+            config.write_text(
+                "[pytest]\n",
+                encoding="utf-8",
+            )
+
+        return str(Path(self._config_dir) / "pytest.ini")
+
+    def _confcutdir(self, paths):
+
+        """Conftest loading boundary for the tests stage.
+
+        The first verify path's directory (workspace in the Tanuq
+        flow) bounds conftest collection: conftests inside the
+        protected path still resolve, nothing outside does.
+        """
+
+        if not paths:
+
+            return None
+
+        boundary = Path(paths[0])
+
+        if not boundary.is_dir():
+
+            boundary = boundary.parent
+
+        return boundary
 
     def _failure_reason(
         self,

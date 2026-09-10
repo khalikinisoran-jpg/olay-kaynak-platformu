@@ -533,6 +533,30 @@ class RiskEngine:
                     RiskLevel.HIGH,
                 )
 
+            # RT-1 (G1): an EXISTING verification test module is part
+            # of the verification mechanism. Modifying it without
+            # human authorization lets the writer weaken its own
+            # future verifiers (self-verifier exploit), so the
+            # modification is elevated to HIGH (human approval
+            # required by policy). Existence is checked at
+            # classification time; creation of new files is handled
+            # by the normal validation/apply gates.
+            if (
+                RiskEngine._is_test_module_name(
+                    Path(path_text).name
+                )
+                and Path(raw_path).exists()
+            ):
+
+                signals.append(
+                    ("modifies_existing_test_module", path_text)
+                )
+
+                level = RiskLevel.max_level(
+                    level,
+                    RiskLevel.HIGH,
+                )
+
         old_content = getattr(patch, "old_content", "")
 
         new_content = getattr(patch, "new_content", "")
@@ -619,6 +643,51 @@ class RiskEngine:
 
     @staticmethod
     def _has_sensitive_fragment(path_text):
+
+        """Sensitive-path detection with targeted boundary matching.
+
+        The short, ambiguous fragments (``auth``, ``token``,
+        ``secret``) only raise risk when they appear as delimited path
+        tokens, so ordinary words that merely contain them
+        (``authentication.py``, ``tokenizer.py``, ``secretary.py``)
+        are not over-classified. Longer fragments (``credential``,
+        ``password``, ``.env``, ...) keep substring matching so
+        ``credentials.py`` and ``config.env`` stay sensitive.
+        """
+
+        for fragment in SECURITY_SENSITIVE_FRAGMENTS:
+
+            if fragment in _TOKEN_BOUNDARY_FRAGMENTS:
+
+                if RiskEngine._boundary_search(
+                    path_text,
+                    fragment,
+                ):
+
+                    return True
+
+            elif fragment in path_text:
+
+                return True
+
+        return False
+
+    @staticmethod
+    def _is_test_module_name(name):
+
+        """RT-1 (G1): verification test-module naming convention.
+
+        Mirrors the verification target selection convention
+        (``test_*.py`` / ``*_test.py``) plus ``conftest.py``.
+        """
+
+        return name == "conftest.py" or (
+            name.endswith(".py")
+            and (
+                name.startswith("test_")
+                or name.endswith("_test.py")
+            )
+        )
 
         """Sensitive-path detection with targeted boundary matching.
 

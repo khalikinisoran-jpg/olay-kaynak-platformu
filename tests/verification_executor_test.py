@@ -469,6 +469,10 @@ def test_verification_executor_builds_safe_command_args():
         "-q",
         "-p",
         "no:cacheprovider",
+        "-c",
+        executor._pytest_config_file(),
+        "--confcutdir",
+        "simulation",
         "tests/sample_test.py",
         "tests/util_test.py",
     )
@@ -668,3 +672,152 @@ def test_verification_executor_compiles_real_python_file(
         )
         == original
     )
+
+
+# ---- RT-2: verification subprocess isolation (steering vectors) ----
+
+
+def _rt2_workspace(tmp_path, mod_value, test_assert_value):
+
+    (tmp_path / "mod.py").write_text(
+        f"x = {mod_value}\n",
+        encoding="utf-8",
+    )
+
+    tests = tmp_path / "tests"
+
+    tests.mkdir(exist_ok=True)
+
+    (tests / "test_mod.py").write_text(
+        "from pathlib import Path\n\n\n"
+        "def test_mod_state():\n"
+        "    target = Path(__file__).resolve().parent.parent / 'mod.py'\n"
+        f"    assert '{test_assert_value}' in "
+        "target.read_text(encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+
+    return str(tmp_path), str(tests / "test_mod.py")
+
+
+def test_pytest_addopts_env_cannot_steer_verification(
+    tmp_path, monkeypatch
+):
+
+    workspace, target = _rt2_workspace(
+        tmp_path, mod_value=2, test_assert_value=1
+    )
+
+    monkeypatch.setenv("PYTEST_ADDOPTS", "--collect-only")
+
+    result = VerificationExecutor().verify(
+        paths=[workspace],
+        test_targets=[target],
+    )
+
+    assert result.status == "FAIL"
+
+    assert result.exit_code != 0
+
+    assert "1 passed" not in (result.stdout or "")
+
+
+def test_pytest_steering_env_vars_are_scrubbed(monkeypatch):
+
+    monkeypatch.setenv("PYTEST_ADDOPTS", "--collect-only")
+
+    monkeypatch.setenv("PYTEST_PLUGINS", "totally_not_a_plugin")
+
+    env = VerificationExecutor()._env()
+
+    assert "PYTEST_ADDOPTS" not in env
+
+    assert "PYTEST_PLUGINS" not in env
+
+
+def test_workspace_pyproject_addopts_cannot_steer_verification(tmp_path):
+
+    workspace, target = _rt2_workspace(
+        tmp_path, mod_value=2, test_assert_value=1
+    )
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.pytest.ini_options]\naddopts = "--collect-only"\n',
+        encoding="utf-8",
+    )
+
+    result = VerificationExecutor().verify(
+        paths=[workspace],
+        test_targets=[target],
+    )
+
+    assert result.status == "FAIL"
+
+
+def test_workspace_pytest_ini_addopts_cannot_steer_verification(tmp_path):
+
+    workspace, target = _rt2_workspace(
+        tmp_path, mod_value=2, test_assert_value=1
+    )
+
+    (tmp_path / "pytest.ini").write_text(
+        '[pytest]\naddopts = "--collect-only"\n',
+        encoding="utf-8",
+    )
+
+    result = VerificationExecutor().verify(
+        paths=[workspace],
+        test_targets=[target],
+    )
+
+    assert result.status == "FAIL"
+
+
+def test_benign_workspace_conftest_still_loads(tmp_path):
+
+    (tmp_path / "conftest.py").write_text(
+        "import pytest\n\n\n"
+        "@pytest.fixture\ndef val():\n"
+        "    return 42\n",
+        encoding="utf-8",
+    )
+
+    tests = tmp_path / "tests"
+
+    tests.mkdir()
+
+    (tests / "test_x.py").write_text(
+        "def test_val(val):\n"
+        "    assert val == 42\n",
+        encoding="utf-8",
+    )
+
+    result = VerificationExecutor().verify(
+        paths=[str(tmp_path)],
+        test_targets=[str(tests / "test_x.py")],
+    )
+
+    assert result.status == "PASS"
+
+    assert "1 passed" in (result.stdout or "")
+
+
+def test_benign_workspace_pytest_config_regression(tmp_path):
+
+    workspace, target = _rt2_workspace(
+        tmp_path, mod_value=2, test_assert_value=2
+    )
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.pytest.ini_options]\naddopts = "-q"\n',
+        encoding="utf-8",
+    )
+
+    result = VerificationExecutor().verify(
+        paths=[workspace],
+        test_targets=[target],
+    )
+
+    assert result.status == "PASS"
+
+    assert "1 passed" in (result.stdout or "")

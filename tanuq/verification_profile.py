@@ -12,7 +12,9 @@ verifiers — only the governed patch target path influences selection):
 
 - only paths inside the protected workspace are considered
 - anything under ``.tanuq`` (the dummy's home) is never a candidate
-- a patched test module verifies itself
+- a patched test module does NOT verify itself (RT-1 R1): candidate
+  files that are pending patch targets of the SAME execution are
+  excluded — a patch can never be verified by content it just wrote
 - otherwise the conventional pairs are checked for existence:
     <ws>/test_<stem>.py         <ws>/<stem>_test.py
     <ws>/tests/test_<stem>.py   <ws>/tests/<stem>_test.py
@@ -99,10 +101,23 @@ def select_test_targets(env, patch_paths):
     JSON-serializable, evidence-facing description of exactly what the
     tests stage verified, so a VERIFIED outcome is deterministically
     interpretable from the result and the recorded evidence alone.
+
+    RT-1 (R1) selection integrity: a candidate whose resolved path is
+    a pending patch target of this execution is excluded — a patch
+    cannot be verified by content it (or a same-run companion patch)
+    just wrote. Excluded candidates fall back to the dummy floor.
     """
+    patch_targets = set()
+    for patch_path in patch_paths:
+        try:
+            patch_targets.add(str(Path(patch_path).resolve()))
+        except OSError:
+            continue
     related = []
     for patch_path in patch_paths:
         for candidate in related_test_candidates(env.workspace, patch_path):
+            if candidate in patch_targets:
+                continue
             related.append(candidate)
         if len(related) >= MAX_RELATED_TEST_TARGETS:
             break

@@ -20,14 +20,19 @@ See `docs/QUICKSTART.md` and `docs/USER_GUIDE.md`.
 A governed Tanuq execute verifies in two stages: `compileall -q -f`
 over the protected workspace, then pytest over real workspace tests
 selected deterministically from the patch path (`related-tests-v1`
-profile: a patched test module verifies itself; otherwise
-`test_<stem>.py` / `<stem>_test.py` in the workspace root or
-`tests/`). Only resolved paths inside the workspace qualify — a
+profile: `test_<stem>.py` / `<stem>_test.py` in the workspace root or
+`tests/`). Two integrity rules apply: a patch can never be verified by
+a test file it (or a same-run companion patch) writes, and modifying an
+EXISTING test module requires single-use human approval. Only resolved
+paths inside the workspace qualify — a
 symlink/junction pointing outside is skipped — and the agent cannot
 choose its own verifiers. With no matching test, selection falls back
 to the guaranteed dummy floor under `.tanuq` (`dummy_floor` mode).
 `VerificationExecutor` remains the only pass/fail authority (120s
-timeout, pytest exit code 5 is FAIL); a failing verification rolls
+timeout, pytest exit code 5 is FAIL); the verification subprocess runs
+with a Tanuq-owned pytest config and scrubbed pytest environment
+variables, so workspace pytest configuration and inherited environment
+cannot steer the outcome. A failing verification rolls
 the change back. The journaled evidence records both the executed
 commands and the verification profile actually used. **VERIFIED** —
 `tests/test_tanuq_verification_profile.py`.

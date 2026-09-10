@@ -63,12 +63,27 @@ def test_related_test_selected_from_workspace_root(env):
     assert profile["mode"] == MODE_RELATED
 
 
-def test_patched_test_file_verifies_itself(env):
+def test_patched_test_module_cannot_verify_itself(env):
+    # RT-1 (R1): a pending patch target is never its own verifier.
     target = env.workspace / "test_mod.py"
     target.write_text("def test_x():\n    assert True\n", encoding="utf-8")
     targets, profile = select_test_targets(env, [str(target)])
-    assert targets == (str(target.resolve()),)
-    assert profile["mode"] == MODE_RELATED
+    assert targets == (_dummy_path(env),)
+    assert profile["mode"] == MODE_DUMMY_FLOOR
+
+
+def test_same_run_patch_target_test_file_is_excluded_for_all_patches(env):
+    # RT-1 (R1): a test file that is a patch target of this execution
+    # cannot verify any other patch in the same run either.
+    test_file = env.workspace / "tests" / "test_mod.py"
+    test_file.parent.mkdir(exist_ok=True)
+    test_file.write_text("def test_x():\n    assert True\n", encoding="utf-8")
+    (env.workspace / "mod.py").write_text("x = 1\n", encoding="utf-8")
+    targets, profile = select_test_targets(
+        env, [str(test_file), str(env.workspace / "mod.py")]
+    )
+    assert targets == (_dummy_path(env),)
+    assert profile["mode"] == MODE_DUMMY_FLOOR
 
 
 def test_no_related_tests_falls_back_to_dummy_floor(env):
@@ -337,3 +352,125 @@ def test_journal_records_exactly_the_used_profile_dummy_floor(env):
     assert journal_profile[0] == response["verification_profile"]
     assert journal_profile[0]["mode"] == MODE_DUMMY_FLOOR
     assert journal_profile[0]["test_targets"] == [_dummy_path(env)]
+
+
+# ---- RT-1 governed-chain exploit regression (R1 + G1) ----
+
+GUARD_TEST = (
+    "from pathlib import Path\n\n\n"
+    "def test_mod_state():\n"
+    "    target = Path(__file__).resolve().parent.parent / 'mod.py'\n"
+    "    assert 'x = 1' in target.read_text(encoding='utf-8')\n"
+)
+TRIVIAL_TEST = "def test_nothing():\n    assert True\n"
+
+
+def _rt1_env(env):
+    (env.workspace / "mod.py").write_text("x = 1\n", encoding="utf-8", newline="")
+    (env.workspace / "tests").mkdir()
+    (env.workspace / "tests" / "test_mod.py").write_text(
+        GUARD_TEST, encoding="utf-8"
+    )
+    return env
+
+
+def test_rt1_a_trivializing_guard_test_requires_human_approval(env):
+    _rt1_env(env)
+    _propose(env, {
+        "path": str(env.workspace / "tests" / "test_mod.py"),
+        "old_content": GUARD_TEST,
+        "new_content": TRIVIAL_TEST,
+        "reason": "fix flaky test",
+    })
+    response = agent_adapter.execute(env)
+    # G1: the guard test may not be weakened without human approval.
+    assert response["terminal"] == "DENIED"
+    assert response["failure_stage"] == "approval"
+    # the guard test content is untouched
+    assert (env.workspace / "tests" / "test_mod.py").read_text(
+        encoding="utf-8"
+    ) == GUARD_TEST
+
+
+def test_rt1_a2_breaking_change_after_denied_trivialization_rolls_back(env):
+    _rt1_env(env)
+    trivialize = _propose(env, {
+        "path": str(env.workspace / "tests" / "test_mod.py"),
+        "old_content": GUARD_TEST,
+        "new_content": TRIVIAL_TEST,
+        "reason": "fix flaky test",
+    })
+    agent_adapter.execute(env)  # DENIED: no approval; record stays pending
+    # the agent targets the change directly by fingerprint (the way an
+    # operator would with `tanuq execute --fingerprint`): the real
+    # guard test is still in place, so it must NOT survive.
+    change = _propose(env, {
+        "path": str(env.workspace / "mod.py"),
+        "old_content": "x = 1\n",
+        "new_content": "x = 999\n",
+        "reason": "feature",
+    })
+    response = agent_adapter.execute(
+        env, fingerprint=change["proposals"][0]["fingerprint"]
+    )
+    assert response["terminal"] == "ROLLED_BACK"
+    assert response["verification_profile"]["mode"] == MODE_RELATED
+    assert (env.workspace / "mod.py").read_text(encoding="utf-8") == "x = 1\n"
+    # the unapproved trivialization never applied
+    assert (env.workspace / "tests" / "test_mod.py").read_text(
+        encoding="utf-8"
+    ) == GUARD_TEST
+
+
+def test_rt1_b_approved_guard_weakening_then_correct_change_is_verified(env):
+    _rt1_env(env)
+    _propose(env, {
+        "path": str(env.workspace / "tests" / "test_mod.py"),
+        "old_content": GUARD_TEST,
+        "new_content": TRIVIAL_TEST,
+        "reason": "fix flaky test",
+    })
+    pending = agent_adapter.load_pending(env.workspace)
+    agent_adapter.approve(env, pending[0]["fingerprint"])
+    r1 = agent_adapter.execute(env)
+    # R1: the test patch cannot verify itself with its own content;
+    # an approved edit falls back to the dummy floor.
+    assert r1["terminal"] == "VERIFIED"
+    assert r1["verification_profile"]["mode"] == MODE_DUMMY_FLOOR
+    # now the production change: the (human-approved) trivial test is
+    # a legitimate related target for it.
+    _propose(env, {
+        "path": str(env.workspace / "mod.py"),
+        "old_content": "x = 1\n",
+        "new_content": "x = 2\n",
+        "reason": "feature",
+    })
+    r2 = agent_adapter.execute(env)
+    assert r2["terminal"] == "VERIFIED"
+    assert r2["verification_profile"]["mode"] == MODE_RELATED
+    assert (env.workspace / "mod.py").read_text(encoding="utf-8") == "x = 2\n"
+
+
+def test_rt1_e_run_all_with_unapproved_test_edit_is_denied(env):
+    _rt1_env(env)
+    _propose(env, {
+        "path": str(env.workspace / "tests" / "test_mod.py"),
+        "old_content": GUARD_TEST,
+        "new_content": TRIVIAL_TEST,
+        "reason": "fix flaky test",
+    })
+    _propose(env, {
+        "path": str(env.workspace / "mod.py"),
+        "old_content": "x = 1\n",
+        "new_content": "x = 999\n",
+        "reason": "feature",
+    })
+    response = agent_adapter.execute(env, run_all=True)
+    # the unapproved guard-weakening edit blocks the coordinated run
+    # at the approval boundary (fail-closed), and nothing lands.
+    assert response["terminal"] == "DENIED"
+    assert response["failure_stage"] == "approval"
+    assert (env.workspace / "mod.py").read_text(encoding="utf-8") == "x = 1\n"
+    assert (env.workspace / "tests" / "test_mod.py").read_text(
+        encoding="utf-8"
+    ) == GUARD_TEST
