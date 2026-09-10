@@ -191,6 +191,61 @@ reality remains the four hash-chained journals.
 
 ---
 
+## Claude Code integration (PreToolUse adapter)
+
+The first vendor-specific translation layer, built on top of the same
+generic protocol above. Claude Code is NOT an authority: the adapter
+is a pure input/output translation layer.
+
+Hook registration (`.claude/settings.json`):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -m tanuq.claude_code_adapter"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Flow:
+
+```text
+Claude Code PreToolUse (Edit tool call)
+↓
+tanuq.claude_code_adapter (translation only)
+↓
+agent_adapter.propose → coordinator.execute → governed pipeline
+↓
+validation → governance → approval → apply → verification → evidence
+↓
+PreToolUse decision (always "deny": the governed channel did the work)
+```
+
+- **Input contract** (Claude Code docs): JSON on stdin with
+  `tool_name: "Edit"` and `tool_input: {file_path, old_string,
+  new_string}`. Anything else (Write, Bash, missing fields, malformed
+  JSON, wrong `hook_event_name`) is **fail-closed DENY**.
+- **Output contract**: exit 0 + `{"hookSpecificOutput":
+  {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+  "permissionDecisionReason": "..."}}`. The reason never contains
+  patch content or secrets — only fingerprint prefixes, state and
+  recommended actions.
+- The adapter never returns `"allow"`: the Edit tool call itself is
+  always cancelled because the governed channel performed (or queued)
+  the change. Low-risk edits are applied and verified automatically;
+  HIGH/CRITICAL edits wait for human approval (`tanuq approve` →
+  `tanuq execute`).
+
 ## Tanuq limits (honest)
 
 - **Governed channel only.** Tanuq governs changes proposed through
@@ -198,7 +253,8 @@ reality remains the four hash-chained journals.
   not intercepted.
 - **No OS sandbox, no network enforcement.**
 - **Evidence is tamper-evident (detectable), not tamper-proof.**
-- Verification is Python-focused (compile + pytest); apply success is
-  never treated as verification success.
+- Verification is Python-focused (compile + pytest over the
+  deterministic `related-tests-v1` profile, dummy-floor fallback);
+  apply success is never treated as verification success.
 - Single local operator ("human-operator"); approvals are not
   attributable to individual humans yet.
