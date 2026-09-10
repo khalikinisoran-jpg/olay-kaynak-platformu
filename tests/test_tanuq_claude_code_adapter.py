@@ -385,3 +385,211 @@ def test_rt6_f_single_use_approval_cannot_verify_twice(env):
     decision, reason = handle_pretooluse(env, _secret_edit(env))
     assert decision == "deny"
     assert "applied and verified" not in reason
+
+# ---- FAZ 6-lite B: cross-source resume (adapter content correlation) ----
+
+SECRET_CONTENT = 'hello\napi_key = "sk-test-aaaaaaaaaaaaaaaa"\n'
+
+
+def _cli_source_propose(env, old="hello", new=SECRET_CONTENT, reason="source-a cli"):
+    """Simulate the CLI source: same governed propose chain, different
+    reason than the adapter uses."""
+    return agent_adapter.propose(env, json.dumps({
+        "path": str(env.workspace / "demo.txt"),
+        "old_content": old,
+        "new_content": new,
+        "reason": reason,
+    }), session="cli-source")
+
+
+def test_rt6_b1_cross_source_approved_retry_resumes_verified(env):
+    """F1 closed: CLI-source proposal + human approval, then a Claude
+    retry with a DIFFERENT reason resumes the SAME fingerprint and
+    reaches a real VERIFIED."""
+    proposal = _cli_source_propose(env)
+    fp_a = proposal["proposals"][0]["fingerprint"]
+    assert proposal["proposals"][0]["state"] == "APPROVAL_REQUIRED"
+    agent_adapter.approve(env, fp_a)
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "applied and verified" in reason
+    assert fp_a[:12] in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == SECRET_CONTENT
+    assert agent_adapter.load_pending(env.workspace) == []
+
+
+def test_rt6_b2_cross_source_retry_without_approval_is_fail_closed(env):
+    _cli_source_propose(env)
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+    # correlation must not create a duplicate pending record
+    assert len(agent_adapter.load_pending(env.workspace)) == 1
+
+
+def test_rt6_b3_wrong_path_is_not_correlated(env):
+    _cli_source_propose(env)
+    decision, reason = handle_pretooluse(env, _edit_input(
+        env, old="hello", new=SECRET_CONTENT,
+    ).replace(str(env.workspace / "demo.txt"),
+              str(env.workspace / "other.txt")))
+    # rebuild the hook input for the other file explicitly
+    payload = json.dumps({
+        "session_id": "sess-123",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": str(env.workspace / "other.txt"),
+            "old_string": "hello",
+            "new_string": SECRET_CONTENT,
+        },
+    })
+    decision, reason = handle_pretooluse(env, payload)
+    assert decision == "deny"
+    # the protected demo.txt pending record is untouched
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+    assert not (env.workspace / "other.txt").exists()
+
+
+def test_rt6_b4_cross_workspace_pending_is_never_used(env):
+    _cli_source_propose(env)
+    other_ws = env.workspace.parent / "ws2"
+    other_ws.mkdir()
+    (other_ws / "demo.txt").write_text("hello", encoding="utf-8", newline="")
+    init_workspace(other_ws)
+    payload = json.dumps({
+        "session_id": "sess-123",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": str(other_ws / "demo.txt"),
+            "old_string": "hello",
+            "new_string": SECRET_CONTENT,
+        },
+    })
+    decision, reason = handle_pretooluse(env, payload)
+    assert decision == "deny"
+    assert (other_ws / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_b5_wrong_content_is_a_different_logical_edit(env):
+    _cli_source_propose(env)  # pending: hello -> SECRET_CONTENT
+    # a DIFFERENT high-risk content: different fingerprint, different
+    # logical edit -> no correlation, no approval match
+    other_high = 'hello v3\napi_key = "sk-test-bbbbbbbbbbbbbbbb"\n'
+    decision, reason = handle_pretooluse(env, _edit_input(
+        env, old="hello", new=other_high))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    assert len(agent_adapter.load_pending(env.workspace)) == 2
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_b6_expired_approval_cannot_resume_cross_source(env):
+    proposal = _cli_source_propose(env)
+    fp_a = proposal["proposals"][0]["fingerprint"]
+    env.approval_store.grant(
+        patch_fingerprint=fp_a,
+        path=proposal["proposals"][0]["path"],
+        action="modify",
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-operator",
+        expires_at="2000-01-01T00:00:00Z",
+    )
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_b7_consumed_approval_cannot_resume_twice(env):
+    proposal = _cli_source_propose(env)
+    fp_a = proposal["proposals"][0]["fingerprint"]
+    agent_adapter.approve(env, fp_a)
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert "applied and verified" in reason  # first resume consumes
+    # re-register the same logical edit and retry: the consumed
+    # approval cannot authorize a second governed run; the stale
+    # proposal fails closed at validation (file already changed)
+    _cli_source_propose(env)
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "applied and verified" not in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == SECRET_CONTENT  # applied exactly once
+
+
+def test_rt6_b10_governance_re_evaluation_runs_on_correlated_resume(env):
+    from simulation.security.governance_evaluator import GovernanceEvaluator
+    from simulation.security.risk_engine import RiskAssessment
+    from simulation.security.risk_level import RiskLevel
+
+    proposal = _cli_source_propose(env)
+    fp_a = proposal["proposals"][0]["fingerprint"]
+    agent_adapter.approve(env, fp_a)
+
+    class ForcedUnknownEngine(GovernanceEvaluator):
+        def classify(self, patch, advisory_risk=None,
+                     advisory_confidence=None):
+            return RiskAssessment(
+                risk_level=RiskLevel.UNKNOWN,
+                reason="rt6-b10 forced governance re-evaluation deny",
+            )
+
+    # the pipeline binds its own evaluator instance at assembly time;
+    # swap it (test-only) to prove the correlated resume actually
+    # re-runs governance inside the governed chain
+    forced = ForcedUnknownEngine()
+    env.governance = forced
+    env.pipeline.governance = forced
+
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "applied and verified" not in reason
+    # governance re-evaluation inside the pipeline denied the correlated
+    # resume (fail-closed), even though a human approval existed
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_b11_ambiguous_matches_fail_closed(env):
+    # two pending records for the same logical edit, different reasons
+    # (legacy duplicates) => two distinct fingerprints => ambiguous
+    _cli_source_propose(env, reason="source-a cli")
+    _cli_source_propose(env, reason="source-b cli")
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "ambiguous" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_b12_evidence_uses_existing_truth_source(env):
+    proposal = _cli_source_propose(env)
+    fp_a = proposal["proposals"][0]["fingerprint"]
+    agent_adapter.approve(env, fp_a)
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert "applied and verified" in reason
+    verification_events = [
+        event for event in env.store.read_all()
+        if "verification" in str(event.event_type).lower()
+        and event.payload.get("passed") is True
+        and event.payload.get("patch_fingerprint") == fp_a
+    ]
+    assert len(verification_events) == 1
+    # the journaled verification command is the REAL executed pytest
+    # invocation (tests stage) from the existing truth source
+    commands = [
+        command["command"]
+        for command in verification_events[0].payload["commands"]
+        if command["stage"] == "tests"
+    ]
+    assert commands and "pytest" in commands[0]

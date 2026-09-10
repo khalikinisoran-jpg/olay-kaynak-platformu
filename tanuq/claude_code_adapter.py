@@ -21,6 +21,16 @@ Claude Code contract (https://code.claude.com/docs/en/hooks):
            "PreToolUse", "permissionDecision": "deny", ...}}
 
 Everything unknown, malformed or out of scope is fail-closed DENY.
+
+FAZ 6-lite B (cross-source resume): before proposing, the adapter
+correlates the incoming edit against EXISTING pending records using
+canonical path + exact old_content + new_content. ``reason`` and
+``session`` are deliberately NOT correlation inputs. A single match
+lets the retry resume the governed execution under that record's
+already-registered fingerprint (the pipeline's approval stage remains
+the only authorization authority); zero matches fall back to the
+normal propose flow; multiple distinct matches are AMBIGUOUS and
+fail-closed DENY. Correlation is never an authorization.
 """
 import json
 
@@ -91,6 +101,55 @@ def pretooluse_response(decision, reason):
     }
 
 
+def _canonical(path_text):
+    """Canonical path for correlation, or None if it cannot resolve."""
+    from pathlib import Path
+
+    try:
+        return str(Path(path_text).resolve())
+    except OSError:
+        return None
+
+
+def _find_pending_match(env, parsed):
+    """FAZ 6-lite B correlation: find an EXISTING pending record for
+    the same logical edit (canonical path + exact old_content +
+    new_content). ``reason`` / ``session`` / ``created_at`` are
+    deliberately NOT compared — they are source metadata, not the
+    change itself.
+
+    Returns ``("matched", fingerprint)`` for exactly one distinct
+    matching fingerprint, ``("ambiguous", None)`` for multiple
+    distinct fingerprints (fail-closed), or ``("none", None)`` when
+    nothing matches. Correlation is NEVER an authorization: the
+    fingerprint is only a reference into the governed chain, which
+    re-runs validation, governance, approval binding and apply
+    authorization itself.
+    """
+    from tanuq.pending import load_pending
+
+    target = _canonical(parsed["file_path"])
+    if target is None:
+        return "none", None
+    matches = []
+    for record in load_pending(env.workspace):
+        record_path = _canonical(str(record.get("path", "")))
+        if record_path is None or record_path != target:
+            continue
+        if record.get("old_content") != parsed["old_string"]:
+            continue
+        if record.get("new_content") != parsed["new_string"]:
+            continue
+        fingerprint = record.get("fingerprint")
+        if fingerprint and fingerprint not in matches:
+            matches.append(fingerprint)
+    if len(matches) == 1:
+        return "matched", matches[0]
+    if len(matches) > 1:
+        return "ambiguous", None
+    return "none", None
+
+
 def handle_pretooluse(env, raw_text, session=None):
     """Full translation flow: hook stdin -> governed chain -> decision.
 
@@ -111,26 +170,37 @@ def handle_pretooluse(env, raw_text, session=None):
     payload = json.dumps(proposal_payload(parsed))
     session_label = session or parsed.get("session_id") or None
 
-    proposal = agent_adapter.propose(env, payload, session=session_label)
-    if proposal.get("denied"):
-        first = proposal["proposals"][0]
+    # FAZ 6-lite B: correlate against existing pending records first.
+    correlation, correlated_fp = _find_pending_match(env, parsed)
+    if correlation == "ambiguous":
         return "deny", (
-            f"Tanuq governance DENIED this edit: "
-            f"{first.get('denial_reason') or first.get('message')}"
+            "Tanuq: multiple pending proposals match this edit; "
+            "ambiguous cross-source resume is fail-closed DENY. "
+            "Resolve with 'tanuq pending' and 'tanuq execute "
+            "--fingerprint'."
         )
 
-    first = proposal["proposals"][0]
-    fingerprint = first["fingerprint"]
+    if correlation == "matched":
+        # Reuse the already-registered fingerprint; do NOT propose
+        # again (no duplicate pending, no second fingerprint). The
+        # governed pipeline still re-runs validation, governance and
+        # approval binding itself.
+        fingerprint = correlated_fp
+        result = OperationCoordinator(env).execute(
+            fingerprint=fingerprint, session=session_label)
+    else:
+        proposal = agent_adapter.propose(env, payload, session=session_label)
+        if proposal.get("denied"):
+            first = proposal["proposals"][0]
+            return "deny", (
+                f"Tanuq governance DENIED this edit: "
+                f"{first.get('denial_reason') or first.get('message')}"
+            )
+        first = proposal["proposals"][0]
+        fingerprint = first["fingerprint"]
+        result = OperationCoordinator(env).execute(
+            fingerprint=fingerprint, session=session_label)
 
-    # FAZ 6-lite (resume): PROPOSED and APPROVAL_REQUIRED both flow
-    # through the governed coordinator. For APPROVAL_REQUIRED the
-    # pipeline's approval stage is the SOLE authority: a valid,
-    # unexpired, single-use human approval lets this retry resume the
-    # governed execution; a missing/expired/mismatched approval is
-    # denied there (fail-closed). The adapter itself never grants,
-    # consumes or bypasses anything.
-    result = OperationCoordinator(env).execute(
-        fingerprint=fingerprint, session=session_label)
     terminal = result.get("terminal")
     if terminal == "VERIFIED":
         return "deny", (
@@ -152,9 +222,9 @@ def handle_pretooluse(env, raw_text, session=None):
     if terminal == "DENIED" and result.get("failure_stage") == "approval":
         return "deny", (
             f"Tanuq: pending human approval for this edit "
-            f"(fingerprint {fingerprint[:12]}, risk {first['risk']}). "
-            f"Approve with 'tanuq approve' and execute with "
-            f"'tanuq execute'; the Edit tool call itself is cancelled."
+            f"(fingerprint {fingerprint[:12]}). Approve with 'tanuq "
+            f"approve' and retry the edit to resume; the Edit tool "
+            f"call itself is cancelled."
         )
     return "deny", (
         f"Tanuq: execution reached terminal state {terminal!r} for "
