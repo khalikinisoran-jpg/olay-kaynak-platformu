@@ -122,14 +122,13 @@ def handle_pretooluse(env, raw_text, session=None):
     first = proposal["proposals"][0]
     fingerprint = first["fingerprint"]
 
-    if first["state"] == "APPROVAL_REQUIRED":
-        return "deny", (
-            f"Tanuq: pending human approval for this edit "
-            f"(fingerprint {fingerprint[:12]}, risk {first['risk']}). "
-            f"Approve with 'tanuq approve' and execute with "
-            f"'tanuq execute'; the Edit tool call itself is cancelled."
-        )
-
+    # FAZ 6-lite (resume): PROPOSED and APPROVAL_REQUIRED both flow
+    # through the governed coordinator. For APPROVAL_REQUIRED the
+    # pipeline's approval stage is the SOLE authority: a valid,
+    # unexpired, single-use human approval lets this retry resume the
+    # governed execution; a missing/expired/mismatched approval is
+    # denied there (fail-closed). The adapter itself never grants,
+    # consumes or bypasses anything.
     result = OperationCoordinator(env).execute(
         fingerprint=fingerprint, session=session_label)
     terminal = result.get("terminal")
@@ -149,6 +148,13 @@ def handle_pretooluse(env, raw_text, session=None):
         return "deny", (
             f"Tanuq: an execution for fingerprint "
             f"{fingerprint[:12]} is already in flight (fail-closed)."
+        )
+    if terminal == "DENIED" and result.get("failure_stage") == "approval":
+        return "deny", (
+            f"Tanuq: pending human approval for this edit "
+            f"(fingerprint {fingerprint[:12]}, risk {first['risk']}). "
+            f"Approve with 'tanuq approve' and execute with "
+            f"'tanuq execute'; the Edit tool call itself is cancelled."
         )
     return "deny", (
         f"Tanuq: execution reached terminal state {terminal!r} for "

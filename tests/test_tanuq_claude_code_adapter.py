@@ -117,10 +117,12 @@ def test_approval_denied_is_fail_closed_for_vendor(env):
     # approval consumed by a direct governed execution
     agent_adapter.execute(env, fingerprint=proposal["proposals"][0]["fingerprint"])
     # vendor retries the SAME edit afterwards: a fresh approval is
-    # required — the consumed one can never authorize the retry
+    # required — the consumed one can never authorize the retry, so
+    # the governed run cannot reach VERIFIED again.
     decision, reason = handle_pretooluse(env, _edit_input(env))
     assert decision == "deny"
-    assert "pending human approval" in reason
+    assert "terminal state" in reason
+    assert "pending human approval" not in reason
 
 
 def test_malformed_input_fail_closed(env):
@@ -269,3 +271,117 @@ def test_unsupported_hook_event_name_fail_closed(env):
             "tool_input": {"file_path": "x", "old_string": "a",
                            "new_string": "b"},
         }))
+
+# ---- FAZ 6-lite: resume after human approval + pending dedupe ----
+
+
+def _secret_edit(env, **kwargs):
+    return _edit_input(
+        env,
+        old=kwargs.get("old", "hello"),
+        new=kwargs.get(
+            "new", 'hello\napi_key = "sk-test-aaaaaaaaaaaaaaaa"\n'
+        ),
+    )
+
+
+def test_rt6_a_approved_retry_resumes_governed_execution(env):
+    """RT6-A: after the human grants the fingerprint-bound approval,
+    the vendor's retry of the SAME edit resumes the governed execution
+    and reaches a REAL VERIFIED (no mock, real verification)."""
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    pending = agent_adapter.load_pending(env.workspace)
+    assert len(pending) == 1
+    agent_adapter.approve(env, pending[0]["fingerprint"])
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "applied and verified" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == 'hello\napi_key = "sk-test-aaaaaaaaaaaaaaaa"\n'
+    # VERIFIED removes the pending record (existing lifecycle)
+    assert agent_adapter.load_pending(env.workspace) == []
+
+
+def test_rt6_b_retry_without_approval_stays_fail_closed(env):
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+    records = agent_adapter.load_pending(env.workspace)
+    assert len(records) == 1
+    assert records[0]["session"] == "sess-123"
+
+
+def test_rt6_c_retry_does_not_duplicate_pending(env):
+    decision, _ = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    decision, _ = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    records = agent_adapter.load_pending(env.workspace)
+    assert len(records) == 1
+    fingerprints = {r["fingerprint"] for r in records}
+    assert len(fingerprints) == 1
+
+
+def test_rt6_d_expired_approval_cannot_resume(env):
+    decision, _ = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    pending = agent_adapter.load_pending(env.workspace)
+    record = pending[0]
+    # directly grant an already-expired approval for the exact context
+    env.approval_store.grant(
+        patch_fingerprint=record["fingerprint"],
+        path=record["path"],
+        action=record["action"],
+        risk_level="HIGH",
+        attempt=1,
+        authorizer="human-operator",
+        expires_at="2000-01-01T00:00:00Z",
+    )
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_e_wrong_fingerprint_approval_cannot_resume(env):
+    decision, _ = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    # the human approves a DIFFERENT edit (registered directly, never
+    # executed): its fingerprint can never authorize the retried edit
+    other = agent_adapter.propose(env, json.dumps({
+        "path": str(env.workspace / "demo.txt"),
+        "old_content": "hello",
+        "new_content": "hello v2\n",
+        "reason": "rt6-e other edit",
+    }), session="sess-123")
+    agent_adapter.approve(env, other["proposals"][0]["fingerprint"])
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "pending human approval" in reason
+    assert (env.workspace / "demo.txt").read_text(
+        encoding="utf-8") == "hello"
+
+
+def test_rt6_f_single_use_approval_cannot_verify_twice(env):
+    decision, _ = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    pending = agent_adapter.load_pending(env.workspace)
+    agent_adapter.approve(env, pending[0]["fingerprint"])
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert "applied and verified" in reason  # first resume consumes it
+    # re-propose the identical edit after VERIFIED: the consumed
+    # approval can never authorize a second governed run
+    agent_adapter.propose(env, json.dumps({
+        "path": str(env.workspace / "demo.txt"),
+        "old_content": "hello",
+        "new_content": 'hello\napi_key = "sk-test-aaaaaaaaaaaaaaaa"\n',
+        "reason": "rt6-f replay attempt",
+    }), session="sess-123")
+    decision, reason = handle_pretooluse(env, _secret_edit(env))
+    assert decision == "deny"
+    assert "applied and verified" not in reason

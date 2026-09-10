@@ -48,8 +48,18 @@ def save_pending(workspace: Path, patches, session=None) -> int:
     new_records = [_record(p, session=session) for p in patches]
     with _ProcessFileLock(path, timeout=PENDING_LOCK_TIMEOUT):
         existing = _read_records(path)
-        drop = [r for r in existing if r in new_records]
-        data = [r for r in existing if r not in new_records] + new_records
+        # FAZ 6-lite: dedupe by fingerprint. A retried proposal carries
+        # a fresh ``created_at``, so record-level equality cannot
+        # dedupe it and identical retries used to pile up duplicate
+        # records. Same fingerprint == same logical pending proposal;
+        # the newest record wins. Fingerprints are content-bound
+        # (canonical SHA-256), so distinct proposals can never collide
+        # here.
+        new_fps = {r["fingerprint"] for r in new_records}
+        data = [
+            r for r in existing
+            if r.get("fingerprint") not in new_fps
+        ] + new_records
         _atomic_write(path, data)
     return len(patches)
 

@@ -243,8 +243,11 @@ PreToolUse decision (always "deny": the governed channel did the work)
 - The adapter never returns `"allow"`: the Edit tool call itself is
   always cancelled because the governed channel performed (or queued)
   the change. Low-risk edits are applied and verified automatically;
-  HIGH/CRITICAL edits wait for human approval (`tanuq approve` →
-  `tanuq execute`).
+  HIGH/CRITICAL edits wait for human approval (`tanuq approve`). Once
+  the approval is granted, retrying the same edit resumes the governed
+  execution automatically (the single-use, fingerprint-bound approval
+  is consumed by the governed pipeline; without a valid approval the
+  retry stays fail-closed DENY).
 
 ## Tanuq limits (honest)
 
