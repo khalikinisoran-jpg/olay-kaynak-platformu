@@ -222,6 +222,8 @@ Hook registration (`.claude/settings.json`):
 adapter through this matcher and, even if invoked directly, are
 fail-closed DENY.)
 
+Hook command interpreter: run the hook through the project's virtual environment (e.g. .venv\Scripts\python.exe -m tanuq.claude_code_adapter) or the installed `tanuq` console script. A stale global editable install that predates the tanuq package cannot import `tanuq` outside the repository root (observed friction).
+
 Flow:
 
 ```text
