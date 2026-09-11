@@ -94,10 +94,33 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
   zero vendor references outside secret-redaction regex). Generic
   normalizer NOT REQUIRED (1 vendor module, zero core-diff expansion
   proven twice).
+- PRODUCTIZATION PHASES 1-4 (0a9bd45): P1 fresh-install proof —
+  packaging correct (`tanuq` console script + packages.find); the
+  stale global editable install was an operator-env issue, not a
+  product bug. P2 fresh clone + venv + governed cycle + README
+  demo_cli OVERALL PASS (approval/replay/evidence invariants). P3
+  version metadata fix — `tanuq --version` hard-coded 0.1.0 →
+  packaging metadata 0.6.0 via importlib.metadata (0a9bd45, hosted
+  CI SUCCESS 4/4, run 34610594860; 3 new version tests; full suite
+  1464/15/0). P4 audit: release readiness = early-adopter (Windows,
+  n=1 user).
+- CROSS-MODEL REAL DOGFOOD (CONFIRMED): a non-Claude model (GLM) as
+  the proposal source drove the generic `--stdin-json` channel
+  end-to-end in a real workspace — modify (incl. one real
+  verification failure → auto-rollback → resubmit → VERIFIED),
+  create (HIGH → approval → VERIFIED), create-on-existing DENY,
+  traversal DENY, evidence chain VALID, history denied_reason
+  visible. "GLM" appears only in proposal free-text reason, never in
+  risk/approval/execution payloads (JSON scan). SECOND INDEPENDENT
+  MODEL/PROPOSAL SOURCE — CONFIRMED.
+- SKILL RELEASE (a67069d): AGENTS.md (pointer + critical rules) and
+  docs/TANUQ_SKILL.md (working procedure: resync, frozen boundaries,
+  stop rules, evidence discipline, report format, BDP v1.5, hard-no)
+  — "Skill instructs the agent; TANUQ governance controls mutations."
 
 ## IN PROGRESS
 
-- Nothing uncommitted (working tree clean at ebd52b1). Next candidate
+- Nothing uncommitted (working tree clean at 0a9bd45). Next candidate
   work is designed but not started: real Claude Write runtime dogfood
   (blocked on API credit).
 
@@ -107,9 +130,10 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
    scratch workspace + stdin-capture PreToolUse hook (method proven)
    → observe REAL Write tool_input vs vendor-documented contract →
    full chain Write→create→approval→execute→VERIFIED→evidence.
-2. Parallel housekeeping: quarantine/delete `child_*.dmp` (secrets);
-   commit `ORCHESTRATION_LIFECYCLE_DESIGN.md` (mechanical, operator
-    decision; state file updated with this release).
+2. Hygiene: `.gitignore` extended this checkpoint (dist/, child_*.dmp,
+   _dbg_*, _diag*, _run_obs*, _verify_postfix*, request.json, t);
+   remaining operator items — quarantine `child_*.dmp` (secrets),
+   decide `ORCHESTRATION_LIFECYCLE_DESIGN.md` commit.
 3. Then: product dogfooding with create+modify flows on a scratch
    workspace (multi-file behavior, pending UX) or FAZ 2 gate
    discussion (only with proven-need evidence).
@@ -206,9 +230,9 @@ b061d03 feat(adapter): add Claude Code PreToolUse governed entry
 
 Hosted CI (Ubuntu+Windows pytest, packaging-gate ×2): SUCCESS on
 `7525c66`, `2536af0`, `69f8d39`, `b061d03`, `7de6a55`, `3b8e259`,
-`654bf56`, and `ebd52b1` (latest run 34589680409 — 4/4 jobs, Claude
-Write govern-as-create included).
-Latest local full suite: 1457 passed / 15 skipped / 0 failed.
+`654bf56`, `ebd52b1`, `2e2bf55`, `003fe9b`, `a67069d`, and `0a9bd45`
+(latest run 34610594860 — 4/4 jobs, version metadata fix included).
+Latest local full suite: 1464 passed / 15 skipped / 0 failed.
 
 ## OPEN RISKS
 
@@ -404,6 +428,43 @@ CONFIRMATION.)
 - HANDOFF: next session = read this file → verify HEAD == origin/main
   → expect HEAD at or after ebd52b1 → then real Write runtime
   dogfood (credit) or hygiene.
+
+- SESSION CONTINUATION (same day) — PRODUCTIZATION PHASES 1-4 +
+  CROSS-MODEL DOGFOOD + SKILL RELEASE:
+- WORK COMPLETED: stale-patch DENY UX fix (real validator reason in
+  guidance + history denied_reason; 2e2bf55, CI GREEN 34599646364);
+  AGENTS.md + docs/TANUQ_SKILL.md (a67069d); version metadata fix
+  (0a9bd45, CI GREEN 34610594860); productization Phases 1-4
+  (fresh-install proof, fresh-clone governed cycle + README demo
+  OVERALL PASS, version consistency, early-adopter readiness audit);
+  cross-model real dogfood — GLM as an independent non-Claude
+  proposal source drove modify+create+approval+DENY+evidence through
+  the generic `--stdin-json` channel (SECOND INDEPENDENT MODEL
+  SOURCE — CONFIRMED); hygiene audit (no .gitignore gaps for dist/,
+  dmp, debug scripts — fixed this checkpoint).
+- FILES CHANGED (this checkpoint): .gitignore (hygiene patterns:
+  dist/, child_*.dmp, _dbg_*, _diag*, _run_obs*, _verify_postfix*,
+  request.json, t), docs/TANUQ_PROJECT_STATE.md. Already committed:
+  tanuq/agent_adapter.py, tanuq/cli.py, tests/stale_patch_ux_test.py
+  (2e2bf55), tanuq/__init__.py, tests/version_metadata_test.py
+  (0a9bd45), AGENTS.md + docs/TANUQ_SKILL.md (a67069d).
+- COMMITS: 2e2bf55, 003fe9b, a67069d, 0a9bd45 (all pushed, CI GREEN).
+- TEST RESULTS: full suite 1464 passed / 15 skipped / 0 failed;
+  version tests 3; stale-patch UX tests 4.
+- CI RESULTS: SUCCESS for 2e2bf55 (34599646364), 003fe9b
+  (34593048285), a67069d+0a9bd45 (34610594860) — all 4/4.
+- FRICTION MAP (real CLI dogfood): stale old_content byte-match +
+  misleading guidance — FIXED (2e2bf55); init non-interactive via
+  --yes (documented); remaining friction low.
+- FREEZE STATUS: unchanged.
+- NEXT ACTION: real Write runtime dogfood (credit gate); operator
+  items — child_*.dmp quarantine, ORCHESTRATION_LIFECYCLE_DESIGN
+  commit decision.
+- NEXT HUMAN GATE: API credit; hygiene file decisions; freeze reopen
+  condition still NOT met.
+- HANDOFF: next session = read this file → verify HEAD == origin/main
+  → expect HEAD at or after this checkpoint → then real Write runtime
+  dogfood (credit) or hygiene decisions.
 
 ### 2026-09-10
 

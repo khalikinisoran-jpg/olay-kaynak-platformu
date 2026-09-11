@@ -43,6 +43,16 @@ Thumbs.db
 # Packaging artifacts
 *.egg-info/
 build/
+dist/
 
 # Runtime data
 data/
+
+# Temporary debug artifacts
+child_*.dmp
+_dbg_*
+_diag*
+_run_obs*
+_verify_postfix*
+request.json
+t
