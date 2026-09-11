@@ -204,7 +204,7 @@ Hook registration (`.claude/settings.json`):
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
@@ -216,6 +216,11 @@ Hook registration (`.claude/settings.json`):
   }
 }
 ```
+
+(`Edit|Write` is the documented Claude Code matcher syntax for
+"either tool exactly"; unsupported tools such as Bash never reach the
+adapter through this matcher and, even if invoked directly, are
+fail-closed DENY.)
 
 Flow:
 
@@ -233,19 +238,29 @@ PreToolUse decision (always "deny": the governed channel did the work)
 
 - **Input contract** (Claude Code docs): JSON on stdin with
   `tool_name: "Edit"` and `tool_input: {file_path, old_string,
-  new_string}`. Anything else (Write, Bash, missing fields, malformed
-  JSON, wrong `hook_event_name`) is **fail-closed DENY**.
+  new_string}`, or `tool_name: "Write"` and `tool_input: {file_path,
+  content}` (fields per the official Claude Code tools reference).
+  Tool mapping (translation only):
+  - `Edit` → governed `modify` (old_content = old_string)
+  - `Write` → governed `create` (old_content = "" — the canonical
+    no-previous-content marker; create is HIGH risk and ALWAYS
+    requires human approval)
+  - Write on an EXISTING file → **fail-closed DENY** (a file is never
+    overwritten through Write; Edit governs modifications)
+  - Anything else (Bash, other tools, missing fields, malformed JSON,
+    wrong `hook_event_name`) is **fail-closed DENY**.
 - **Output contract**: exit 0 + `{"hookSpecificOutput":
   {"hookEventName": "PreToolUse", "permissionDecision": "deny",
   "permissionDecisionReason": "..."}}`. The reason never contains
   patch content or secrets — only fingerprint prefixes, state and
   recommended actions.
-- The adapter never returns `"allow"`: the Edit tool call itself is
+- The adapter never returns `"allow"`: the tool call itself is
   always cancelled because the governed channel performed (or queued)
   the change. Low-risk edits are applied and verified automatically;
-  HIGH/CRITICAL edits wait for human approval (`tanuq approve`). Once
-  the approval is granted, retrying the same edit resumes the governed
-  execution automatically (the single-use, fingerprint-bound approval
+  HIGH/CRITICAL changes (including every Write/create) wait for human
+  approval (`tanuq approve`). Once the approval is granted, retrying
+  the same tool call resumes the governed execution automatically
+  (the single-use, fingerprint-bound approval
   is consumed by the governed pipeline; without a valid approval the
   retry stays fail-closed DENY).
 
