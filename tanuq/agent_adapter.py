@@ -157,7 +157,39 @@ def _propose_one(env, obj):
             "requires a new approval."
         ) if approval_required else None,
     })
+    warning = _stale_content_warning(patch, base["state"])
+    if warning:
+        base["warning"] = warning
     return base
+
+
+def _stale_content_warning(patch, state):
+    """Read-only early UX guidance (2/2 dogfood finding): for an
+    accepted modify proposal whose ``old_content`` does not match the
+    current file content, warn at propose time — execution will be
+    DENIED as stale. This is a hint only: it never blocks the
+    proposal, never decides risk, and never replaces the execute-time
+    stale validation (fail-closed DENY stays in charge)."""
+    if state not in ("PROPOSED", "APPROVAL_REQUIRED"):
+        return None
+    if patch.action != "modify":
+        return None
+    try:
+        from pathlib import Path
+
+        path = Path(patch.path)
+        if not path.exists() or not path.is_file():
+            return None
+        current = path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+    if current == patch.old_content:
+        return None
+    return (
+        "old_content does not match the current file content; "
+        "execute will DENY this proposal as stale. Resubmit with the "
+        "exact current file content as old_content."
+    )
 
 
 def _governance_view(decision):

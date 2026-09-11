@@ -150,6 +150,8 @@ def cmd_propose(args) -> int:
             if gov.get("reason"):
                 print(f"  Reason: {gov['reason']}")
             print(f"  {r['message']}")
+            if r.get("warning"):
+                print(f"  Warning: {r['warning']}")
         print(f"Pending proposals: {response['pending_count']}")
         if any(r.get("state") == "DENIED" for r in results):
             print("Denied proposals are NOT saved. Blocked actions are visible in 'tanuq history' evidence.")
