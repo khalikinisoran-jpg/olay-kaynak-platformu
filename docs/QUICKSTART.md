@@ -15,6 +15,9 @@ tanuq status
 echo '{"path": "notes.txt", "old_content": "", "new_content": "hi", "reason": "demo"}' \
   | tanuq propose --stdin-json
 
+# 4b. Creating a NEW file is HIGH risk - human approval is required first:
+tanuq approve
+
 # 5. Apply it
 tanuq execute
 
