@@ -327,6 +327,16 @@ def execute(env, fingerprint=None, run_all=False, session=None):
         ),
         "FAILED": "Operation failed; see evidence journals.",
     }.get(state, "Operation did not reach a verified state.")
+    if state == "DENIED" and stage == "validation":
+        # UX correction (real dogfood finding): a validation-stage DENY
+        # is usually a stale proposal (old_content no longer matches the
+        # file). Tell the user the REAL validator reason and the fix,
+        # instead of the generic out-of-scope/policy wording.
+        guidance = (
+            "Proposal was removed because validation failed"
+            + (f": {reason}" if reason else ".")
+            + " Resubmit a new proposal using the exact current file content."
+        )
     return {
         "executed": True,
         "terminal": state,

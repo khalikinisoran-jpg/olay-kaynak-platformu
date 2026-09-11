@@ -299,6 +299,9 @@ def cmd_history(args) -> int:
         risk = op.get("risk")
         if risk:
             print(f"    risk={risk['risk']}  reason={risk['reason']!r}")
+        denied_reason = op.get("denied_reason")
+        if op["state"] == "DENIED" and denied_reason:
+            print(f"    denied: {denied_reason!r}")
         if op["incidents"]:
             print(f"    incidents={', '.join(op['incidents'])}")
     return 0
