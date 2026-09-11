@@ -29,7 +29,13 @@ from tanuq.pending import load_pending, patch_from_record, remove_pending, save_
 from tanuq.verification_profile import select_test_targets
 
 REQUIRED_FIELDS = ("path", "old_content", "new_content")
-ALLOWED_ACTIONS = ("modify",)
+ALLOWED_ACTIONS = ("modify", "create")
+# A create proposal must carry the canonical "no previous content"
+# marker: old_content is exactly the empty string. This keeps the
+# fingerprint schema (and its semantics) unchanged while making
+# "create" distinguishable from "modify an existing empty file" by
+# the action field alone.
+CREATE_OLD_CONTENT = ""
 
 
 class ProtocolError(Exception):
@@ -56,7 +62,13 @@ def _validate_item(obj):
     if action not in ALLOWED_ACTIONS:
         raise ProtocolError(
             f"unsupported action {action!r}: this product governs "
-            f"file modifications only ({list(ALLOWED_ACTIONS)})"
+            f"file modifications and new-file creation only "
+            f"({list(ALLOWED_ACTIONS)})"
+        )
+    if action == "create" and obj["old_content"] != CREATE_OLD_CONTENT:
+        raise ProtocolError(
+            'create proposals require old_content to be exactly "" '
+            "(the canonical no-previous-content marker)"
         )
     return {
         "path": str(obj["path"]),

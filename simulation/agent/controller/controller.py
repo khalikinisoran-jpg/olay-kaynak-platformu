@@ -49,7 +49,7 @@ class Controller:
                 )
             )
 
-        if patch.action != "modify":
+        if patch.action not in ("modify", "create"):
 
             return ControllerDecision(
                 approved=False,

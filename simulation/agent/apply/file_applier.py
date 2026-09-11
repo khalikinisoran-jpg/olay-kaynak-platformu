@@ -53,7 +53,7 @@ class FileApplier:
         scope=None
     ) -> tuple[bool, str]:
 
-        if patch.action != "modify":
+        if patch.action not in ("modify", "create"):
 
             return (
                 False,
@@ -90,6 +90,13 @@ class FileApplier:
                 False,
                 "Patch target could not be "
                 "resolved; rejected."
+            )
+
+        if patch.action == "create":
+
+            return self._apply_create(
+                patch,
+                path,
             )
 
         if not path.exists():
@@ -181,6 +188,109 @@ class FileApplier:
             "File applied successfully."
         )
 
+    def _apply_create(
+        self,
+        patch: PatchProposal,
+        path: Path
+    ) -> tuple[bool, str]:
+
+        """Apply a ``create`` patch (new-file support).
+
+        Rules (fail-closed):
+
+        - The target is re-checked at apply time: if a file appeared
+          between propose/validation and this write, the create is
+          stale and denied. An existing target can never be
+          overwritten through ``create``.
+        - The parent directory must already exist; directory
+          creation authority is NOT granted.
+        - The write goes through the same canonical, atomic
+          ``_write_atomic`` primitive used by ``modify`` (staged
+          temp file, fsync, ``os.replace``).
+        - The content is read back; a mismatch with the approved
+          ``new_content`` fails the apply. A file whose bytes are
+          not exactly the approved content is NEVER auto-deleted
+          here -- the failure is reported so a human can
+          investigate (fail-closed; no unknown-content cleanup).
+        """
+
+        if patch.old_content != "":
+
+            return (
+                False,
+                "Create requires old_content to be "
+                'exactly "" (the no-previous-content marker).'
+            )
+
+        if path.exists():
+
+            return (
+                False,
+                "Create target already exists; create is "
+                f"stale or invalid: {patch.path}"
+            )
+
+        parent = path.parent
+
+        if not parent.exists() or not parent.is_dir():
+
+            return (
+                False,
+                "Create parent directory does not exist "
+                f"(directory creation is not authorized): "
+                f"{parent}"
+            )
+
+        if not patch.new_content:
+
+            return (
+                False,
+                "Create content is empty; patch does not "
+                "contain a change."
+            )
+
+        try:
+
+            self._write_atomic(
+                path,
+                patch.new_content,
+            )
+
+        except Exception as exc:
+
+            return (
+                False,
+                f"Failed to write created file: {exc}"
+            )
+
+        try:
+
+            written = path.read_text(
+                encoding="utf-8"
+            )
+
+        except Exception as exc:
+
+            return (
+                False,
+                "Unable to verify created file "
+                f"after write: {exc}"
+            )
+
+        if written != patch.new_content:
+
+            return (
+                False,
+                "Create integrity check failed: written "
+                "content does not match new_content; "
+                "target left in place for investigation."
+            )
+
+        return (
+            True,
+            "File created successfully."
+        )
+
     def restore(
         self,
         patch: PatchProposal,
@@ -214,7 +324,7 @@ class FileApplier:
         being swallowed.
         """
 
-        if patch.action != "modify":
+        if patch.action not in ("modify", "create"):
 
             return (
                 False,
@@ -259,6 +369,13 @@ class FileApplier:
                 False,
                 "Patch target could not be "
                 "resolved; rejected."
+            )
+
+        if patch.action == "create":
+
+            return self._restore_create(
+                patch,
+                path,
             )
 
         if not path.exists():
@@ -340,6 +457,91 @@ class FileApplier:
         return (
             True,
             "Patch rolled back to the pre-apply state."
+        )
+
+    def _restore_create(
+        self,
+        patch: PatchProposal,
+        path: Path
+    ) -> tuple[bool, str]:
+
+        """Roll a ``create`` patch back to its pre-apply state.
+
+        The pre-apply state of a create is NON-existence, so the
+        rollback removes the created file -- but only when its
+        content is still EXACTLY the approved ``new_content``
+        (verified by read-back). SECURITY INVARIANT: a created file
+        whose content has drifted (modified after apply, partially
+        written, or tampered) is NEVER auto-deleted; the rollback
+        fails closed with ROLLBACK_FAILED semantics so a human can
+        investigate the unknown-content file.
+        """
+
+        if not path.exists():
+
+            return (
+                True,
+                "Patch target already in the "
+                "pre-apply state."
+            )
+
+        if not path.is_file():
+
+            return (
+                False,
+                "Rollback failed: patch target is "
+                f"not a file: {patch.path}"
+            )
+
+        try:
+
+            current_content = path.read_text(
+                encoding="utf-8"
+            )
+
+        except Exception as exc:
+
+            return (
+                False,
+                f"Rollback failed: unable to read "
+                f"patch target: {exc}"
+            )
+
+        if current_content != patch.new_content:
+
+            return (
+                False,
+                "Rollback failed: created file content "
+                "does not match the approved new_content; "
+                "refusing to delete a file with unknown "
+                "content."
+            )
+
+        try:
+
+            path.unlink()
+
+        except Exception as exc:
+
+            return (
+                False,
+                f"Rollback failed: unable to remove "
+                f"created file: {exc}"
+            )
+
+        if path.exists():
+
+            return (
+                False,
+                "Rollback integrity check failed: "
+                "created file still exists after "
+                "removal."
+            )
+
+        return (
+            True,
+            "Created file removed; patch rolled back "
+            "to the pre-apply state."
         )
 
     def _resolve_target(

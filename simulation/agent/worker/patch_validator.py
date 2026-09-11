@@ -9,6 +9,7 @@ class PatchValidator:
 
     ALLOWED_ACTIONS = {
         "modify",
+        "create",
     }
 
     def __init__(self):
@@ -81,6 +82,12 @@ class PatchValidator:
                 scope_message
             )
 
+        if patch.action == "create":
+
+            return self._validate_create(
+                patch
+            )
+
         path = Path(patch.path)
 
         if not path.exists():
@@ -116,6 +123,70 @@ class PatchValidator:
                 False,
                 "Patch is stale: current file content "
                 "does not match old_content."
+            )
+
+        if patch.old_content == patch.new_content:
+
+            return (
+                False,
+                "Patch does not contain a change."
+            )
+
+        return (
+            True,
+            "Patch validation passed."
+        )
+
+    def _validate_create(
+        self,
+        patch: PatchProposal
+    ) -> tuple[bool, str]:
+
+        """Fail-closed create validation.
+
+        Create semantics (product new-file support):
+
+        - ``old_content`` must be EXACTLY the canonical
+          no-previous-content marker (the empty string). Any other
+          value denies the proposal: a create cannot carry previous
+          content it never saw.
+        - The target must NOT exist. If it appeared between propose
+          and apply, the create is stale and denied (an existing
+          target can never be overwritten through ``create``).
+        - The parent directory must already exist and be a
+          directory. Directory creation authority is NOT granted:
+          the proposal cannot make the workspace grow structurally.
+        - The scope/traversal checks above have already applied to
+          the target path exactly as for ``modify``.
+        """
+
+        if patch.old_content != "":
+
+            return (
+                False,
+                "Create requires old_content to be "
+                'exactly "" (the no-previous-content marker).'
+            )
+
+        path = Path(patch.path)
+
+        if path.exists():
+
+            return (
+                False,
+                "Create target already exists; create is "
+                f"stale or invalid: {patch.path}"
+            )
+
+        parent = path.parent
+
+        if not parent.exists() or not parent.is_dir():
+
+            return (
+                False,
+                "Create parent directory does not exist "
+                f"(directory creation is not authorized): "
+                f"{parent}"
             )
 
         if patch.old_content == patch.new_content:
