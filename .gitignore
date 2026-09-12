@@ -56,3 +56,9 @@ _run_obs*
 _verify_postfix*
 request.json
 t
+
+# Tanuq runtime state (per-workspace evidence; machine-local)
+.tanuq/
+
+# Dogfood proposal payloads (transient)
+p_*.json
