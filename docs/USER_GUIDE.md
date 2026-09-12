@@ -69,7 +69,7 @@ echo '{"path": "app.py", "old_content": "...", "new_content": "...", "reason": "
 
 > **Note (modify):** `old_content` must be the ENTIRE current
 > file content, not a snippet or region. If it does not match, Tanuq warns
-> you at propose time and denies the change at execute time as stale 
+> you at propose time and denies the change at execute time as stale
 > — resubmit with the exact current file content.
 
 Tanuq answers in plain language:
