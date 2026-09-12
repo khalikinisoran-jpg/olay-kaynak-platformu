@@ -117,6 +117,10 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
   docs/TANUQ_SKILL.md (working procedure: resync, frozen boundaries,
   stop rules, evidence discipline, report format, BDP v1.5, hard-no)
   — "Skill instructs the agent; TANUQ governance controls mutations."
+- UX RELEASES (2f842ac, 738a158, 4302409): hook interpreter note in
+  AGENT_INTEGRATION.md; QUICKSTART create example now shows the
+  approval step before execute; propose-time stale old_content warning
+  (read-only UX, fingerprint-external; 5 tests; full suite 1469/15/0).
 
 ## IN PROGRESS
 
@@ -130,7 +134,7 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
    scratch workspace + stdin-capture PreToolUse hook (method proven)
    → observe REAL Write tool_input vs vendor-documented contract →
    full chain Write→create→approval→execute→VERIFIED→evidence.
-2. Hygiene: `.gitignore` extended this checkpoint (dist/, child_*.dmp,
+2. Hygiene: `.gitignore` already extended (dist/, child_*.dmp,
    _dbg_*, _diag*, _run_obs*, _verify_postfix*, request.json, t);
    remaining operator items — quarantine `child_*.dmp` (secrets),
    decide `ORCHESTRATION_LIFECYCLE_DESIGN.md` commit.
@@ -230,9 +234,9 @@ b061d03 feat(adapter): add Claude Code PreToolUse governed entry
 
 Hosted CI (Ubuntu+Windows pytest, packaging-gate ×2): SUCCESS on
 `7525c66`, `2536af0`, `69f8d39`, `b061d03`, `7de6a55`, `3b8e259`,
-`654bf56`, `ebd52b1`, `2e2bf55`, `003fe9b`, `a67069d`, and `0a9bd45`
-(latest run 34610594860 — 4/4 jobs, version metadata fix included).
-Latest local full suite: 1464 passed / 15 skipped / 0 failed.
+`654bf56`, `ebd52b1`, `2e2bf55`, `003fe9b`, `a67069d`, `0a9bd45`, `738a158`, `2f842ac`, and `4302409`
+(latest run 34642040793 — 4/4 jobs, propose-stale warning included).
+Latest local full suite: 1469 passed / 15 skipped / 0 failed.
 
 ## OPEN RISKS
 
@@ -465,6 +469,26 @@ CONFIRMATION.)
 - HANDOFF: next session = read this file → verify HEAD == origin/main
   → expect HEAD at or after this checkpoint → then real Write runtime
   dogfood (credit) or hygiene decisions.
+
+- SESSION CONTINUATION (same day) — QUICKSTART UX +
+  INTERPRETER NOTE + PROPOSE-STALE WARNING:
+- WORK COMPLETED: QUICKSTART create example shows the approval step
+  before execute (738a158); AGENT_INTEGRATION.md hook interpreter
+  note (2f842ac); propose-time stale old_content warning — read-only
+  UX, fingerprint-external, execute-time stale DENY unchanged
+  (4302409); first real product task executed through TANUQ itself
+  (repo workspace self-hosted: propose LOW —> execute VERIFIED
+  —> evidence VALID).
+- COMMITS: 738a158, 2f842ac, 4302409 (pushed, CI GREEN
+  34636544882 / 34642040793).
+- TEST RESULTS: full suite 1469 passed / 15 skipped / 0 failed;
+  propose-stale-warning tests 5; version metadata tests 3.
+- FRICTION MAP: stale old_content propose-stage warning IMPLEMENTED
+  (2/2 dogfood friction closed); partial-edit (region old_content)
+  still requires full-file proposals — frozen validation semantics,
+  design gate if ever needed.
+- NEXT ACTION: real Claude Write runtime dogfood (credit gate).
+- HANDOFF: expect HEAD at or after 4302409 + this checkpoint.
 
 ### 2026-09-10
 
