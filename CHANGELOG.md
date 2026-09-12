@@ -28,10 +28,30 @@ Highlights
 - Packaging regression gate: wheel → clean venv → product smoke
   (Ubuntu + Windows) as a CI job.
 
+### Recent additions (unreleased)
+
+- Governed `create` action: new-file creation through the same
+  proposal/governance/approval/verification chain (always HIGH risk,
+  human approval required; no directory-creation authority).
+- Claude Code adapter: Edit is governed as `modify`, Write as
+  `create` (translation-only vendor adapter, documented contract).
+- UX fixes: propose-time stale `old_content` warning; DENY guidance
+  now carries the real validator reason; history shows
+  `denied_reason`.
+- Version metadata fix: `tanuq --version` reports the packaging
+  version (0.6.0) instead of a hard-coded value.
+- Agent working procedure: `AGENTS.md` + `docs/TANUQ_SKILL.md`.
+- Docs: honest-limitations section in the user guide; docs
+  entry-point chain consolidated to the current truth-source.
+- Cross-model dogfood: the generic proposal channel verified with an
+  independent non-Claude model source.
+
 Known gaps
 
 - No OS sandbox and no network enforcement (by design; documented).
-- No real vendor agent integration yet (generic hook protocol only).
+- Vendor integrations are verified per agent: Claude Code Edit/Write
+  is governed and shipped; other agents use the generic hook
+  protocol (runtime payload observation for Claude Write pending).
 - Verification is Python-focused (compileall + pytest).
 
 ---
