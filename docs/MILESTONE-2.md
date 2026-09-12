@@ -1,3 +1,5 @@
+> **HISTORICAL SNAPSHOT** — this document is archived; it does not reflect the current state. Current truth-source: \docs/TANUQ_PROJECT_STATE.md\.
+
 # MILESTONE-2
 
 # Runtime Core Completion

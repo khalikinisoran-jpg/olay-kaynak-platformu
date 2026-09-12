@@ -1,3 +1,5 @@
+> **HISTORICAL SNAPSHOT** — this document is archived; it does not reflect the current state. Current truth-source: \docs/TANUQ_PROJECT_STATE.md\.
+
 ﻿# Mission Log
 
 Bu dosya, projede gerÃ§ekleÅŸtirilen geliÅŸtirme gÃ¶revlerinin kalÄ±cÄ± Ã§alÄ±ÅŸma gÃ¼nlÃ¼ÄŸÃ¼dÃ¼r.

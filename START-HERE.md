@@ -12,7 +12,7 @@ Read in order:
 
 1. **Architecture:** `docs/ARCHITECTURE.md` — high-level `Kernel` → `EventStore` → `Approval` → `Apply` flow
 2. **Authority / Security Model:** `docs/SECURITY_MODEL.md` — `PatchValidator` (scope `R1-R5`), `RiskEngine` (`os\[`+`generic get` `HIGH`), `GovernanceEvaluator`, `ApprovalStore` single-use, `ApplyAuthorization` (`is True`+`is patch`)
-3. **Project State & Decisions:** `docs/PROJECT_MASTER.md` + `docs/DECISIONS.md` — current HEAD `9df6953` (`9df6953b4a51071330d7584f0ed2b569f4ab434b`, 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25); current local full-suite evidence at `9df6953`: `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s (local Windows run 2026-08-30; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows)); historical P9 FINAL PASS: `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789); foundation `24c72d0` 986 → P7 AgentSession + P8 multi-file atomicity + P9 → post-P9 governed ExternalAction additions to 1272
+3. **Project State & Agent Procedure (current):** `docs/TANUQ_PROJECT_STATE.md` — live truth-source; `docs/TANUQ_SKILL.md` — agent working procedure. `docs/PROJECT_MASTER.md` / `docs/DECISIONS.md` are archived historical snapshots.
 4. **Development / Testing:** `README.md` — setup and `pytest` instructions
 
 ## Core Principle

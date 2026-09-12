@@ -1,3 +1,5 @@
+> **HISTORICAL SNAPSHOT** — this document is archived; it does not reflect the current state. Current truth-source: `docs/TANUQ_PROJECT_STATE.md`.
+
 ﻿# PROJECT_MASTER.md
 
 Canonical live project memory / first entry point for future engineers,
