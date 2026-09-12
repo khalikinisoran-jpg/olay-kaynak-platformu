@@ -210,6 +210,37 @@ These rules are built into Tanuq. There is no configuration option
 - **Local, single-user.** One workspace, one operator
   ("human-operator"). Remote approval and multi-user identity are not
   implemented.
+- **New-file creation is always HIGH risk.** Every `create` proposal
+  is deterministically classified HIGH and requires your explicit
+  approval — this is intentional fail-closed behavior.
+- **Directory creation is not authorized.** Creating a new file
+  requires its parent folder to exist already; Tanuq will not create
+  folders.
+- **Partial/region edits are not supported.** A modify proposal must
+  carry the ENTIRE current file content as `old_content` (see the note
+  above); partial edits are warned at propose time and denied as
+  stale at execute time.
+- **Windows verification timeout.** On Windows the verification child
+  process can occasionally hang until the timeout fires; the root
+  cause is under investigation. Tanuq stays fail-closed: the change
+  is rolled back and recorded as evidence.
+- **No cross-file atomicity.** Multi-file changes are governed
+  individually (separate fingerprints, approvals and rollbacks);
+  there is no atomic multi-file transaction.
+- **Cross-process concurrency is not serialized.** The in-flight
+  guard is process-local; two separate processes on the same
+  workspace are only bounded by the exact content-match check.
+- **Conservative risk heuristics.** Deterministic content heuristics
+  can classify benign-looking material (even documentation examples)
+  as HIGH, requiring approval. This is intentional fail-closed
+  behavior, not an error.
+- **Minimal verification floor.** If a changed file has no related
+  tests, verification falls back to a minimal consistency check
+  (compile + a generated dummy test) rather than skipping
+  verification.
+- **Evidence is workspace-local.** Evidence state lives under
+  `<workspace>/.tanuq/` and is machine-local; there is no central or
+  shared evidence infrastructure.
 
 ## Which agents can connect?
 
