@@ -397,7 +397,7 @@ Replay Ready
 
 Documentation is located inside the **docs/** directory.
 
-Canonical entry point: **`START-HERE.md`** → `docs/ARCHITECTURE.md` (implemented flow) → `docs/SECURITY_MODEL.md` (verified boundaries) → `docs/TANUQ_PROJECT_STATE.md` (current position) + `docs/TANUQ_SKILL.md` (agent working procedure) → `docs/ROADMAP.md` (current direction). `docs/PROJECT_MASTER.md` / `docs/PROJECT_STATE.md` are archived historical snapshots.
+Canonical entry point: **`START-HERE.md`** — `docs/ARCHITECTURE.md` (implemented flow) — `docs/SECURITY_MODEL.md` (verified boundaries) — `docs/TANUQ_PROJECT_STATE.md` (current position) + `docs/TANUQ_SKILL.md` (agent working procedure) — `docs/USER_GUIDE.md` (product manual) + `docs/QUICKSTART.md` (first 5 minutes) — `docs/ROADMAP.md` (current direction). `docs/PROJECT_MASTER.md` / `docs/PROJECT_STATE.md` are archived historical snapshots.
 
 **Demo:** `python demo_vertical_slice.py` — first working vertical slice of the governed patch pipeline (no external services; see docstring for Scenarios A/B/C).
 
