@@ -415,6 +415,34 @@ def cmd_status(args) -> int:
     config = env.config
     status = _chain_status(ws)
     pending = load_pending(ws)
+    if getattr(args, "json", False):
+        from tanuq.coordinator import OperationCoordinator as _OC
+        ops_json = _OC(env).operations(limit=5)["operations"]
+        incidents_json = _OC(env).incidents()
+        print(json.dumps({
+            "workspace": str(ws),
+            "protected_scope": list(config.allowed_paths),
+            "governed_mode": True,
+            "verification_depth": config.verification_depth,
+            "evidence": {
+                "chain_valid": status["chain_valid"],
+                "anchor": status["anchor"],
+                "events": status["events"],
+            },
+            "pending": [
+                {"path": r.get("path"), "fingerprint": r.get("fingerprint", ""),
+                 "action": r.get("action"), "session": r.get("session")}
+                for r in pending
+            ],
+            "recent_operations": [
+                {"state": op["state"], "path": op["path"],
+                 "sessions": op["sessions"]}
+                for op in ops_json
+            ],
+            "incidents": {"total": incidents_json["total"],
+                          "critical": incidents_json["critical"]},
+        }, ensure_ascii=False, indent=2))
+        return 0
     print("Tanuq status")
     print(f"  Workspace:          {ws}")
     print(f"  Protected scope:    {list(config.allowed_paths)}")
@@ -666,6 +694,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_status = sub.add_parser("status", help="Protection summary for the workspace")
     p_status.add_argument("--workspace", default=None)
+    p_status.add_argument("--json", action="store_true", help="Machine-readable output")
     p_status.set_defaults(func=cmd_status)
 
     p_incidents = sub.add_parser("incidents", help="List active incidents (detect-only)")
