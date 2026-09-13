@@ -283,6 +283,11 @@ session (the implemented contract follows the vendor-documented
 schema). Other agents can connect through the generic protocol — no native
 integration is claimed for them.
 
+**Note for Claude Code Edit:** an Edit call is governed as a full-file
+`modify` — its `old_string` must span the ENTIRE current file content,
+or the proposal is warned at propose time and denied as stale at
+execute time. Partial region edits are not governed today.
+
 ## Troubleshooting
 
 | Symptom | Meaning | What to do |
