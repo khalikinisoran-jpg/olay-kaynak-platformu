@@ -127,6 +127,29 @@ tanuq status             # protection summary
 the keyed anchor. If anyone edited or deleted evidence, this reports
 `INVALID` / `FAILED`.
 
+Additional audit commands:
+
+```bash
+tanuq lineage --fingerprint 3fb6e981   # full evidence chain for one change
+tanuq incidents                        # orphan/crash/rollback detection
+tanuq export --out audit-bundle.json   # complete audit bundle (JSON)
+```
+
+- `tanuq lineage` joins pending proposals, events, the approval ledger
+  and the apply journal by fingerprint, and shows the whole lifecycle
+  of a change (proposal, risk, approvals, execution, verification).
+- `tanuq incidents` is a read-only detector for crashed applies,
+  orphaned apply intents and rollback failures. It never repairs
+  anything (recovery is never an authorization).
+- `tanuq export` writes the complete evidence bundle (operations,
+  incidents, lineage, chain/anchor status) as a single JSON file for
+  external audit.
+
+`tanuq status` also lists pending proposals (path, fingerprint
+prefix, session) alongside the evidence chain state, so a quick
+glance answers both *what is waiting for me?* and *is the evidence
+chain still trustworthy?*
+
 ---
 
 ## The Tanuq UI
