@@ -27,16 +27,20 @@ LAST UPDATED: 2026-09-11
 FAZ 1 (Boundary Mapping) **COMPLETE**.
 FAZ 2 (Operation Identity) **BLOCKED** by frozen decision — see
 FROZEN DECISIONS. Roadmap phases 3-4 depend on FAZ 2; phases 5-10 are
-sequential behind them. A reorder proposal (FAZ 6-lite first) is
-PENDING OPERATOR DECISION — see NEXT VALID ACTION.
+sequential behind them. FAZ 6-lite A/B (resume + cross-source correlation) are **SHIPPED**
+(7de6a55 / 3b8e259); productization phases 1-4 are **COMPLETE**
+(fresh-install path, status --json, docs entry chain, honest limits,
+ADR). Current phase: **early-adopter productization** —
+awaiting real-usage evidence and operator decisions (Claude access).
 
 ## CURRENT OBJECTIVE
 
-FAZ 6-lite A (resume-after-approval + pending dedupe) is COMMITTED and
-CI-verified (7de6a55). Per the productization-first working model
-(below), the current objective is **real-usage evidence**: dogfood the
-governed product path on real workspaces, collect CONFIRMED needs for
-FAZ 6-lite B / FAZ 5-lite / FAZ 7-9, and keep the core stable — no
+FAZ 6-lite A/B, the Claude Code Edit/Write adapter, UX fixes and
+productization phases 1-4 are **SHIPPED** (latest: `3f7182b`). Per the
+productization-first working model (below), the current objective is
+**real-usage evidence**: run real daily-driver work through the
+governed chain (self-hosted repo governance, UI dogfood done),
+collect CONFIRMED friction/needs, and keep the core stable — no
 speculative architecture (operation_id stays FROZEN).
 
 ## ROADMAP POSITION
@@ -137,7 +141,7 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
 2. Hygiene: `.gitignore` already extended (dist/, child_*.dmp,
    _dbg_*, _diag*, _run_obs*, _verify_postfix*, request.json, t);
    remaining operator items — quarantine `child_*.dmp` (secrets),
-   decide `ORCHESTRATION_LIFECYCLE_DESIGN.md` commit.
+   `ORCHESTRATION_LIFECYCLE_DESIGN.md` is committed (567f5f5); analyse/delete quarantined dumps (operator).
 3. Then: product dogfooding with create+modify flows on a scratch
    workspace (multi-file behavior, pending UX) or FAZ 2 gate
    discussion (only with proven-need evidence).
