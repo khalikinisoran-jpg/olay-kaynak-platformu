@@ -89,9 +89,9 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-    def _headers(self, status, is_api=True):
+    def _headers(self, status, is_api=True, content_type="application/json"):
         self.send_response(status)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", content_type)
         origin = self.headers.get("Origin")
         if origin and origin.startswith(("http://127.0.0.1", "http://localhost")):
             self.send_header("Access-Control-Allow-Origin", origin)
@@ -142,7 +142,8 @@ class Handler(BaseHTTPRequestHandler):
             except (FileNotFoundError, ModuleNotFoundError):
                 self._json(404, {"error": "UI assets missing"}, rid, t0)
                 return
-            self._headers(200, is_api=False)
+            self._headers(200, is_api=False,
+                          content_type="text/html; charset=utf-8")
             self.wfile.write(content)
             return
         if path == "/app.js":
@@ -151,8 +152,8 @@ class Handler(BaseHTTPRequestHandler):
             except (FileNotFoundError, ModuleNotFoundError):
                 self._json(404, {"error": "UI assets missing"}, rid, t0)
                 return
-            self._headers(200, is_api=False)
-            self.send_header("Content-Type", "application/javascript; charset=utf-8")
+            self._headers(200, is_api=False,
+                          content_type="application/javascript; charset=utf-8")
             self.wfile.write(content)
             return
         if path == "/api/health":
