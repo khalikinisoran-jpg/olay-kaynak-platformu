@@ -60,11 +60,25 @@ async function vPending(){
     <div style="margin-top:8px">
       <button class="act primary" data-action="approve" data-fp="${esc(p.fingerprint)}">Approve</button>
       <button class="act danger" data-action="reject" data-fp="${esc(p.fingerprint)}">Reject</button>
+      <button class="act primary" data-action="execute" data-fp="${esc(p.fingerprint)}">Execute</button>
     </div>
   </div>`).join('');
 }
 async function approve(fp){ await api('/api/approve', {method:'POST', body: JSON.stringify({fingerprint: fp})}); show('pending'); }
 async function reject(fp){ await api('/api/reject', {method:'POST', body: JSON.stringify({fingerprint: fp})}); show('pending'); }
+async function execute(fp){
+  const b = await api('/api/execute', {method:'POST', body: JSON.stringify({fingerprint: fp})});
+  if (b && b.error){ $('#view').innerHTML = '<div class="card bad">'+esc(b.error)+'</div>'; return; }
+  const t = b.terminal || '';
+  $('#view').innerHTML = '<div class="card"><h3>Execute result '+badge(t)+'</h3><div class="kv">'
+    + '<div>Apply success</div><div>'+badge(!!b.apply_success)+'</div>'
+    + '<div>Verification</div><div>'+badge(!!b.verification_passed)+'</div>'
+    + '<div>Pending proposals now</div><div>'+esc(b.pending_count??'-')+'</div>'
+    + (b.in_flight? '<div>Note</div><div class="small">an execution is already in flight (fail-closed 409)</div>':'')
+    + '</div>'
+    + (b.guidance? '<p class="small">'+esc(b.guidance)+'</p>':'')
+    + '<button class="act primary" data-action="refresh">Back to pending</button></div>';
+}
 
 async function vActivity(){
   const d = await api('/api/operations'); if (guard(d)) return;
@@ -154,6 +168,7 @@ document.addEventListener('click', e => {
   const action = el.dataset.action;
   if (action === 'approve') approve(el.dataset.fp);
   else if (action === 'reject') reject(el.dataset.fp);
+  else if (action === 'execute') execute(el.dataset.fp);
   else if (action === 'verify') show('evidence');
   else if (action === 'refresh') show(current);
 });
