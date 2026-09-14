@@ -185,7 +185,36 @@ PUSH / NEXT BEST ACTION (exactly one) / HUMAN GATE (if any).
 - MODE: UYGULAYICI (implementer) / PLANLAYICI (planner) / TEMİZLİKÇİ
   (cleaner).
 
-## 12. CANONICAL SOURCES
+## 12. READ-ONLY vs MUTATING TANUQ API (inspection discipline)
+
+Real finding: during a diagnosis session, `agent_adapter.approve()` was
+called under a read-only umbrella and produced a real TYPE_GRANT in the
+approval ledger. Inspection tools MUST be read-only.
+
+READ-ONLY (safe for inspection/diagnosis):
+- `load_pending` — pending store read
+- `verify` / `tanuq verify` — chain/anchor validation
+- `status` / `tanuq status` — protection summary
+- `operations()` — operation projection
+- `lineage()` — fingerprint-joined lifecycle view
+- `incidents()` — detect-only incident projection
+- `export()` — audit bundle (read-only)
+- `chain_status()` — chain/anchor status
+- `tanuq history` — read-only apply-outcome lifecycle
+
+MUTATING (state-changing; only inside an explicitly approved task):
+- `propose()` / `tanuq propose` — writes pending + events
+- `approve()` — writes approval ledger TYPE_GRANT (a real
+  authorization artifact — never a diagnostic step)
+- `execute()` / `tanuq execute` — applies file mutations
+- `remove_pending()` — deletes pending records
+- `ApprovalStore.revoke()` — revokes an approval
+
+RULE: during inspection/diagnosis use ONLY the READ-ONLY set. MUTATING
+API calls change state and belong in a separately approved task scope.
+
+## 13. CANONICAL SOURCES
+
 
 If this skill ever contradicts these, the canonical source wins:
 `docs/TANUQ_PROJECT_STATE.md` (current position), `docs/SECURITY_MODEL.md`,
