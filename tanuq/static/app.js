@@ -1,5 +1,6 @@
 /* Tanuq control-plane SPA (view layer only; UI is never an authority). */
 let current = 'dashboard';
+const approved = new Set(); // fingerprints approved in this UI session
 const $ = s => document.querySelector(s);
 function tok(){ return localStorage.getItem('tanuq_token') || ''; }
 function saveToken(){ localStorage.setItem('tanuq_token', $('#token').value.trim()); location.reload(); }
@@ -45,7 +46,7 @@ async function vPending(){
   const d = await api('/api/pending'); if (guard(d)) return;
   if (!d.pending.length){ $('#view').innerHTML = '<div class="card"><div class="empty">No pending approvals. Proposals that require your approval appear here.</div></div>'; return; }
   $('#view').innerHTML = d.pending.map(p=>`
-  <div class="card"><h3>${esc(p.path)} ${badge(p.state)} ${badge(p.risk)}</h3>
+  <div class="card"><h3>${esc(p.path)} ${approved.has(p.fingerprint) ? '<span class="badge ok">APPROVED — execute bekleniyor</span>' : badge(p.state)} ${badge(p.risk)}</h3>
     <div class="kv">
       <div>Action</div><div>${esc(p.action)}</div>
       <div>Reason</div><div>${esc(p.reason)}</div>
@@ -58,13 +59,23 @@ async function vPending(){
     <h3 class="small">DIFF (old → new)</h3>
     <pre class="diff">--- old (len ${p.diff.old_len})\n+++ new (len ${p.diff.new_len})\n\nOLD:\n${esc(p.diff.old_preview)}\n\nNEW:\n${esc(p.diff.new_preview)}</pre>
     <div style="margin-top:8px">
-      <button class="act primary" data-action="approve" data-fp="${esc(p.fingerprint)}">Approve</button>
+      ${approved.has(p.fingerprint) ? '<button class="act primary" disabled>Onaylandı — execute bekleniyor</button>' : '<button class="act primary" data-action="approve" data-fp="${esc(p.fingerprint)}">Approve</button>'}
       <button class="act danger" data-action="reject" data-fp="${esc(p.fingerprint)}">Reject</button>
       <button class="act primary" data-action="execute" data-fp="${esc(p.fingerprint)}">Execute</button>
     </div>
   </div>`).join('');
 }
-async function approve(fp){ await api('/api/approve', {method:'POST', body: JSON.stringify({fingerprint: fp})}); show('pending'); }
+async function approve(fp){
+  let b;
+  try { b = await api('/api/approve', {method:'POST', body: JSON.stringify({fingerprint: fp})}); }
+  catch(e){ return; } // 403: token reset + reload already handled by api()
+  if (b && b.error){
+    $('#view').innerHTML = '<div class="card bad"><h3>Approve failed</h3><div class="small">'+esc(b.error)+'</div><button class="act primary" data-action="refresh">Geri</button></div>';
+    return;
+  }
+  approved.add(fp);
+  show('pending');
+}
 async function reject(fp){ await api('/api/reject', {method:'POST', body: JSON.stringify({fingerprint: fp})}); show('pending'); }
 async function execute(fp){
   const b = await api('/api/execute', {method:'POST', body: JSON.stringify({fingerprint: fp})});
