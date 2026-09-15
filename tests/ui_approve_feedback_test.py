@@ -2,9 +2,12 @@
 
 Real dogfood finding: a successful Approve click re-rendered the
 pending list with no visible change, so the operator believed the
-button did nothing. These static-content assertions pin the view-layer
-feedback: APPROVED badge, disabled re-approve, error card.
-Behavioural coverage lives in test_tanuq_web.py.
+button did nothing. Phase 2.1 moved the APPROVED badge to server-side
+approval metadata (reload-safe; the in-memory session Set was
+removed). These static-content assertions pin that design:
+server-metadata primary badge (granted/consumed/expired), disabled
+re-approve, error card. Behavioural coverage lives in
+test_tanuq_web.py.
 """
 import os
 
@@ -16,9 +19,9 @@ def _app_js():
         return f.read().decode("utf-8")
 
 
-def test_session_approved_state_exists():
+def test_server_metadata_badge_primary():
     js = _app_js()
-    assert "const approved = new Set()" in js
+    assert "(p.approval && p.approval.state === 'granted')" in js
 
 
 def test_approved_card_shows_visible_feedback():
@@ -38,6 +41,8 @@ def test_approve_error_feedback_visible():
     assert "Approve failed" in js
 
 
-def test_pending_state_badge_conditional():
+def test_pending_state_badge_server_conditional():
     js = _app_js()
-    assert "approved.has(p.fingerprint)" in js
+    assert "(p.approval && p.approval.state === 'granted')" in js
+    assert "p.approval.state === 'consumed'" in js
+    assert "p.approval.state === 'expired'" in js
