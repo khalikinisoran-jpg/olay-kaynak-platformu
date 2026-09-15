@@ -351,7 +351,59 @@ def _propose(data):
     return response
 
 
+def _approval_meta_by_fp():
+    """Read-only approval metadata projection per fingerprint.
+
+    Derived solely from the hash-chained approval ledger (same
+    fail-closed read pattern as the operations projection). Never an
+    authority input: /api/pending only reports grant state.
+    """
+    try:
+        records = SERVICE.env.approval_store.ledger.load()
+    except Exception:
+        return {}
+    grants = {}
+    consumed = set()
+    applied = set()
+    revoked = set()
+    for rec in records:
+        rt = rec.get("record_type", "")
+        fp = rec.get("patch_fingerprint", "")
+        if not fp or rt == "anchored":
+            continue
+        if rt == "grant":
+            prev = grants.get(fp)
+            if prev is None or str(rec.get("created_at", "")) > str(prev.get("created_at", "")):
+                grants[fp] = rec
+        elif rt == "consumed":
+            consumed.add(rec.get("approval_id", ""))
+        elif rt == "applied":
+            applied.add(rec.get("approval_id", ""))
+        elif rt == "revoked":
+            revoked.add(rec.get("approval_id", ""))
+    meta = {}
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    for fp, g in grants.items():
+        aid = g.get("approval_id", "")
+        exp = g.get("expires_at", "") or ""
+        if aid in applied:
+            state = "applied"
+        elif aid in consumed:
+            state = "consumed"
+        elif aid in revoked:
+            state = "revoked"
+        elif exp and now > exp:
+            state = "expired"
+        else:
+            state = "granted"
+        meta[fp] = {"state": state, "approval_id": aid,
+                    "granted_at": g.get("created_at", ""),
+                    "expires_at": exp}
+    return meta
+
+
 def _pending_view():
+    approval_meta = _approval_meta_by_fp()
     rows = []
     for record in load_pending(SERVICE.workspace):
         try:
@@ -366,6 +418,7 @@ def _pending_view():
             "session": record.get("session", ""),
             "fingerprint": patch.fingerprint(),
             "fingerprint_short": patch.fingerprint()[:12],
+            "approval": approval_meta.get(patch.fingerprint(), {"state": "none"}),
             "created_at": record.get("created_at", ""),
             "risk": verdict.get("risk", ""),
             "state": verdict.get("state", ""),

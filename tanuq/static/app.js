@@ -46,7 +46,7 @@ async function vPending(){
   const d = await api('/api/pending'); if (guard(d)) return;
   if (!d.pending.length){ $('#view').innerHTML = '<div class="card"><div class="empty">No pending approvals. Proposals that require your approval appear here.</div></div>'; return; }
   $('#view').innerHTML = d.pending.map(p=>`
-  <div class="card"><h3>${esc(p.path)} ${approved.has(p.fingerprint) ? '<span class="badge ok">APPROVED — execute bekleniyor</span>' : badge(p.state)} ${badge(p.risk)}</h3>
+  <div class="card"><h3>${esc(p.path)} ${(p.approval && p.approval.state === 'granted') ? '<span class="badge ok">APPROVED — execute bekleniyor</span>' : ((p.approval && p.approval.state === 'consumed') ? '<span class="badge muted">Onay kullanıldı</span>' : ((p.approval && p.approval.state === 'expired') ? '<span class="badge warn">Onay süresi doldu — yeniden onaylayın</span>' : badge(p.state)))} ${badge(p.risk)}</h3>
     <div class="kv">
       <div>Action</div><div>${esc(p.action)}</div>
       <div>Reason</div><div>${esc(p.reason)}</div>
@@ -59,7 +59,7 @@ async function vPending(){
     <h3 class="small">DIFF (old → new)</h3>
     <pre class="diff">--- old (len ${p.diff.old_len})\n+++ new (len ${p.diff.new_len})\n\nOLD:\n${esc(p.diff.old_preview)}\n\nNEW:\n${esc(p.diff.new_preview)}</pre>
     <div style="margin-top:8px">
-      ${approved.has(p.fingerprint) ? '<button class="act primary" disabled>Onaylandı — execute bekleniyor</button>' : '<button class="act primary" data-action="approve" data-fp="${esc(p.fingerprint)}">Approve</button>'}
+      ${(p.approval && p.approval.state === 'granted') ? '<button class="act primary" disabled>Onaylandı — execute bekleniyor</button>' : '<button class="act primary" data-action="approve" data-fp="${esc(p.fingerprint)}">Approve</button>'}
       <button class="act danger" data-action="reject" data-fp="${esc(p.fingerprint)}">Reject</button>
       <button class="act primary" data-action="execute" data-fp="${esc(p.fingerprint)}">Execute</button>
     </div>
