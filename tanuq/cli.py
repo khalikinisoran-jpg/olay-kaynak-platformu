@@ -622,14 +622,26 @@ def cmd_token(args) -> int:
 
 
 def cmd_ui(args) -> int:
-    from tanuq.config import ensure_local_token, read_local_token
+    from tanuq.config import ensure_local_token, is_initialized, resolve_workspace
     from tanuq import web
     try:
-        env = _load_env_quiet(args.workspace)
+        ws = resolve_workspace(args.workspace)
     except TanuqError as exc:
         return _fail(str(exc))
+    if is_initialized(ws):
+        try:
+            env = _load_env_quiet(args.workspace)
+        except TanuqError as exc:
+            return _fail(str(exc))
+        token = ensure_local_token()
+        web.run(env, port=args.port, token=token)
+        return 0
+    # First run: serve the Welcome/Setup UI instead of failing. The
+    # governed view layer stays unavailable until setup completes.
+    print("Tanuq UI — first run: this workspace is not initialized yet.")
+    print("  Finish setup in your browser; the governed app starts there.")
     token = ensure_local_token()
-    web.run(env, port=args.port, token=token)
+    web.run_setup(ws, port=args.port, token=token)
     return 0
 
 

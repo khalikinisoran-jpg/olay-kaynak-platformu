@@ -54,6 +54,28 @@ input[type=password] { width:100%; padding:8px; border:1px solid var(--line); bo
   <button class="act primary" id="unlock">Unlock</button>
 </div>
 
+<div id="setup" style="display:none">
+  <div class="card">
+    <h3>Welcome to Tanuq</h3>
+    <p class="small">Tanuq watches the file changes your AI coding agent proposes, asks you before a risky change is applied, and keeps verifiable evidence of everything that happened. Protecting a project takes about a minute.</p>
+    <div class="kv">
+      <div>1. Project folder</div><div><input id="setup-ws" type="text" placeholder="the folder that contains your project" style="width:100%"></div>
+      <div>2. Protected folders</div><div>
+        <label><input type="radio" name="setup-scope" value="all" checked> Whole project (recommended)</label><br>
+        <label><input type="radio" name="setup-scope" value="custom"> Only specific subfolders:</label>
+        <input id="setup-paths" type="text" placeholder="src, docs" style="width:100%" disabled>
+      </div>
+      <div>3. Verification</div><div>
+        <label><input type="radio" name="setup-depth" value="compile+tests" checked> Compile check + run tests (recommended)</label><br>
+        <label><input type="radio" name="setup-depth" value="compile"> Compile check only</label>
+      </div>
+    </div>
+    <p class="small">Honest limits: Tanuq governs changes proposed <b>through Tanuq</b> only · no OS sandbox · no network enforcement · evidence is <b>tamper-evident (detectable), not tamper-proof</b>.</p>
+    <button class="act primary" data-action="setup-go">Protect this project</button>
+    <span id="setup-error" class="small" style="color:var(--bad)"></span>
+  </div>
+</div>
+
 <main id="app" style="display:none">
 <nav id="tabs">
   <button data-t="dashboard" class="active">Dashboard</button>

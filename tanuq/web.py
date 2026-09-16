@@ -30,6 +30,7 @@ import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files as resource_files
+from pathlib import Path
 from urllib.parse import urlparse
 
 from p5.logging import emit as log_emit, new_request_id
@@ -48,6 +49,18 @@ from tanuq.evidence import (
 from tanuq.pending import load_pending, patch_from_record, remove_pending
 
 MAX_BODY = 1 << 20
+
+# First-run (setup) mode: the server can start for a workspace that is
+# NOT initialized yet. In this mode only the static shell, /api/health
+# and POST /api/setup are reachable — every governance endpoint stays
+# 404 until setup completes (fail-closed). The UI is never an authority:
+# /api/setup writes ONLY Tanuq's own init state by wrapping the exact
+# CLI init sequence (resolve_workspace -> init_workspace ->
+# load_environment -> ensure_local_token -> register_workspace, the
+# same order as tanuq/cli.py cmd_init).
+SETUP_MODE = False
+SETUP_WS = None
+_server_token = None
 
 
 def _static_resource(name: str):
@@ -124,9 +137,10 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     def _check_token(self) -> bool:
+        expected = SERVICE.token if SERVICE is not None else _server_token
         got = self.headers.get("X-TANUQ-Token") or ""
         try:
-            return hmac.compare_digest(got, SERVICE.token)
+            return hmac.compare_digest(got, expected)
         except Exception:
             return False
 
@@ -157,6 +171,20 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(content)
             return
         if path == "/api/health":
+            if SETUP_MODE:
+                self._json(200, {
+                    "ok": True,
+                    "service": "tanuq-ui",
+                    "version": __version__,
+                    "initialized": False,
+                    "workspace_hint": str(SETUP_WS) if SETUP_WS else None,
+                    "limits": {
+                        "os_sandbox": False,
+                        "network_enforcement": False,
+                        "evidence": "tamper-evident (not tamper-proof)",
+                    },
+                }, rid, t0)
+                return
             chain = SERVICE.chain()
             self._json(200, {
                 "ok": True,
@@ -170,6 +198,9 @@ class Handler(BaseHTTPRequestHandler):
                     "evidence": "tamper-evident (not tamper-proof)",
                 },
             }, rid, t0)
+            return
+        if SETUP_MODE:
+            self._json(404, {"error": "not found"}, rid, t0)
             return
         if path == "/api/dashboard":
             self._json(200, _dashboard(), rid, t0)
@@ -256,6 +287,20 @@ class Handler(BaseHTTPRequestHandler):
             self._json(400, {"error": "malformed JSON"}, rid, t0)
             return
         try:
+            if SETUP_MODE:
+                if path == "/api/setup":
+                    payload, status = _setup(data)
+                    self._json(status, payload, rid, t0)
+                    return
+                self._json(404, {"error": "not found"}, rid, t0)
+                return
+            # /api/setup stays reachable after the in-place transition so
+            # a re-run is answered 409 by the is_initialized check (same
+            # contract as setup mode; it can only write Tanuq init state).
+            if path == "/api/setup":
+                payload, status = _setup(data)
+                self._json(status, payload, rid, t0)
+                return
             if path == "/api/propose":
                 self._json(200, _propose(data), rid, t0)
                 return
@@ -330,6 +375,85 @@ def _evaluate_patch(patch):
             "reason": decision.reason,
         },
     }
+
+
+def _setup(data):
+    """First-run setup endpoint (P0-1): wrap the exact CLI init sequence.
+
+    Contract: writes ONLY Tanuq's own init state — <ws>/.tanuq/config.json,
+    <ws>/.tanuq/data/, the anchor key under ~/.tanuq/keys/, the local
+    device token and the workspace registry. It never touches a
+    workspace source file and never invokes any governance component
+    (no proposal, risk, approval, apply, verification or coordinator
+    call). Errors: 400 (bad input / validation), 409 (already
+    initialized), 500 (unexpected — no path or secret leakage). The
+    token is never returned in a response.
+    """
+    from tanuq.config import (
+        DEFAULT_VERIFICATION_DEPTH,
+        TanuqError,
+        ensure_local_token,
+        init_workspace,
+        is_initialized,
+        register_workspace,
+        resolve_workspace,
+    )
+    from tanuq.runtime import load_environment
+
+    ws_raw = data.get("workspace")
+    if not ws_raw or not isinstance(ws_raw, str):
+        return {"error": "workspace path is required"}, 400
+    allowed = data.get("allowed_paths")
+    if allowed is None:
+        allowed = []
+    if not isinstance(allowed, list) or not all(
+        isinstance(p, str) for p in allowed
+    ):
+        return {"error": "allowed_paths must be a list of folder paths"}, 400
+    depth = data.get("verification_depth")
+    if depth is None:
+        depth = DEFAULT_VERIFICATION_DEPTH
+    if not isinstance(depth, str):
+        return {"error": "verification_depth must be a string"}, 400
+    try:
+        ws = resolve_workspace(ws_raw)
+    except TanuqError as exc:
+        return {"error": str(exc)}, 400
+    if is_initialized(ws):
+        return {
+            "error": "This project is already protected. Reload the page.",
+        }, 409
+    try:
+        config = init_workspace(
+            ws, allowed_paths=allowed or None, verification_depth=depth)
+        env = load_environment(ws)
+        # cmd_init calls ensure_local_token() again after init_workspace
+        # (which already calls it); it is idempotent, so the same call is
+        # kept here for CLI parity with zero extra side effect.
+        ensure_local_token()
+        register_workspace(ws)
+    except (SystemExit, TanuqError) as exc:
+        return {"error": str(exc)}, 400
+    except Exception:
+        return {
+            "error": "Setup could not be completed — details are in "
+                     "the terminal that started Tanuq.",
+        }, 500
+    # In-place transition: the same server process now serves the full
+    # governed view layer (identical to restarting 'tanuq ui'). Keep the
+    # token of the CURRENT service when one is already running (e.g. a
+    # second workspace initialized through an initialized-mode server).
+    global SERVICE, SETUP_MODE
+    SERVICE = WorkspaceService(
+        env, SERVICE.token if SERVICE is not None else _server_token)
+    SETUP_MODE = False
+    return {
+        "initialized": True,
+        "workspace": str(config.workspace_path),
+        "allowed_paths": list(config.allowed_paths),
+        "verification_depth": config.verification_depth,
+        "next": "connect-ai",
+    }, 200
 
 
 def _propose(data):
@@ -528,11 +652,50 @@ def run(env, port=8770, token=None):
         server.server_close()
 
 
+def run_setup(workspace, port=8770, token=None):
+    """First-run UI server: workspace is NOT initialized yet.
+
+    Serves only the static shell, /api/health and POST /api/setup.
+    The device token is still required for the setup POST (same
+    fail-closed contract as every other state-changing POST); it is
+    shown here once in the terminal that started Tanuq, never in a
+    URL, log or API response. On successful setup the process
+    transitions in place to the full governed view layer.
+    """
+    global SERVICE, SETUP_MODE, SETUP_WS, _server_token
+    from tanuq.config import read_local_token
+    token = token or read_local_token()
+    if not token:
+        raise SystemExit(
+            "Tanuq UI: no local access token (run 'tanuq init' or 'tanuq token')")
+    SETUP_MODE = True
+    SETUP_WS = Path(workspace)
+    _server_token = token
+    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    print(f"Tanuq UI (first-run setup): http://127.0.0.1:{port}/")
+    print(f"  workspace: {SETUP_WS}")
+    print("  Device token for the browser (paste it once):")
+    print(f"  {token}")
+    print("  limits: no OS sandbox, no network enforcement; Tanuq governs")
+    print("  changes proposed through Tanuq only; evidence is tamper-evident.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="Tanuq product UI")
     ap.add_argument("--workspace", default=None)
     ap.add_argument("--port", type=int, default=8770)
     args = ap.parse_args()
-    from tanuq.runtime import load_environment
-    run(load_environment(args.workspace), port=args.port)
+    from tanuq.config import is_initialized, resolve_workspace
+    ws = resolve_workspace(args.workspace)
+    if is_initialized(ws):
+        from tanuq.runtime import load_environment
+        run(load_environment(args.workspace), port=args.port)
+    else:
+        run_setup(ws, port=args.port)

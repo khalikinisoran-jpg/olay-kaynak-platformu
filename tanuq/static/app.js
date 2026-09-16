@@ -21,6 +21,38 @@ function show(t){
   document.querySelectorAll('#tabs button[data-t]').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
   ({dashboard:vDashboard, pending:vPending, activity:vActivity, incidents:vIncidents,    evidence:vEvidence, blocked:vBlocked, status:vStatus})[t]();
 }
+function showSetup(){
+  $('#tokenbox').style.display='none';
+  $('#app').style.display='none';
+  $('#setup').style.display='block';
+}
+async function setupGo(){
+  const err = $('#setup-error');
+  if (!err) return;
+  err.textContent = '';
+  const ws = $('#setup-ws').value.trim();
+  if (!ws){ err.textContent = 'Enter your project folder path.'; return; }
+  const scope = document.querySelector('input[name="setup-scope"]:checked').value;
+  let allowed = [];
+  if (scope === 'custom'){
+    allowed = $('#setup-paths').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (!allowed.length){ err.textContent = 'List at least one subfolder, or keep "Whole project" selected.'; return; }
+  }
+  const depth = document.querySelector('input[name="setup-depth"]:checked').value;
+  let b;
+  try { b = await api('/api/setup', {method:'POST', body: JSON.stringify({workspace: ws, allowed_paths: allowed, verification_depth: depth})}); }
+  catch(e){ return; } // 403: token reset + reload already handled by api()
+  if (b && b.error){ err.textContent = b.error; return; }
+  $('#setup').innerHTML = `<div class="card"><h3>You are protected ✓</h3><div class="kv">
+    <div>Project</div><div>${esc(b.workspace)}</div>
+    <div>Protected folders</div><div>${esc(b.allowed_paths.join(', '))}</div>
+    <div>Verification</div><div>${esc(b.verification_depth)}</div>
+    <div>Evidence</div><div>${badge('VALID')} anchored, tamper-evident chain</div>
+    <div>Browser access</div><div class="small">unlocked with your device token — stored only in this browser; it is an access key, never a decision</div>
+  </div>
+  <p class="small"><b>Next: connect your AI agent.</b> The one-click connector arrives in the next release; meanwhile see <code>docs/AGENT_INTEGRATION.md</code> — Claude Code via the PreToolUse hook (Edit/Write) or any agent via <code>tanuq propose --stdin-json</code>.</p>
+  <button class="act primary" data-action="setup-done">Open Tanuq</button></div>`;
+}
 function guard(data){ if(data && data.error){ $('#view').innerHTML = '<div class="card bad">'+esc(data.error)+'</div>'; return true;} return false; }
 
 async function vDashboard(){
@@ -190,6 +222,14 @@ document.addEventListener('click', e => {
   else if (action === 'execute') execute(el.dataset.fp);
   else if (action === 'verify') show('evidence');
   else if (action === 'refresh') show(current);
+  else if (action === 'setup-go') setupGo();
+  else if (action === 'setup-done') location.reload();
+});
+document.addEventListener('change', e => {
+  if (e.target && e.target.name === 'setup-scope'){
+    const inp = $('#setup-paths');
+    if (inp) inp.disabled = e.target.value !== 'custom';
+  }
 });
 document.getElementById('unlock').addEventListener('click', saveToken);
 
@@ -197,7 +237,10 @@ document.getElementById('unlock').addEventListener('click', saveToken);
   if (!tok()) return;
   try {
     const h = await api('/api/health');
-    if (h.ok){ $('#tokenbox').style.display='none'; $('#app').style.display='block'; show('dashboard'); return; }
+    if (h.ok){
+      if (h.initialized === false){ showSetup(); return; }
+      $('#tokenbox').style.display='none'; $('#app').style.display='block'; show('dashboard'); return;
+    }
   } catch(e){}
   localStorage.removeItem('tanuq_token');
 })();
