@@ -69,7 +69,7 @@ async function vPending(){
     <div style="margin-top:8px">
       ${(p.approval && p.approval.state === 'granted') ? '<button class="act primary" disabled>Onaylandı — execute bekleniyor</button>' : '<button class="act primary" data-action="approve" data-fp="${esc(p.fingerprint)}">Approve</button>'}
       <button class="act danger" data-action="reject" data-fp="${esc(p.fingerprint)}">Reject</button>
-      <button class="act primary" data-action="execute" data-fp="${esc(p.fingerprint)}">Execute</button>
+      ${(p.risk === 'HIGH' || p.risk === 'CRITICAL') && !(p.approval && p.approval.state === 'granted') ? '' : '<button class="act primary" data-action="execute" data-fp="${esc(p.fingerprint)}">Uygula</button>'}
     </div>
   </div>`).join('');
 }
