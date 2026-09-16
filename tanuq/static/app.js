@@ -27,6 +27,7 @@ async function vDashboard(){
   const d = await api('/api/dashboard'); if (guard(d)) return;
   $('#hdrstate').outerHTML = '<span id="hdrstate" class="badge '+(d.anchor==='ACTIVE'?'ok':'bad')+'">Governed: ON · Anchor: '+esc(d.anchor)+'</span>';
   $('#view').innerHTML = `
+  ${d.pending_count ? `<div class="card" style="border-color:var(--warn)"><h3>⏳ ${d.pending_count} change(s) awaiting your decision</h3><div class="small">Review them in the Pending Approvals tab.</div></div>` : ''}
   <div class="card"><h3>Workspace</h3><div class="kv">
     <div>Workspace</div><div>${esc(d.workspace)}</div>
     <div>Protected scope</div><div>${esc(d.protected_scope.join(', '))}</div>
@@ -48,12 +49,19 @@ async function vPending(){
   $('#view').innerHTML = d.pending.map(p=>`
   <div class="card"><h3>${esc(p.path)} ${(p.approval && p.approval.state === 'granted') ? '<span class="badge ok">APPROVED — execute bekleniyor</span>' : ((p.approval && p.approval.state === 'consumed') ? '<span class="badge muted">Onay kullanıldı</span>' : ((p.approval && p.approval.state === 'expired') ? '<span class="badge warn">Onay süresi doldu — yeniden onaylayın</span>' : badge(p.state)))} ${badge(p.risk)}</h3>
     <div class="kv">
+      <div>What the AI wants to do</div><div>${esc(p.reason)}</div>
       <div>Action</div><div>${esc(p.action)}</div>
-      <div>Reason</div><div>${esc(p.reason)}</div>
-      <div>Session</div><div>${esc(p.session||'-')}</div>
-      <div>Fingerprint</div><div class="small">${esc(p.fingerprint)}</div>
-      <div>Created</div><div>${esc(p.created_at||'-')}</div>
-      <div>Approval validity</div><div>Single-use · expires 3600s after you approve</div>
+      <div>Risk</div><div>${badge(p.risk)} — this change needs your approval before it can be applied</div>
+    </div>
+    <details class="small" style="margin-top:8px"><summary>Technical details</summary>
+      <div class="kv">
+        <div>Fingerprint</div><div class="small">${esc(p.fingerprint)}</div>
+        <div>Session</div><div>${esc(p.session||'-')}</div>
+        <div>Created</div><div>${esc(p.created_at||'-')}</div>
+        <div>Approval validity</div><div>Single-use · expires 3600s after you approve</div>
+        <div>Approval state</div><div>${esc((p.approval && p.approval.state) || "none")}</div>
+      </div>
+    </details>
     </div>
     <p class="small"><b>What does this approval authorize?</b><br>${esc(p.what_this_authorizes)}</p>
     <h3 class="small">DIFF (old → new)</h3>
