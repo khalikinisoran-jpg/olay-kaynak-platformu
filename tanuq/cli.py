@@ -519,7 +519,7 @@ def cmd_lineage(args) -> int:
     except TanuqError as exc:
         return _fail(str(exc))
     report = OperationCoordinator(env).lineage(
-        env, fingerprint=args.fingerprint, limit=args.limit)
+        fingerprint=args.fingerprint, limit=args.limit)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
