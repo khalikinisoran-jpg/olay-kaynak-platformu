@@ -563,6 +563,69 @@ def cmd_lineage(args) -> int:
     return 0
 
 
+def _run_length(values):
+    """Compact run-length display: ['MEDIUM']*6 -> 'MEDIUM × 6'."""
+    parts = []
+    for value in values:
+        if parts and parts[-1][0] == value:
+            parts[-1][1] += 1
+        else:
+            parts.append([value, 1])
+    return ", ".join(
+        f"{value} × {count}" if count > 1 else str(value)
+        for value, count in parts
+    )
+
+
+def cmd_trajectory(args) -> int:
+    """Read-only per-path trajectory telemetry (observation only)."""
+    from tanuq.trajectory import trajectory_projection
+    try:
+        env = _load_env_quiet(args.workspace)
+    except SystemExit as exc:
+        return _fail(str(exc).replace("Tanuq: ", ""))
+    except TanuqError as exc:
+        return _fail(str(exc))
+    path_filter = None
+    if args.path:
+        candidate = Path(args.path)
+        if not candidate.is_absolute():
+            candidate = env.workspace / candidate
+        path_filter = str(candidate)
+    projection = trajectory_projection(env, path=path_filter)
+    if args.json:
+        print(json.dumps(projection, ensure_ascii=False, indent=2))
+        return 0
+    print(f"Tanuq trajectory — {projection['operation_count']} operation(s) "
+          f"across {projection['path_count']} path(s) "
+          "(read-only observation, no decisions)")
+    print(f"  Workspace: {projection['workspace']}")
+    if not projection["paths"]:
+        print("No trajectory data.")
+        return 0
+    for entry in projection["paths"]:
+        print("-" * 60)
+        print(f"{entry['path']}")
+        print(f"  Operations:   {entry['operation_count']}  "
+              f"consecutive auto-apply: "
+              f"{entry['consecutive_auto_apply_count']}")
+        print(f"  Risk:         "
+              f"{_run_length(entry['risk_sequence']) or '(none)'}")
+        print(f"  Outcome:      "
+              f"{_run_length(entry['outcome_sequence']) or '(none)'}")
+        print(f"  Verification: {_run_length([
+            'PASS' if v is True else 'FAIL' if v is False else 'N/A'
+            for v in entry['verification_sequence']]) or '(none)'}")
+        transitions = entry["risk_transitions"]
+        print(f"  Transitions:  " + (
+            ", ".join(f"{a} -> {b}" for a, b in transitions)
+            if transitions else "(none)"))
+        print(f"  Failures:     {entry['failure_count']}  "
+              f"Rollbacks: {entry['rollback_count']}")
+    print("=" * 60)
+    return 0
+
+
 def cmd_workspace(args) -> int:
     from tanuq.config import list_registered_workspaces
     entries = list_registered_workspaces()
@@ -720,6 +783,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_lineage.add_argument("--limit", type=int, default=20)
     p_lineage.add_argument("--json", action="store_true", help="Machine-readable output")
     p_lineage.set_defaults(func=cmd_lineage)
+
+    p_trajectory = sub.add_parser(
+        "trajectory",
+        help="Read-only per-path trajectory telemetry (observation only)")
+    p_trajectory.add_argument("--workspace", default=None)
+    p_trajectory.add_argument(
+        "--path", default=None,
+        help="Only the exact recorded path matching this value")
+    p_trajectory.add_argument("--json", action="store_true",
+                              help="Machine-readable output")
+    p_trajectory.set_defaults(func=cmd_trajectory)
 
     p_export = sub.add_parser("export", help="Read-only secret-safe evidence bundle (JSON)")
     p_export.add_argument("--workspace", default=None)
