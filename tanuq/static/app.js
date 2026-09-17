@@ -50,8 +50,23 @@ async function setupGo(){
     <div>Evidence</div><div>${badge('VALID')} anchored, tamper-evident chain</div>
     <div>Browser access</div><div class="small">unlocked with your device token — stored only in this browser; it is an access key, never a decision</div>
   </div>
-  <p class="small"><b>Next: connect your AI agent.</b> The one-click connector arrives in the next release; meanwhile see <code>docs/AGENT_INTEGRATION.md</code> — Claude Code via the PreToolUse hook (Edit/Write) or any agent via <code>tanuq propose --stdin-json</code>.</p>
   <button class="act primary" data-action="setup-done">Open Tanuq</button></div>`;
+  const connectCard = $('#connect-card');
+  if (connectCard) connectCard.style.display = 'block';
+}
+async function connectGo(){
+  const err = $('#connect-error');
+  if (err) err.textContent = '';
+  let b;
+  try { b = await api('/api/connect', {method:'POST', body: JSON.stringify({agent: 'claude_code'})}); }
+  catch(e){ return; } // 403: token reset + reload already handled by api()
+  if (b && b.error){ if (err) err.textContent = b.error; return; }
+  const card = $('#connect-card');
+  if (card) card.innerHTML = `<h3>Connected ✓</h3><div class="kv">
+    <div>Agent</div><div>Claude Code</div>
+    <div>Hook installed</div><div><span class="badge ok">Edit + Write governed</span></div>
+  </div>
+  <p class="small"><b>Next:</b> open Claude Code in this project and make a change. Low-risk edits apply automatically; risky ones wait for your approval here.</p>`;
 }
 function guard(data){ if(data && data.error){ $('#view').innerHTML = '<div class="card bad">'+esc(data.error)+'</div>'; return true;} return false; }
 
@@ -224,6 +239,7 @@ document.addEventListener('click', e => {
   else if (action === 'refresh') show(current);
   else if (action === 'setup-go') setupGo();
   else if (action === 'setup-done') location.reload();
+  else if (action === 'connect-go') connectGo();
 });
 document.addEventListener('change', e => {
   if (e.target && e.target.name === 'setup-scope'){

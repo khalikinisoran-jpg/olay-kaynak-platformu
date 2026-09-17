@@ -301,6 +301,10 @@ class Handler(BaseHTTPRequestHandler):
                 payload, status = _setup(data)
                 self._json(status, payload, rid, t0)
                 return
+            if path == "/api/connect":
+                payload, status = _connect(data)
+                self._json(status, payload, rid, t0)
+                return
             if path == "/api/propose":
                 self._json(200, _propose(data), rid, t0)
                 return
@@ -453,6 +457,120 @@ def _setup(data):
         "allowed_paths": list(config.allowed_paths),
         "verification_depth": config.verification_depth,
         "next": "connect-ai",
+    }, 200
+
+
+def _claude_hook_command():
+    """The hook command written into Claude Code settings.
+
+    Uses the interpreter THIS UI server runs under (sys.executable),
+    so the tanuq package is always importable from the hook (avoids
+    the observed stale-global-install friction). Absolute path,
+    quoted for Windows-safe paths.
+    """
+    return f'"{sys.executable}" -m tanuq.claude_code_adapter'
+
+
+def _connect(data):
+    """Connect-AI endpoint (P0-2): install the governed Claude Code
+    PreToolUse hook (Edit|Write) into <workspace>/.claude/settings.json.
+
+    Agent-configuration only. This endpoint never enters the governance
+    chain: no proposal, risk, approval, fingerprint, apply, verification,
+    evidence or coordinator call. The only file it can write is the
+    workspace's Claude Code settings file. Existing user settings and
+    unrelated hooks are preserved (semantic merge); TANUQ hook insertion
+    is idempotent (single entry, updated in place if the command
+    changed); malformed existing JSON is NEVER overwritten (fail-closed
+    409). Writes are atomic (tmp + replace, same pattern as
+    tanuq.config.save_config). Only agent value "claude_code" is
+    accepted (fail-closed 400 otherwise).
+    """
+    from tanuq.claude_code_adapter import _SUPPORTED_TOOLS
+
+    if data.get("agent") != "claude_code":
+        return {"error": "This release connects Claude Code only."}, 400
+    settings_path = Path(SERVICE.env.workspace) / ".claude" / "settings.json"
+    matcher = "|".join(_SUPPORTED_TOOLS)
+    hook_entry = {
+        "matcher": matcher,
+        "hooks": [{"type": "command", "command": _claude_hook_command()}],
+    }
+
+    existing = None
+    if settings_path.exists():
+        try:
+            existing = json.loads(settings_path.read_text(encoding="utf-8"))
+        except Exception:
+            existing = None
+        if not isinstance(existing, dict):
+            return {
+                "error": "The existing Claude Code settings could not be "
+                         "read. Fix or rename .claude/settings.json manually "
+                         "— Tanuq will not overwrite your settings.",
+            }, 409
+
+    if existing is None:
+        merged = {"hooks": {"PreToolUse": [hook_entry]}}
+        changed = True
+    else:
+        merged = existing
+        hooks = merged.setdefault("hooks", {})
+        pre = hooks.setdefault("PreToolUse", [])
+        if not isinstance(hooks, dict) or not isinstance(pre, list):
+            return {
+                "error": "The existing Claude Code settings have an "
+                         "unexpected structure. Fix .claude/settings.json "
+                         "manually — Tanuq will not overwrite your settings.",
+            }, 409
+
+        def _is_tanuq(entry):
+            if not isinstance(entry, dict):
+                return False
+            subs = entry.get("hooks")
+            return isinstance(subs, list) and any(
+                isinstance(h, dict)
+                and "tanuq.claude_code_adapter" in str(h.get("command", ""))
+                for h in subs)
+
+        tanuq_idx = [i for i, e in enumerate(pre) if _is_tanuq(e)]
+        if not tanuq_idx:
+            pre.append(hook_entry)
+            changed = True
+        elif pre[tanuq_idx[0]] == hook_entry and len(tanuq_idx) == 1:
+            changed = False
+        else:
+            pre[tanuq_idx[0]] = hook_entry
+            for i in sorted(tanuq_idx[1:], reverse=True):
+                pre.pop(i)
+            changed = True
+
+    if changed:
+        tmp = None
+        try:
+            settings_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = settings_path.with_suffix(".tmp")
+            tmp.write_text(
+                json.dumps(merged, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            tmp.replace(settings_path)
+        except Exception:
+            if tmp is not None:
+                try:
+                    tmp.unlink()
+                except Exception:
+                    pass
+            return {
+                "error": "Could not write the Claude Code settings — "
+                         "check the folder permissions and try again.",
+            }, 500
+    return {
+        "connected": True,
+        "agent": "claude_code",
+        "workspace": str(SERVICE.env.workspace),
+        "hook": {"event": "PreToolUse", "matcher": matcher},
+        "next": "open-claude-code",
     }, 200
 
 
