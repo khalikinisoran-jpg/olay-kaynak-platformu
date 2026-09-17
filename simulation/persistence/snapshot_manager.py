@@ -1,3 +1,5 @@
+import sys
+
 from simulation.persistence.snapshot import SnapshotStore
 
 
@@ -41,15 +43,18 @@ class SnapshotManager:
         )
 
         # P6.1: Windows cp1252 compatibility — avoid '\u0131' (dotless i) which fails on hosted Windows
-        try:
-            print(
-                f"Otomatik snapshot alindi. "
-                f"Event sayisi: {last_sequence}"
-            )
-        except UnicodeEncodeError:
-            # Fallback: write via buffer with replacement
-            import sys
-            sys.stdout.buffer.write(
-                f"Otomatik snapshot alindi. Event sayisi: {last_sequence}\n".encode("utf-8", errors="replace")
-            )
-            sys.stdout.buffer.flush()
+        # stdout-hygiene: notices are human-only (interactive TTY) and must
+        # never reach machine-readable stdout/stderr capture surfaces
+        if sys.stderr.isatty():
+            try:
+                print(
+                    f"Otomatik snapshot alindi. "
+                    f"Event sayisi: {last_sequence}",
+                    file=sys.stderr,
+                )
+            except UnicodeEncodeError:
+                # Fallback: write via buffer with replacement
+                sys.stderr.buffer.write(
+                    f"Otomatik snapshot alindi. Event sayisi: {last_sequence}\n".encode("utf-8", errors="replace")
+                )
+                sys.stderr.buffer.flush()
