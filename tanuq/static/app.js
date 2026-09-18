@@ -55,18 +55,24 @@ async function setupGo(){
   if (connectCard) connectCard.style.display = 'block';
 }
 async function connectGo(){
-  const err = $('#connect-error');
-  if (err) err.textContent = '';
+  const cards = document.querySelectorAll('[data-connect-card]');
   let b;
   try { b = await api('/api/connect', {method:'POST', body: JSON.stringify({agent: 'claude_code'})}); }
   catch(e){ return; } // 403: token reset + reload already handled by api()
-  if (b && b.error){ if (err) err.textContent = b.error; return; }
-  const card = $('#connect-card');
-  if (card) card.innerHTML = `<h3>Connected ✓</h3><div class="kv">
+  const failed = b && b.error;
+  cards.forEach(card => {
+    const err = card.querySelector('[data-connect-error]');
+    if (err) err.textContent = failed ? b.error : '';
+    if (failed) return;
+    card.innerHTML = `<h3>Connected ✓</h3><div class="kv">
     <div>Agent</div><div>Claude Code</div>
     <div>Hook installed</div><div><span class="badge ok">Edit + Write governed</span></div>
   </div>
   <p class="small"><b>Next:</b> open Claude Code in this project and make a change. Low-risk edits apply automatically; risky ones wait for your approval here.</p>`;
+  });
+  if (!failed && document.getElementById('app').style.display !== 'none'){
+    show('dashboard'); // re-render: connected cards disappear
+  }
 }
 function guard(data){ if(data && data.error){ $('#view').innerHTML = '<div class="card bad">'+esc(data.error)+'</div>'; return true;} return false; }
 
@@ -74,6 +80,7 @@ async function vDashboard(){
   const d = await api('/api/dashboard'); if (guard(d)) return;
   $('#hdrstate').outerHTML = '<span id="hdrstate" class="badge '+(d.anchor==='ACTIVE'?'ok':'bad')+'">Governed: ON · Anchor: '+esc(d.anchor)+'</span>';
   $('#view').innerHTML = `
+  ${d.claude_connected === false ? `<div class="card" data-connect-card><h3>Connect AI — Claude Code</h3><p class="small">Tanuq configures Claude Code so every Edit and Write in this project is governed: low-risk changes apply automatically, risky ones wait for your approval here. Your existing Claude Code settings are preserved.</p><button class="act primary" data-action="connect-go">Connect Claude Code</button><span data-connect-error class="small" style="color:var(--bad)"></span></div>` : ''}
   ${d.pending_count ? `<div class="card" style="border-color:var(--warn)"><h3>⏳ ${d.pending_count} change(s) awaiting your decision</h3><div class="small">Review them in the Pending Approvals tab.</div></div>` : ''}
   <div class="card"><h3>Workspace</h3><div class="kv">
     <div>Workspace</div><div>${esc(d.workspace)}</div>

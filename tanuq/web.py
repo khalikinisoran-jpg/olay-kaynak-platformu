@@ -709,6 +709,33 @@ def _execute(data):
     return result, bool(result.get("in_flight"))
 
 
+def _claude_connected():
+    """Read-only check: is the Tanuq Claude Code hook installed in the
+    workspace's .claude/settings.json? Never raises; any read or parse
+    problem reports as not connected (fail-safe default). Returns only
+    a boolean — never settings content, secrets or tokens.
+    """
+    settings_path = Path(SERVICE.env.workspace) / ".claude" / "settings.json"
+    try:
+        existing = json.loads(settings_path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if not isinstance(existing, dict):
+        return False
+    hooks = existing.get("hooks")
+    pre = hooks.get("PreToolUse") if isinstance(hooks, dict) else None
+    if not isinstance(pre, list):
+        return False
+    for entry in pre:
+        subs = entry.get("hooks") if isinstance(entry, dict) else None
+        if isinstance(subs, list) and any(
+                isinstance(h, dict)
+                and "tanuq.claude_code_adapter" in str(h.get("command", ""))
+                for h in subs):
+            return True
+    return False
+
+
 def _dashboard():
     env = SERVICE.env
     config = env.config
@@ -734,6 +761,7 @@ def _dashboard():
         "incident_count": incident_report["total"],
         "critical_incidents": incident_report["critical"],
         "last_terminal": last_terminal,
+        "claude_connected": _claude_connected(),
         "limits": {
             "os_sandbox": False,
             "network_enforcement": False,
