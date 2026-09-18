@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TANUQ — Governance for AI agents</title>
+<meta name="description" content="TANUQ is an independent governance layer for AI coding agents. Risk-classified proposals, human approval, governed execution, verification and tamper-evident evidence. Swap the agent. Keep the control.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">Independent governance layer for AI coding agents</p>
+    <h1>Governance for AI agents.<br>Swap the agent. Keep the control.</h1>
+    <p class="lede">
+      TANUQ sits between your AI agent and your files. Every change your agent
+      proposes is <strong>risk-classified</strong>, <strong>approved by you</strong>,
+      executed as a <strong>governed mutation</strong>, <strong>verified</strong>,
+      and recorded in <strong>tamper-evident evidence</strong>.
+    </p>
+    <p class="independence">Agents and models change. The governance contract doesn't.</p>
+    <p class="cta">
+      <a class="btn primary" href="#try">TRY TANUQ</a>
+      <a class="btn" href="https://github.com/khalikinisoran-jpg/olay-kaynak-platformu" rel="noopener">View source on GitHub</a>
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="problem">
+    <h2>Why does an agent need governance?</h2>
+    <p>AI coding agents write files directly, with your permissions, at machine speed.
+       When they get it wrong — or when you simply want to know what they did —
+       the change is already on disk, with no decision point and no record.</p>
+    <p>TANUQ turns that one-way write into a governed decision:
+       the agent proposes, TANUQ classifies the risk deterministically,
+       you approve what is risky, and everything is verified and recorded.</p>
+  </section>
+
+  <section id="flow">
+    <h2>How it works</h2>
+    <ol class="flow">
+      <li><span>Agent</span> Your AI agent wants to change a file.</li>
+      <li><span>Proposal</span> The change is submitted as a fingerprint-bound proposal — never a direct write.</li>
+      <li><span>Risk</span> A deterministic risk engine classifies it from system signals: path, action, size, content, location.</li>
+      <li><span>Approval</span> HIGH/CRITICAL changes wait for your explicit, single-use, fingerprint-bound approval.</li>
+      <li><span>Execute</span> Approved changes are applied as governed mutations — atomically, in scope only.</li>
+      <li><span>Verify</span> Compilation and tests must pass; a failed verification rolls the change back automatically.</li>
+      <li><span>Evidence</span> Every decision and outcome is recorded in a tamper-evident chain.</li>
+    </ol>
+  </section>
+
+  <section id="paths">
+    <h2>Three ways in</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>1. TRY TANUQ</h3>
+        <p>A disposable, local demo on your own machine. No production files,
+           no secrets, no accounts — the real governed pipeline in a
+           temporary workspace that cleans itself up.</p>
+        <a class="btn primary" href="#try">Try it</a>
+      </div>
+      <div class="card">
+        <h3>2. CONNECT YOUR AGENT</h3>
+        <p>Convenience integration: TANUQ can configure a supported agent
+           (for example Claude Code) so its file changes are governed
+           automatically. Optional — never required.</p>
+      </div>
+      <div class="card">
+        <h3>3. GENERIC CONTRACT</h3>
+        <p>The canonical integration. Any agent that can run a shell command
+           can submit proposals through TANUQ's generic CLI/API protocol —
+           no connect step, no vendor lock-in.</p>
+        <code>tanuq propose --stdin-json --json</code>
+      </div>
+    </div>
+  </section>
+
+  <section id="try">
+    <h2>TRY TANUQ</h2>
+    <p>A governed demo runs <strong>locally on your machine</strong>, in a
+       <strong>disposable workspace</strong>, using <strong>only test files</strong>.
+       No production files are touched and <strong>no secrets are required</strong>.
+       The workspace is cleaned up automatically when the demo finishes.</p>
+    <p class="small">Prerequisite: Python 3.12+ and git. TANUQ runs locally —
+       the demo sends nothing to any server.</p>
+    <h3>Windows (PowerShell)</h3>
+<pre>git clone https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git tanuq-demo
+cd tanuq-demo
+pip install -e .
+powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
+    <h3>Linux / macOS (bash)</h3>
+<pre>git clone https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git tanuq-demo
+cd tanuq-demo
+pip install -e .
+bash site/try/try_tanuq.sh</pre>
+    <p class="small">The demo walks the real governed pipeline:
+       proposal → risk → approval → governed mutation → verification → evidence —
+       and finishes with a cleanup and an <code>OVERALL PASS</code> summary.</p>
+  </section>
+
+  <section id="limits">
+    <h2>Honest limits</h2>
+    <ul class="limits">
+      <li>TANUQ governs changes proposed <strong>through Tanuq</strong> only —
+          an agent writing files directly (outside Tanuq) is not intercepted.</li>
+      <li><strong>No OS sandbox</strong> and <strong>no network enforcement</strong>.</li>
+      <li>Evidence is <strong>tamper-evident (detectable), not tamper-proof</strong>.</li>
+    </ul>
+  </section>
+
+  <section id="roadmap">
+    <h2>Roadmap — under research</h2>
+    <p class="small">Not part of the current release; listed for transparency.</p>
+    <ul class="small">
+      <li>Trajectory governance (multi-step agent behavior)</li>
+      <li>Anomaly / escape detection</li>
+      <li>Multi-agent governance</li>
+      <li>Broader action classes and runtime integrations</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>
+    <a href="https://github.com/khalikinisoran-jpg/olay-kaynak-platformu" rel="noopener">GitHub — source &amp; developer docs</a>
+    · Tanuq runs locally on your machine. This site is static:
+    no accounts, no tracking, no data collection.
+  </p>
+</footer>
+
+</body>
+</html>
