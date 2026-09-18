@@ -278,3 +278,27 @@ PreToolUse decision (always "deny": the governed channel did the work)
   apply success is never treated as verification success.
 - Single local operator ("human-operator"); approvals are not
   attributable to individual humans yet.
+
+## Connected vs generic agents (P0-2.1)
+
+Tanuq is not tied to Claude Code — or to any single agent, model or
+provider. Two integration paths exist:
+
+1. **Connected Agent (convenience/onboarding).** The Tanuq UI can
+   install a vendor-specific integration for you (for example the
+   Claude Code PreToolUse hook). This is configuration convenience
+   only: the connect step never enters the governance chain and grants
+   no authority.
+2. **Generic Agent (canonical integration contract).** Any agent that
+   can run a shell command integrates through the canonical proposal
+   protocol — no connect step required:
+
+   ```
+   tanuq propose --stdin-json --json
+   ```
+
+Claude Code is shipped as a translation/integration adapter example
+(`tanuq.claude_code_adapter`); it converts Claude's tool calls into
+the same generic proposal contract every other agent uses directly.
+Governance authority belongs to Tanuq's deterministic governance core
+— never to an agent, model or provider.

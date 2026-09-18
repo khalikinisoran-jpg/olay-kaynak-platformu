@@ -472,24 +472,53 @@ def _claude_hook_command():
 
 
 def _connect(data):
-    """Connect-AI endpoint (P0-2): install the governed Claude Code
-    PreToolUse hook (Edit|Write) into <workspace>/.claude/settings.json.
+    """Connect-AI endpoint (P0-2): register an agent with Tanuq.
 
-    Agent-configuration only. This endpoint never enters the governance
-    chain: no proposal, risk, approval, fingerprint, apply, verification,
-    evidence or coordinator call. The only file it can write is the
-    workspace's Claude Code settings file. Existing user settings and
-    unrelated hooks are preserved (semantic merge); TANUQ hook insertion
-    is idempotent (single entry, updated in place if the command
-    changed); malformed existing JSON is NEVER overwritten (fail-closed
-    409). Writes are atomic (tmp + replace, same pattern as
-    tanuq.config.save_config). Only agent value "claude_code" is
-    accepted (fail-closed 400 otherwise).
+    Vendor-independent registry dispatcher (P0-2.1): each connectable
+    agent carries only its own onboarding metadata (install/status/
+    protocol) — never governance information. Agent-configuration only.
+    This endpoint never enters the governance chain: no proposal, risk,
+    approval, fingerprint, apply, verification, evidence or coordinator
+    call. Unknown agents are rejected fail-closed (400) with the list
+    of supported agents.
+    """
+    agent = data.get("agent")
+    entry = _CONNECTABLE_AGENTS.get(agent)
+    if entry is None:
+        return {
+            "error": (
+                "Unknown agent. Supported agents: "
+                + ", ".join(sorted(_CONNECTABLE_AGENTS)) + "."
+            ),
+            "supported_agents": sorted(_CONNECTABLE_AGENTS),
+        }, 400
+    install = entry.get("install")
+    if install is None:
+        # Generic agent: nothing to install — the canonical proposal
+        # contract IS the integration.
+        return {
+            "connected": True,
+            "agent": agent,
+            "display_name": entry["display_name"],
+            "proposal_protocol": entry["proposal_protocol"],
+            "next": "use-canonical-protocol",
+        }, 200
+    return install(data)
+
+
+def _install_claude(data):
+    """Install the governed Claude Code PreToolUse hook (Edit|Write)
+    into <workspace>/.claude/settings.json (translation/integration
+    convenience for the claude_code registry entry).
+
+    Existing user settings and unrelated hooks are preserved (semantic
+    merge); TANUQ hook insertion is idempotent (single entry, updated
+    in place if the command changed); malformed existing JSON is NEVER
+    overwritten (fail-closed 409). Writes are atomic (tmp + replace,
+    same pattern as tanuq.config.save_config).
     """
     from tanuq.claude_code_adapter import _SUPPORTED_TOOLS
 
-    if data.get("agent") != "claude_code":
-        return {"error": "This release connects Claude Code only."}, 400
     settings_path = Path(SERVICE.env.workspace) / ".claude" / "settings.json"
     matcher = "|".join(_SUPPORTED_TOOLS)
     hook_entry = {
@@ -736,6 +765,27 @@ def _claude_connected():
     return False
 
 
+# Vendor-independent connect registry (P0-2.1 design): metadata +
+# onboarding callables ONLY. It must never carry or influence
+# governance information (risk/policy/approval/fingerprint) — agent
+# identity is not a governance authority.
+_CONNECTABLE_AGENTS = {
+    "claude_code": {
+        "display_name": "Claude Code",
+        "install": _install_claude,
+        "connected": _claude_connected,
+        "post_connect": "open-claude-code",
+    },
+    "generic": {
+        "display_name": "Any agent (CLI / API)",
+        "install": None,
+        "connected": None,
+        "post_connect": "use-canonical-protocol",
+        "proposal_protocol": "tanuq propose --stdin-json --json",
+    },
+}
+
+
 def _dashboard():
     env = SERVICE.env
     config = env.config
@@ -762,6 +812,19 @@ def _dashboard():
         "critical_incidents": incident_report["critical"],
         "last_terminal": last_terminal,
         "claude_connected": _claude_connected(),
+        "connectable_agents": [
+            {
+                "agent": agent_id,
+                "display_name": entry["display_name"],
+                "requires_install": entry.get("install") is not None,
+                "connected": (
+                    entry["connected"]()
+                    if entry.get("connected") is not None else None
+                ),
+                "proposal_protocol": entry.get("proposal_protocol"),
+            }
+            for agent_id, entry in sorted(_CONNECTABLE_AGENTS.items())
+        ],
         "limits": {
             "os_sandbox": False,
             "network_enforcement": False,

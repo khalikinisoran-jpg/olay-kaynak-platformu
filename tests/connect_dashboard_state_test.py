@@ -127,7 +127,8 @@ def test_dashboard_never_exposes_settings_content_or_secrets(
         "verification_depth", "anchor", "chain_valid", "events",
         "pending_count", "recent_verified", "recent_rolled_back",
         "blocked_count", "incident_count", "critical_incidents",
-        "last_terminal", "claude_connected", "limits",
+        "last_terminal", "claude_connected", "connectable_agents",
+        "limits",
     }
 
 

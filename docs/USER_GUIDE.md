@@ -269,7 +269,10 @@ These rules are built into Tanuq. There is no configuration option
 
 Any agent that can run a shell command can submit proposals through
 the generic CLI hook (`tanuq propose --stdin-json`) and read results
-(`--json`).
+(`--json`). This is the canonical integration contract — **connecting
+an agent through the Tanuq UI is optional convenience, not a
+requirement**: Tanuq is not tied to Claude Code, or to any single
+agent, model or provider.
 
 **Claude Code** integration is shipped: a PreToolUse hook governs its
 tool calls — **Edit** is governed as `modify`, **Write** as
