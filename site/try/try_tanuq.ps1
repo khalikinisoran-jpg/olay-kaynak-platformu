@@ -57,7 +57,7 @@ $Target = Join-Path $Workspace "demo.txt"
 Write-Host "`n--- STEP 1: init (governed workspace) ---"
 $r = Invoke-Tanuq @("init", "--workspace", $Workspace, "--yes")
 Write-Host $r.Out
-if ($r.ExitCode -ne 0 -or $r.Out -notmatch "Tanuq initialized") { Cleanup; Write-Error "init failed"; exit 1 }
+if ($r.ExitCode -ne 0 -or $r.Out -notmatch "Tanuq initialized") { Cleanup; Write-Error ("init failed [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 
 # 4. LOW-risk proposal -> PROPOSED (applies on execute)
 Write-Host "`n--- STEP 2: LOW-risk proposal (expect PROPOSED) ---"
@@ -69,7 +69,7 @@ $lowPayload = @{
     new_content = "hello governed by Tanuq"
 } | ConvertTo-Json
 $r = Invoke-TanuqStdin @("propose", "--workspace", $Workspace, "--stdin-json", "--json") $lowPayload
-if ($r.ExitCode -ne 0 -or $r.Out -notmatch '"state": "PROPOSED"') { Cleanup; Write-Error "LOW proposal failed"; exit 1 }
+if ($r.ExitCode -ne 0 -or $r.Out -notmatch '"state": "PROPOSED"') { Cleanup; Write-Error ("LOW proposal failed [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 Write-Host "PROPOSED (LOW) - ok"
 
 # 5. HIGH-risk proposal -> approval gate (production-named source file)
@@ -84,40 +84,40 @@ $highPayload = @{
     new_content = "def deploy(): return `"governed by Tanuq`""
 } | ConvertTo-Json
 $r = Invoke-TanuqStdin @("propose", "--workspace", $Workspace, "--stdin-json", "--json") $highPayload
-if ($r.ExitCode -ne 0 -or $r.Out -notmatch "APPROVAL_REQUIRED") { Cleanup; Write-Error "HIGH proposal failed"; exit 1 }
+if ($r.ExitCode -ne 0 -or $r.Out -notmatch "APPROVAL_REQUIRED") { Cleanup; Write-Error ("HIGH proposal failed [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 Write-Host "APPROVAL_REQUIRED (HIGH) - ok"
 
 # 6. Human approval (single-use, fingerprint-bound)
 Write-Host "`n--- STEP 4: approve (single-use, fingerprint-bound) ---"
 $r = Invoke-Tanuq @("approve", "--workspace", $Workspace)
-if ($r.ExitCode -ne 0 -or $r.Out -notmatch "APPROVED") { Cleanup; Write-Error "approve failed"; exit 1 }
+if ($r.ExitCode -ne 0 -or $r.Out -notmatch "APPROVED") { Cleanup; Write-Error ("approve failed [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 Write-Host "APPROVED - ok"
 
 # 7. Execute everything pending through the governed pipeline
 Write-Host "`n--- STEP 5: execute (governed mutation + verification) ---"
 $r = Invoke-Tanuq @("execute", "--workspace", $Workspace, "--all")
 Write-Host $r.Out
-if ($r.ExitCode -ne 0 -or $r.Out -notmatch "terminal state: VERIFIED") { Cleanup; Write-Error "execute failed"; exit 1 }
+if ($r.ExitCode -ne 0 -or $r.Out -notmatch "terminal state: VERIFIED") { Cleanup; Write-Error ("execute failed [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 if ($r.Out -notmatch "Verification passed: True") { Write-Error "verification did not pass"; Cleanup; exit 1 }
 Write-Host "VERIFIED - ok"
 
 # 8. Single-use binding: nothing left pending to execute
 Write-Host "`n--- STEP 6: single-use binding check ---"
 $r = Invoke-Tanuq @("execute", "--workspace", $Workspace, "--all")
-if ($r.Out -notmatch "No pending proposals" -and $r.ExitCode -ne 0) { Cleanup; Write-Error "replay protection missing"; exit 1 }
+if ($r.Out -notmatch "No pending proposals" -and $r.ExitCode -ne 0) { Cleanup; Write-Error ("replay protection missing [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 Write-Host "SINGLE-USE BINDING - ok"
 
 # 9. Verify evidence chain
 Write-Host "`n--- STEP 7: verify (tamper-evident evidence) ---"
 $r = Invoke-Tanuq @("verify", "--workspace", $Workspace)
 Write-Host $r.Out
-if ($r.Out -notmatch "Evidence chain:\s+VALID") { Cleanup; Write-Error "evidence chain not VALID"; exit 1 }
-if ($r.Out -notmatch "Anchor:\s+ACTIVE") { Cleanup; Write-Error "anchor not ACTIVE"; exit 1 }
+if ($r.Out -notmatch "Evidence chain:\s+VALID") { Cleanup; Write-Error ("evidence chain not VALID [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
+if ($r.Out -notmatch "Anchor:\s+ACTIVE") { Cleanup; Write-Error ("anchor not ACTIVE [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 
 # 10. Evidence summary
 Write-Host "`n--- STEP 8: history (read-only evidence) ---"
 $r = Invoke-Tanuq @("history", "--workspace", $Workspace)
-if ($r.ExitCode -ne 0 -or $r.Out -notmatch "VERIFIED") { Cleanup; Write-Error "history failed"; exit 1 }
+if ($r.ExitCode -ne 0 -or $r.Out -notmatch "VERIFIED") { Cleanup; Write-Error ("history failed [exit=" + $r.ExitCode + "] response:" + $r.Out); exit 1 }
 Write-Host "EVIDENCE - ok"
 
 Write-Host ""
