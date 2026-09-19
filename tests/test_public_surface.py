@@ -22,59 +22,110 @@ def _read(rel):
     return (SITE / rel).read_text(encoding="utf-8")
 
 
-# ---- landing page content contract ----
+# ---- landing page content contract (product/sales V2) ----
 
 
 def test_landing_exists_with_positioning():
     html = _read("index.html")
-    assert "Swap the agent. Keep the control." in html
-    assert "independent governance layer for AI coding agents" in html
-    assert "Agents and models change. The governance contract doesn't." in html
-    # agent-independence without model-list positioning
-    assert "Any agent that can run a shell command" in html
+    assert "Yapay zekâ kodlama ajanları hızla çalışır" in html
+    assert "Kontrolünüz kaybolmamalı" in html
+    assert "bağımsız bir yönetim katmanı" in html
 
 
-def test_landing_shows_full_governed_flow():
+def test_landing_problem_speaks_customer_language():
     html = _read("index.html")
-    for step in ("Proposal", "Risk", "Approval", "Execute", "Verify", "Evidence"):
+    assert "Agent'ın ne yapabileceğini kim kontrol ediyor?" in html
+    assert "doğrudan diske yazılıyor" in html
+
+
+def test_landing_solution_pipeline_complete():
+    html = _read("index.html")
+    for node in ("AJANINIZ", "TANUQ", "KODUNUZ"):
+        assert node in html
+    for step in ("Risk", "Approval", "Execute", "Verify", "Evidence"):
         assert step in html
-    # honest evidence wording: tamper-evident, explicitly not tamper-proof
-    assert "tamper-evident" in html
-    assert "not tamper-proof" in html
+    assert "otomatik geri alınır" in html
+
+
+def test_landing_benefits_use_customer_outcomes():
+    html = _read("index.html")
+    for b in ("CONTROL", "VISIBILITY", "VERIFICATION", "EVIDENCE",
+              "VENDOR INDEPENDENCE"):
+        assert b in html
+    assert "Riskli değişikliklerde karar sizde kalır" in html
+    assert "yönetim sözleşmeniz değişmez" in html
+
+
+def test_landing_shows_real_terminal_output_not_fake():
+    html = _read("index.html")
+    assert "terminal state: VERIFIED" in html
+    assert "Verification passed: True" in html
+    assert "risk=HIGH single-use" in html
+    assert "gerçek bir TANUQ çalışmasından alınmıştır" in html
+
+
+def test_landing_ctas_are_try_and_demo_not_github():
+    html = _read("index.html")
+    assert "TANUQ'YU DENEYİN" in html
+    assert "DEMO TALEP EDİN" in html
+    # GitHub is NOT a hero CTA: hero links only #try and #demo
+    hero = html.split("</header>")[0]
+    assert "github.com" not in hero
 
 
 def test_landing_separates_try_connect_generic():
     html = _read("index.html")
-    assert "TRY TANUQ" in html
-    assert "CONNECT YOUR AGENT" in html
-    assert "GENERIC CONTRACT" in html
+    assert "Kendi makinenizde görün" in html
+    assert "yönetim sözleşmeniz değişmez" in html
     assert "tanuq propose --stdin-json --json" in html
-    # connect is convenience, not a requirement
-    assert "Optional" in html or "optional" in html
+    # generic path works without connect
+    assert "bağlantı adımı" in html
+    assert "vendor kilitlenmesi yok" in html
+    assert "kurulum zorunlu değildir" in html.lower()
 
 
-def test_landing_roadmap_is_labeled_as_research():
-    html = _read("index.html")
-    assert "under research" in html.lower()
-    for future in ("Trajectory governance", "Anomaly / escape detection",
-                   "Multi-agent governance"):
-        assert future in html
+def test_no_future_roadmap_on_page():
+    """Hayal satmayalim: sayfa yalnizca bugun dogrulanmis kabiliyetleri
+    gostermeli; gelecek vizyonu urun ozelligi gibi sunulmamali."""
+    html = _read("index.html").lower()
+    assert "roadmap" not in html
+    assert "araştırma aşamasında" not in html
+    assert "trajectory governance" not in html
+    assert "kaçış tespiti" not in html
+    assert "çoklu-ajan yönetimi" not in html
+    assert "anomali" not in html
 
 
 def test_landing_links_github_and_has_no_tracking():
     html = _read("index.html")
     assert "github.com/khalikinisoran-jpg/olay-kaynak-platformu" in html
     # static site: no external scripts, no analytics, no tracking pixels
-    assert "<script src=\"http" not in html
+    assert '<script src="http' not in html
     assert "google-analytics" not in html.lower()
     assert "gtag" not in html.lower()
 
 
-def test_honest_limits_present():
+def test_honest_limits_present_not_in_hero():
     html = _read("index.html")
-    assert "No OS sandbox" in html
-    assert "no network enforcement" in html
-    assert "through Tanuq" in html
+    limits_pos = html.find('id="limits"')
+    hero_pos = html.find("</header>")
+    assert 0 < hero_pos < limits_pos
+    assert "tanuq üzerinden gelen" in html
+    assert "İşletim sistemi seviyesinde koruma yok" in html
+    assert "ağ zorlaması yok" in html
+
+
+def test_no_misspelling_or_forbidden_terms():
+    html = _read("index.html")
+    assert "TANUK" not in html
+    assert "temsilci" not in html
+    assert "tamper-proof" not in html
+
+
+def test_no_fake_contact_form():
+    html = _read("index.html")
+    assert "<form" not in html
+    assert "<input" not in html.lower()
 
 
 # ---- try scripts drive the real governed pipeline ----
