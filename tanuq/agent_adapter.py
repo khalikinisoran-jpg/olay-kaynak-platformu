@@ -43,9 +43,16 @@ class ProtocolError(Exception):
 
 
 def parse_payload(raw_text):
-    """Parse hook stdin. Accepts one proposal object or an array."""
+    """Parse hook stdin. Accepts one proposal object or an array.
+
+    Tolerates a leading UTF-8 BOM: Windows PowerShell prepends one when
+    piping JSON to the CLI, which would otherwise reject the canonical
+    generic contract on Windows outright.
+    """
     try:
-        data = json.loads(raw_text)
+        data = json.loads(
+            raw_text.encode("utf-8").decode("utf-8-sig")
+        )
     except Exception as exc:
         raise ProtocolError(f"proposal JSON could not be parsed: {exc}")
     items = data if isinstance(data, list) else [data]
