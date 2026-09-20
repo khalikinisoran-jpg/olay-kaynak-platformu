@@ -4,6 +4,9 @@
 # Exit 0 + OVERALL PASS only if every governance step really happened.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1 [-KeepWorkspace]
+# Repo-internal: run from the cloned repository after 'pip install -e .'.
+# This script resolves the repo root from its own location and is NOT a
+# standalone download.
 
 param([switch]$KeepWorkspace)
 

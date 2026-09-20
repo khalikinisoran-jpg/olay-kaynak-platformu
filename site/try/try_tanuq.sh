@@ -5,6 +5,9 @@
 # Exit 0 + OVERALL PASS only if every governance step really happened.
 #
 # Usage:  bash site/try/try_tanuq.sh  [--keep-workspace]
+# Repo-internal: run from the cloned repository after 'pip install -e .'.
+# This script resolves the repo root from its own location and is NOT a
+# standalone download.
 
 set -euo pipefail
 export PYTHONIOENCODING=utf-8
