@@ -12,7 +12,7 @@ contract, never runtime behavior.
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-README = REPO / "readme.md"
+README = REPO / "README.md"
 
 # Entry section = everything before the feature list that follows the
 # identity/vision/why/version blocks.
