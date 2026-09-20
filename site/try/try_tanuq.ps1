@@ -126,5 +126,12 @@ Write-Host " OVERALL PASS"
 Write-Host "============================================="
 Write-Host "Governed demo finished: proposal -> risk -> approval ->"
 Write-Host "governed mutation -> verification -> evidence."
+Write-Host ""
+Write-Host " Next steps - run TANUQ on your own project:"
+Write-Host "   1. Start TANUQ:"
+Write-Host "        pip install -e ."
+Write-Host "        tanuq init"
+Write-Host "   2. Open the dashboard:"
+Write-Host "        tanuq ui"
 Cleanup
 exit 0

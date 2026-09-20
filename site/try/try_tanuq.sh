@@ -111,5 +111,12 @@ echo " OVERALL PASS"
 echo "============================================="
 echo "Governed demo finished: proposal -> risk -> approval ->"
 echo "governed mutation -> verification -> evidence."
+echo
+echo " Next steps - run TANUQ on your own project:"
+echo "   1. Start TANUQ:"
+echo "        pip install -e ."
+echo "        tanuq init"
+echo "   2. Open the dashboard:"
+echo "        tanuq ui"
 cleanup
 exit 0
