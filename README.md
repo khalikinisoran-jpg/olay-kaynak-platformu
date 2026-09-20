@@ -43,11 +43,24 @@ commands and the verification profile actually used. **VERIFIED** —
 >
 > **Every AI decision becomes an auditable event.**
 
-> **Current canonical identity (2026-09-12, TANUQ 0.6.0 @ `d958237` — current HEAD):** **TANUQ** (package `event-sourced-ai-runtime`, CLI `tanuq`, runtime dirs `.tanuq` / `~/.tanuq`, auth header `X-TANUQ-Token`) is an **event-sourced, deterministic, human-governed file-editing agent runtime**. Governed actions: **modify** and **create** (new-file creation is always HIGH risk and requires human approval). Shipped vendor integration: **Claude Code** — **Edit** is governed as `modify`, **Write** as `create` (translation-only adapter; documented contract in `docs/AGENT_INTEGRATION.md`). Evidence: hash-chained journals with keyed chain anchor (tamper-evident). Current local full-suite evidence: **1469 passed / 15 skipped / 0 failed**; hosted CI GREEN 4/4 (latest run 34692464361). Live truth-source: **`docs/TANUQ_PROJECT_STATE.md`**.
+> **Current product identity (2026-09-20):** **TANUQ** (package
+> `event-sourced-ai-runtime`, CLI `tanuq`, runtime dirs `.tanuq` /
+> `~/.tanuq`, auth header `X-TANUQ-Token`) is an **event-sourced,
+> deterministic, human-governed file-editing agent runtime**. Governed
+> actions: **modify** and **create** (new-file creation is always HIGH
+> risk and requires human approval). Shipped vendor integration:
+> **Claude Code** — **Edit** is governed as `modify`, **Write** as
+> `create` (translation-only adapter; documented contract in
+> `docs/AGENT_INTEGRATION.md`). Any agent that can run a shell can use
+> the vendor-independent generic proposal channel:
+> `tanuq propose --stdin-json --json`. Evidence: hash-chained journals
+> with keyed chain anchor (tamper-evident). Live truth-source (current
+> position, CI and test evidence): **`docs/TANUQ_PROJECT_STATE.md`**.
 
-An experimental AI runtime that treats every meaningful AI interaction as an immutable event.
-
-Instead of storing only the latest state, the runtime records every action, making AI systems replayable, recoverable, auditable, and verifiable.
+TANUQ is the user-facing product built on this runtime. The project
+began as an event-sourcing exploration: instead of storing only the
+latest state, the runtime records every action, making AI systems
+replayable, recoverable, auditable, and verifiable.
 
 ---
 
@@ -93,17 +106,17 @@ Benefits include:
 - State reconstruction
 - Explainable AI
 - Runtime verification
-- Future multi-agent support
 
 ---
 
 # Current Version
 
-**0.6.0** (package) — canonical branch **`worker-action-pipeline` @ `9df6953`** (`9df6953b4a51071330d7584f0ed2b569f4ab434b` — `fix(p5): enforce approval expiry parity`; 15 commits after the historical P9 FINAL PASS baseline `b2d6da7`, 2026-08-25)
+**0.6.0** (package `event-sourced-ai-runtime`, CLI `tanuq`).
 
-Status: Active Development — current local full-suite evidence at HEAD `9df6953`: **`1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s** (local Windows run 2026-08-30; local evidence only — hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof). Historical P9 FINAL PASS @ `b2d6da7` (2026-08-25): `1213 collected / 1200 passed / 13 skipped / 0 failures` (hosted Ubuntu ~88s / Windows ~182s via run 32805095789, local ~254s with 300s budget; 120s budget is NOT COMPLETED) — P7 governed AgentSession + P8 multi-file atomicity + P9 FINAL PASS verified; foundation `24c72d0` 986 → P7/P8/P9 → post-P9 governed ExternalAction additions to 1272.
-
-Git Tag (latest release): `v0.5.0` — `worker-action-pipeline` is ahead of `main` (exact count via `git log main..HEAD`); `0.6.0` declared in `pyproject.toml` but not yet tagged/released
+Status: early-adopter productization. Current position, recent commits,
+CI status and full-suite evidence are tracked live in
+**`docs/TANUQ_PROJECT_STATE.md`** (canonical — this README does not
+duplicate them).
 
 ---
 
