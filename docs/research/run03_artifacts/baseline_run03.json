@@ -1,0 +1,164 @@
+{
+ "R3-D1-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D1-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D1-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D2-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D2-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D2-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D3-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D3-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D3-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D5-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D5-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D5-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D4-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D4-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D4-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D6-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D6-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ },
+ "R3-D6-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ]
+ }
+}

@@ -1,0 +1,7 @@
+{
+ "fp_B_still_pending_after_fp_A_applied": true,
+ "exec_B": "============================================================ Tanuq execute — terminal state: DENIED ============================================================ Apply suc",
+ "single_use": "No pending proposals. Run 'tanuq propose' first.",
+ "verify": "Tanuq evidence verification Events in chain: 78 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+ "history_tail": "\\local\\\\temp\\\\e1-baseline-ws\\\\.\\\\deploy.py, executable_source=.py.'\r\n    denied: 'Patch is stale: current file content does not match old_content.'\r\nDENIED            op=fp-ff84a2d23  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e1-baseline-ws\\..\\escape.txt\r\n    denied: \"DENIED: outside the protected workspace (Patch path contains path traversal ('..') and was rejected.)\"\r\nDENIED            op=fp-a50fcb15b  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e1-baseline-ws\\sub\\..\\deploy.py\r\n    denied: \"DENIED: outside the protected workspace (Patch path contains path traversal ('..') and was rejected.)\"\r\nDENIED            op=fp-c774c6050  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\outside-deploy.txt\r\n    denied: 'DENIED: outside the protected workspace (Patch path is outside the allowed scope (symlink escape rejected).)'\r\n"
+}

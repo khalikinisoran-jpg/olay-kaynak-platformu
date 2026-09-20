@@ -1,0 +1,146 @@
+{
+ "R6-01": {
+  "fixture": "R6-I4-B",
+  "cond": "M"
+ },
+ "R6-02": {
+  "fixture": "R6-I3-C",
+  "cond": "V"
+ },
+ "R6-03": {
+  "fixture": "R6-I1-C",
+  "cond": "V"
+ },
+ "R6-04": {
+  "fixture": "R6-I3-B",
+  "cond": "M"
+ },
+ "R6-05": {
+  "fixture": "R6-I4-C",
+  "cond": "V"
+ },
+ "R6-06": {
+  "fixture": "R6-I6-B",
+  "cond": "V"
+ },
+ "R6-07": {
+  "fixture": "R6-I1-B",
+  "cond": "V"
+ },
+ "R6-08": {
+  "fixture": "R6-I3-A",
+  "cond": "V"
+ },
+ "R6-09": {
+  "fixture": "R6-I4-C",
+  "cond": "M"
+ },
+ "R6-10": {
+  "fixture": "R6-I4-A",
+  "cond": "M"
+ },
+ "R6-11": {
+  "fixture": "R6-I1-C",
+  "cond": "M"
+ },
+ "R6-12": {
+  "fixture": "R6-I6-B",
+  "cond": "M"
+ },
+ "R6-13": {
+  "fixture": "R6-I4-A",
+  "cond": "V"
+ },
+ "R6-14": {
+  "fixture": "R6-I6-C",
+  "cond": "M"
+ },
+ "R6-15": {
+  "fixture": "R6-I3-A",
+  "cond": "M"
+ },
+ "R6-16": {
+  "fixture": "R6-I6-A",
+  "cond": "M"
+ },
+ "R6-17": {
+  "fixture": "R6-I2-A",
+  "cond": "V"
+ },
+ "R6-18": {
+  "fixture": "R6-I6-A",
+  "cond": "V"
+ },
+ "R6-19": {
+  "fixture": "R6-I1-A",
+  "cond": "M"
+ },
+ "R6-20": {
+  "fixture": "R6-I2-A",
+  "cond": "M"
+ },
+ "R6-21": {
+  "fixture": "R6-I5-A",
+  "cond": "M"
+ },
+ "R6-22": {
+  "fixture": "R6-I5-B",
+  "cond": "V"
+ },
+ "R6-23": {
+  "fixture": "R6-I5-C",
+  "cond": "M"
+ },
+ "R6-24": {
+  "fixture": "R6-I2-C",
+  "cond": "V"
+ },
+ "R6-25": {
+  "fixture": "R6-I3-C",
+  "cond": "M"
+ },
+ "R6-26": {
+  "fixture": "R6-I5-C",
+  "cond": "V"
+ },
+ "R6-27": {
+  "fixture": "R6-I3-B",
+  "cond": "V"
+ },
+ "R6-28": {
+  "fixture": "R6-I4-B",
+  "cond": "V"
+ },
+ "R6-29": {
+  "fixture": "R6-I5-A",
+  "cond": "V"
+ },
+ "R6-30": {
+  "fixture": "R6-I2-C",
+  "cond": "M"
+ },
+ "R6-31": {
+  "fixture": "R6-I2-B",
+  "cond": "V"
+ },
+ "R6-32": {
+  "fixture": "R6-I5-B",
+  "cond": "M"
+ },
+ "R6-33": {
+  "fixture": "R6-I1-B",
+  "cond": "M"
+ },
+ "R6-34": {
+  "fixture": "R6-I2-B",
+  "cond": "M"
+ },
+ "R6-35": {
+  "fixture": "R6-I6-C",
+  "cond": "V"
+ },
+ "R6-36": {
+  "fixture": "R6-I1-A",
+  "cond": "V"
+ }
+}

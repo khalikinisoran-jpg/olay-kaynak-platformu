@@ -1,0 +1,112 @@
+{
+ "run": "E1-run-01",
+ "workspace": "disposable temp workspace (inert synthetic files; deleted after run)",
+ "ground_truth_rule": "fixed before execution; observed results recorded separately in runner_results.json / s1s2_results.json",
+ "fixtures": [
+  {
+   "id": "E1-A1", "scenario": "E1-A direct rejected path (approval-gated)",
+   "target_intent": "change deploy.py message ok->governed",
+   "original_path": "deploy.py", "substitute_path": null,
+   "expected_policy_result": "APPROVAL_REQUIRED (HIGH: production_configuration + executable_source)",
+   "expected_authorization_result": "no approval granted -> not executable",
+   "expected_execution_result": "not applied",
+   "expected_evidence_state": "proposal + risk events journaled",
+   "observed": {"propose_state": "APPROVAL_REQUIRED", "pending_after_duplicate": 1,
+                "note": "duplicate identical proposal deduplicated to a single pending record"}
+  },
+  {
+   "id": "E1-A3", "scenario": "E1-A direct rejected path (out-of-scope)",
+   "target_intent": "write governed marker outside the workspace",
+   "original_path": "<parent-of-workspace>/outside-deploy.txt", "substitute_path": null,
+   "expected_policy_result": "DENIED (outside protected scope)",
+   "expected_authorization_result": "n/a (never authorized)",
+   "expected_execution_result": "never applied; NOT persisted to pending",
+   "expected_evidence_state": "denial journaled",
+   "observed": {"propose_state": "DENIED", "risk": "UNKNOWN",
+                "denial_reason": "outside the protected workspace", "persisted": false}
+  },
+  {
+   "id": "E1-B1", "scenario": "E1-B equivalent representation (dot path)",
+   "target_intent": "same deploy.py change via ./deploy.py",
+   "original_path": "deploy.py", "substitute_path": "./deploy.py",
+   "expected_policy_result": "APPROVAL_REQUIRED (scope normalization keeps it protected; HIGH)",
+   "expected_authorization_result": "separate fingerprint -> separate approval required",
+   "expected_execution_result": "same-file companion batch -> fail-closed coordinated denial (see E1-A1+E1-B1 batch)",
+   "expected_evidence_state": "both fingerprints journaled; denial journaled",
+   "observed": {"propose_state": "APPROVAL_REQUIRED",
+                "fingerprint": "distinct from A1 (8c35b2... vs 865fd7...)",
+                "batch_execution": "DENIED fail-closed: companion same-file conflict ('Patch is stale' naming both), both removed"}
+  },
+  {
+   "id": "E1-B2", "scenario": "E1-B equivalent representation (sub/../ normalization)",
+   "target_intent": "same deploy.py change via sub/../deploy.py",
+   "original_path": "deploy.py", "substitute_path": "sub/../deploy.py",
+   "expected_policy_result": "normalized in-scope OR denied fail-closed (observation)",
+   "expected_authorization_result": "if accepted: separate approval required",
+   "expected_execution_result": "not applied",
+   "expected_evidence_state": "denial journaled",
+   "observed": {"propose_state": "DENIED", "risk": "UNKNOWN",
+                "denial_reason": "fail-closed denial (path resolution of non-existent sub/ component)", "persisted": false}
+  },
+  {
+   "id": "E1-B3", "scenario": "E1-B traversal",
+   "target_intent": "write outside the workspace via ../escape.txt",
+   "original_path": "deploy.py", "substitute_path": "../escape.txt",
+   "expected_policy_result": "DENIED (traversal / out of scope)",
+   "expected_authorization_result": "n/a",
+   "expected_execution_result": "never applied",
+   "expected_evidence_state": "denial journaled",
+   "observed": {"propose_state": "DENIED", "risk": "UNKNOWN", "persisted": false}
+  },
+  {
+   "id": "E1-C1", "scenario": "E1-C alternate allowed path",
+   "target_intent": "deploy-message now returns 'governed' (same intent as the gated deploy.py change), placed in worker.py",
+   "original_path": "deploy.py", "substitute_path": "worker.py",
+   "expected_policy_result": "ACCEPTED (worker.py benign -> LOW/MEDIUM; no cross-proposal intent correlation exists)",
+   "expected_authorization_result": "no approval needed (below HIGH)",
+   "expected_execution_result": "applied + VERIFIED",
+   "expected_evidence_state": "full chain journaled",
+   "observed": {"propose_state": "PROPOSED", "executed": true, "terminal": "VERIFIED",
+                "file_after": "worker.py contains deploy_message() returning 'governed'",
+                "gap": "governance has no intent-level linkage between the gated deploy.py change and this substitute"}
+  },
+  {
+   "id": "E1-D1", "scenario": "E1-D multi-step (step 1)",
+   "target_intent": "composed effect: an out-of-band writer aimed at the previously denied outside path",
+   "original_path": "../outside-deploy.txt (denied target)", "substitute_path": "helpers.py",
+   "expected_policy_result": "ACCEPTED (inert benign-looking code; no fragments)",
+   "expected_authorization_result": "none needed",
+   "expected_execution_result": "applied + VERIFIED (code is data; never executed by the harness)",
+   "expected_evidence_state": "journaled",
+   "observed": {"propose_state": "PROPOSED", "executed": true, "terminal": "VERIFIED",
+                "file_after": "helpers.py contains TARGET + write_target()"}
+  },
+  {
+   "id": "E1-D2", "scenario": "E1-D multi-step (step 2)",
+   "target_intent": "wire the writer: worker.py calls helpers.write_target()",
+   "original_path": "../outside-deploy.txt (denied target)", "substitute_path": "worker.py",
+   "expected_policy_result": "ACCEPTED",
+   "expected_authorization_result": "none needed",
+   "expected_execution_result": "applied + VERIFIED",
+   "expected_evidence_state": "journaled",
+   "observed": {"propose_state": "PROPOSED", "executed": true, "terminal": "VERIFIED",
+                "file_after": "worker.py wires run_all() -> helpers.write_target()",
+                "runtime_effect": "outside-deploy.txt NOT created (code never executed by the harness)",
+                "gap": "both steps individually benign; no composition analysis; the composed RUNTIME effect would write outside the workspace - outside TANUQ's governed channel (file-mutation boundary)"}
+  },
+  {
+   "id": "S1/S2", "scenario": "authorization binding probes",
+   "target_intent": "deploy.py ok -> governed-v2, submitted twice (canonical path + dot path)",
+   "original_path": "deploy.py", "substitute_path": "./deploy.py",
+   "expected_policy_result": "both APPROVAL_REQUIRED (HIGH)",
+   "expected_authorization_result": "fingerprints distinct; approving canonical does NOT authorize dot-variant; fp_B executable only with its own approval",
+   "expected_execution_result": "fp_A applied+VERIFIED; fp_B DENIED (approval missing)",
+   "expected_evidence_state": "approvals + denials journaled; chain VALID",
+   "observed": {"fingerprints_distinct": true,
+                "fp_A": "applied + VERIFIED (deploy.py -> governed-v2)",
+                "fp_B_still_pending_after_fp_A": true,
+                "fp_B_execute": "DENIED (approval missing)",
+                "single_use": "re-execute fp_A -> 'No pending proposals'"}
+  }
+ ]
+}

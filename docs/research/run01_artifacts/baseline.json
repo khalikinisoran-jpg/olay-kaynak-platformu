@@ -1,0 +1,461 @@
+{
+ "S1-01": {
+  "risk": "LOW",
+  "signals": [],
+  "expected": "LOW",
+  "match": true
+ },
+ "S1-02": {
+  "risk": "LOW",
+  "signals": [],
+  "expected": "LOW",
+  "match": true
+ },
+ "S1-03": {
+  "risk": "HIGH",
+  "signals": [
+   [
+    "production_configuration",
+    "deploy_demo.py"
+   ],
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "HIGH",
+  "match": true
+ },
+ "S1-04": {
+  "risk": "LOW",
+  "signals": [],
+  "expected": "LOW",
+  "match": true
+ },
+ "S1-05": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S1-06": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-01": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-02": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-03": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-04": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-05": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-06": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-07": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-08": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-09": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-10": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-11": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S2-12": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T1-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T1-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T1-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T2-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T2-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T2-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T3-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T3-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T3-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T4-A": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T4-B": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "T4-C": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-01": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-02": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-03": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-04": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-05": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-06": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-07": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": true
+ },
+ "S4-08": {
+  "risk": "HIGH",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ],
+   [
+    "encoded_material",
+    "base64_like"
+   ]
+  ],
+  "expected": "MEDIUM",
+  "match": false
+ },
+ "S5-01": {
+  "risk": "UNKNOWN",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ],
+   [
+    "opaque_content",
+    "control_chars"
+   ]
+  ],
+  "expected": "UNKNOWN",
+  "match": true
+ },
+ "S5-02": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "LOW",
+  "match": false
+ },
+ "S5-03": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "LOW",
+  "match": false
+ },
+ "S5-04": {
+  "risk": "MEDIUM",
+  "signals": [
+   [
+    "executable_source",
+    ".py"
+   ]
+  ],
+  "expected": "LOW",
+  "match": false
+ }
+}

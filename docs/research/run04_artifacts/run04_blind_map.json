@@ -1,0 +1,146 @@
+{
+ "U-01": {
+  "fixture": "R3-D5-C",
+  "cond": "V"
+ },
+ "U-02": {
+  "fixture": "R3-D2-A",
+  "cond": "M"
+ },
+ "U-03": {
+  "fixture": "R3-D1-C",
+  "cond": "M"
+ },
+ "U-04": {
+  "fixture": "R3-D2-C",
+  "cond": "M"
+ },
+ "U-05": {
+  "fixture": "R3-D4-C",
+  "cond": "M"
+ },
+ "U-06": {
+  "fixture": "R3-D3-A",
+  "cond": "V"
+ },
+ "U-07": {
+  "fixture": "R3-D6-B",
+  "cond": "M"
+ },
+ "U-08": {
+  "fixture": "R3-D4-A",
+  "cond": "V"
+ },
+ "U-09": {
+  "fixture": "R3-D2-B",
+  "cond": "M"
+ },
+ "U-10": {
+  "fixture": "R3-D5-A",
+  "cond": "V"
+ },
+ "U-11": {
+  "fixture": "R3-D4-A",
+  "cond": "M"
+ },
+ "U-12": {
+  "fixture": "R3-D6-A",
+  "cond": "V"
+ },
+ "U-13": {
+  "fixture": "R3-D3-B",
+  "cond": "M"
+ },
+ "U-14": {
+  "fixture": "R3-D2-C",
+  "cond": "V"
+ },
+ "U-15": {
+  "fixture": "R3-D2-B",
+  "cond": "V"
+ },
+ "U-16": {
+  "fixture": "R3-D1-B",
+  "cond": "M"
+ },
+ "U-17": {
+  "fixture": "R3-D6-A",
+  "cond": "M"
+ },
+ "U-18": {
+  "fixture": "R3-D6-C",
+  "cond": "V"
+ },
+ "U-19": {
+  "fixture": "R3-D4-B",
+  "cond": "M"
+ },
+ "U-20": {
+  "fixture": "R3-D4-B",
+  "cond": "V"
+ },
+ "U-21": {
+  "fixture": "R3-D3-A",
+  "cond": "M"
+ },
+ "U-22": {
+  "fixture": "R3-D3-B",
+  "cond": "V"
+ },
+ "U-23": {
+  "fixture": "R3-D5-A",
+  "cond": "M"
+ },
+ "U-24": {
+  "fixture": "R3-D5-B",
+  "cond": "M"
+ },
+ "U-25": {
+  "fixture": "R3-D4-C",
+  "cond": "V"
+ },
+ "U-26": {
+  "fixture": "R3-D1-B",
+  "cond": "V"
+ },
+ "U-27": {
+  "fixture": "R3-D1-A",
+  "cond": "M"
+ },
+ "U-28": {
+  "fixture": "R3-D3-C",
+  "cond": "V"
+ },
+ "U-29": {
+  "fixture": "R3-D6-C",
+  "cond": "M"
+ },
+ "U-30": {
+  "fixture": "R3-D5-B",
+  "cond": "V"
+ },
+ "U-31": {
+  "fixture": "R3-D3-C",
+  "cond": "M"
+ },
+ "U-32": {
+  "fixture": "R3-D1-C",
+  "cond": "V"
+ },
+ "U-33": {
+  "fixture": "R3-D1-A",
+  "cond": "V"
+ },
+ "U-34": {
+  "fixture": "R3-D6-B",
+  "cond": "V"
+ },
+ "U-35": {
+  "fixture": "R3-D2-A",
+  "cond": "V"
+ },
+ "U-36": {
+  "fixture": "R3-D5-C",
+  "cond": "M"
+ }
+}

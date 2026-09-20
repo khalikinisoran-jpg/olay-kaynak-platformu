@@ -1,0 +1,302 @@
+{
+ "R5-01": {
+  "block": "expanded",
+  "fixture": "N3-B",
+  "cond": "V"
+ },
+ "R5-02": {
+  "block": "expanded",
+  "fixture": "N2-A",
+  "cond": "M"
+ },
+ "R5-03": {
+  "block": "legacy",
+  "fixture": "R3-D2-A",
+  "cond": "V"
+ },
+ "R5-04": {
+  "block": "expanded",
+  "fixture": "N1-B",
+  "cond": "V"
+ },
+ "R5-05": {
+  "block": "expanded",
+  "fixture": "N2-C",
+  "cond": "M"
+ },
+ "R5-06": {
+  "block": "legacy",
+  "fixture": "R3-D6-C",
+  "cond": "V"
+ },
+ "R5-07": {
+  "block": "expanded",
+  "fixture": "N3-CTL",
+  "cond": "M"
+ },
+ "R5-08": {
+  "block": "legacy",
+  "fixture": "R3-D3-C",
+  "cond": "M"
+ },
+ "R5-09": {
+  "block": "legacy",
+  "fixture": "R3-D2-C",
+  "cond": "M"
+ },
+ "R5-10": {
+  "block": "expanded",
+  "fixture": "N3-A",
+  "cond": "M"
+ },
+ "R5-11": {
+  "block": "legacy",
+  "fixture": "R3-D2-A",
+  "cond": "M"
+ },
+ "R5-12": {
+  "block": "legacy",
+  "fixture": "R3-D4-B",
+  "cond": "M"
+ },
+ "R5-13": {
+  "block": "expanded",
+  "fixture": "N2-C",
+  "cond": "V"
+ },
+ "R5-14": {
+  "block": "legacy",
+  "fixture": "R3-D4-C",
+  "cond": "V"
+ },
+ "R5-15": {
+  "block": "legacy",
+  "fixture": "R3-D6-B",
+  "cond": "V"
+ },
+ "R5-16": {
+  "block": "legacy",
+  "fixture": "R3-D4-A",
+  "cond": "M"
+ },
+ "R5-17": {
+  "block": "expanded",
+  "fixture": "N1-CTL",
+  "cond": "V"
+ },
+ "R5-18": {
+  "block": "expanded",
+  "fixture": "N2-A",
+  "cond": "V"
+ },
+ "R5-19": {
+  "block": "legacy",
+  "fixture": "R3-D4-C",
+  "cond": "M"
+ },
+ "R5-20": {
+  "block": "legacy",
+  "fixture": "R3-D5-B",
+  "cond": "V"
+ },
+ "R5-21": {
+  "block": "legacy",
+  "fixture": "R3-D6-A",
+  "cond": "V"
+ },
+ "R5-22": {
+  "block": "legacy",
+  "fixture": "R3-D2-B",
+  "cond": "M"
+ },
+ "R5-23": {
+  "block": "expanded",
+  "fixture": "N1-C",
+  "cond": "V"
+ },
+ "R5-24": {
+  "block": "legacy",
+  "fixture": "R3-D2-B",
+  "cond": "V"
+ },
+ "R5-25": {
+  "block": "expanded",
+  "fixture": "N1-A",
+  "cond": "V"
+ },
+ "R5-26": {
+  "block": "legacy",
+  "fixture": "R3-D1-C",
+  "cond": "V"
+ },
+ "R5-27": {
+  "block": "legacy",
+  "fixture": "R3-D5-A",
+  "cond": "M"
+ },
+ "R5-28": {
+  "block": "expanded",
+  "fixture": "N2-B",
+  "cond": "V"
+ },
+ "R5-29": {
+  "block": "expanded",
+  "fixture": "N3-C",
+  "cond": "M"
+ },
+ "R5-30": {
+  "block": "legacy",
+  "fixture": "R3-D2-C",
+  "cond": "V"
+ },
+ "R5-31": {
+  "block": "legacy",
+  "fixture": "R3-D3-C",
+  "cond": "V"
+ },
+ "R5-32": {
+  "block": "legacy",
+  "fixture": "R3-D4-A",
+  "cond": "V"
+ },
+ "R5-33": {
+  "block": "legacy",
+  "fixture": "R3-D3-A",
+  "cond": "V"
+ },
+ "R5-34": {
+  "block": "legacy",
+  "fixture": "R3-D1-A",
+  "cond": "V"
+ },
+ "R5-35": {
+  "block": "expanded",
+  "fixture": "N1-B",
+  "cond": "M"
+ },
+ "R5-36": {
+  "block": "expanded",
+  "fixture": "N3-C",
+  "cond": "V"
+ },
+ "R5-37": {
+  "block": "legacy",
+  "fixture": "R3-D6-C",
+  "cond": "M"
+ },
+ "R5-38": {
+  "block": "expanded",
+  "fixture": "N3-B",
+  "cond": "M"
+ },
+ "R5-39": {
+  "block": "legacy",
+  "fixture": "R3-D3-B",
+  "cond": "V"
+ },
+ "R5-40": {
+  "block": "legacy",
+  "fixture": "R3-D5-B",
+  "cond": "M"
+ },
+ "R5-41": {
+  "block": "expanded",
+  "fixture": "N1-CTL",
+  "cond": "M"
+ },
+ "R5-42": {
+  "block": "legacy",
+  "fixture": "R3-D1-C",
+  "cond": "M"
+ },
+ "R5-43": {
+  "block": "expanded",
+  "fixture": "N3-A",
+  "cond": "V"
+ },
+ "R5-44": {
+  "block": "legacy",
+  "fixture": "R3-D1-B",
+  "cond": "M"
+ },
+ "R5-45": {
+  "block": "expanded",
+  "fixture": "N1-A",
+  "cond": "M"
+ },
+ "R5-46": {
+  "block": "expanded",
+  "fixture": "N2-B",
+  "cond": "M"
+ },
+ "R5-47": {
+  "block": "expanded",
+  "fixture": "N2-CTL",
+  "cond": "M"
+ },
+ "R5-48": {
+  "block": "legacy",
+  "fixture": "R3-D6-B",
+  "cond": "M"
+ },
+ "R5-49": {
+  "block": "legacy",
+  "fixture": "R3-D1-B",
+  "cond": "V"
+ },
+ "R5-50": {
+  "block": "expanded",
+  "fixture": "N1-C",
+  "cond": "M"
+ },
+ "R5-51": {
+  "block": "legacy",
+  "fixture": "R3-D1-A",
+  "cond": "M"
+ },
+ "R5-52": {
+  "block": "legacy",
+  "fixture": "R3-D3-A",
+  "cond": "M"
+ },
+ "R5-53": {
+  "block": "legacy",
+  "fixture": "R3-D6-A",
+  "cond": "M"
+ },
+ "R5-54": {
+  "block": "legacy",
+  "fixture": "R3-D4-B",
+  "cond": "V"
+ },
+ "R5-55": {
+  "block": "expanded",
+  "fixture": "N3-CTL",
+  "cond": "V"
+ },
+ "R5-56": {
+  "block": "expanded",
+  "fixture": "N2-CTL",
+  "cond": "V"
+ },
+ "R5-57": {
+  "block": "legacy",
+  "fixture": "R3-D5-C",
+  "cond": "M"
+ },
+ "R5-58": {
+  "block": "legacy",
+  "fixture": "R3-D5-A",
+  "cond": "V"
+ },
+ "R5-59": {
+  "block": "legacy",
+  "fixture": "R3-D3-B",
+  "cond": "M"
+ },
+ "R5-60": {
+  "block": "legacy",
+  "fixture": "R3-D5-C",
+  "cond": "V"
+ }
+}
