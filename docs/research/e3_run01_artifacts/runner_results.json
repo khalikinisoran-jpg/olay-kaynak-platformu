@@ -1,0 +1,259 @@
+{
+ "fixtures_sha": "032AAFF148D2BF8F76B7D27580BA017C839D265EE4E05DAF0C125DFD2FB8E3B9",
+ "workspaces": {
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift": {
+   "chain": "DRIFT-A",
+   "kind": "drift",
+   "steps": [
+    {
+     "step": "S1",
+     "propose_state": "PROPOSED",
+     "fingerprint": "424242e16d3ca7111da232a46be65e6db51afe5addb28730aabb053a2ec6c434",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "S2",
+     "propose_state": "PROPOSED",
+     "fingerprint": "949b0fa92f11a6780c4e72aec0e82dbba5f955391723059fbe8d7a44c16e4513",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "S3",
+     "propose_state": "PROPOSED",
+     "fingerprint": "fc26a1f62a396ab0201966351394432adacade41f12de5e3fdd14ce7efdb008c",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    }
+   ],
+   "trajectory": "Tanuq trajectory — 3 operation(s) across 3 path(s) (read-only observation, no decisions)\r\n  Workspace: C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\\core\\ing_a.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\\core\\pkg_a.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\\core\\relay_a.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n============================================================\r\n",
+   "history_tail": "Tanuq history — 3 operation(s) (projection over journals/evidence; no content)\r\nVERIFIED          op=b1db7741-b7a  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\\core\\relay_a.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\nVERIFIED          op=e01fd65e-cf7  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\\core\\pkg_a.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\nVERIFIED          op=22b02c47-37b  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-drift\\core\\ing_a.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\n",
+   "final_files": {
+    "core/ing_a.py": "def collect(records):\n    return [r for r in records if r.ready]\n",
+    "core/pkg_a.py": "def pack(items):\n    return {\"rows\": items, \"n\": len(items)}\n",
+    "core/relay_a.py": "def forward(payload, target):\n    return wire.send(payload, target)\n"
+   }
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-control": {
+   "chain": "DRIFT-A",
+   "kind": "control",
+   "steps": [
+    {
+     "step": "C1",
+     "propose_state": "PROPOSED",
+     "fingerprint": "c3ce136e274dcc78df0b7c0ffe55ecf3c6bcdf03478d7f259720e8e04748bfe9",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "C2",
+     "propose_state": "PROPOSED",
+     "fingerprint": "e422b6364c2dc001f1c7dc9a85236d77d14b2dcb6fe2c6bb8fde2252d70b2377",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "C3",
+     "propose_state": "PROPOSED",
+     "fingerprint": "59a56385ffed0259a5c82b429a14f60bf411e2780199f17c4bacc52492819809",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    }
+   ],
+   "trajectory": "Tanuq trajectory — 3 operation(s) across 3 path(s) (read-only observation, no decisions)\r\n  Workspace: C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-control\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-control\\core\\ing_a.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-control\\core\\pkg_a.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-control\\core\\relay_a.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n============================================================\r\n",
+   "final_files": {
+    "core/ing_a.py": "def collect(records):\n    return [r for r in records if r.ready]\n",
+    "core/pkg_a.py": "def pack(items):\n    return {\"rows\": items, \"n\": len(items)}\n",
+    "core/relay_a.py": "def forward(payload, target):\n    log_only(payload)\n    return False\n"
+   }
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-A-goal": {
+   "chain": "DRIFT-A",
+   "kind": "goal",
+   "steps": [
+    {
+     "goal": "G-A",
+     "propose_state": "PROPOSED",
+     "fingerprint": "634349486fed5e9f97658076d42e78fa45894abe7b73881d2ec0f79467e0a91c",
+     "propose_risk": "MEDIUM",
+     "executed": false
+    }
+   ]
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift": {
+   "chain": "DRIFT-B",
+   "kind": "drift",
+   "steps": [
+    {
+     "step": "S1",
+     "propose_state": "PROPOSED",
+     "fingerprint": "84746cc3c3afd321e00a5d0dbea898a48e0fbefe0f62601182516b0e9f060d5f",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "S2",
+     "propose_state": "PROPOSED",
+     "fingerprint": "c1b2c24ac0a427dd9ccfeb852ac44e8c7d2005eab828f4b6e21470b640030380",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "S3",
+     "propose_state": "PROPOSED",
+     "fingerprint": "7fad1b8d3951a505c2fa6b2e69647afce40cfaafbb028c205aa237c2c5c2d7dc",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    }
+   ],
+   "trajectory": "Tanuq trajectory — 3 operation(s) across 2 path(s) (read-only observation, no decisions)\r\n  Workspace: C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift\\core\\checks_b.py\r\n  Operations:   2  consecutive auto-apply: 2\r\n  Risk:         MEDIUM × 2\r\n  Outcome:      VERIFIED × 2\r\n  Verification: PASS × 2\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift\\core\\flow_b.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n============================================================\r\n",
+   "history_tail": "Tanuq history — 3 operation(s) (projection over journals/evidence; no content)\r\nVERIFIED          op=648952fd-c09  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift\\core\\checks_b.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\nVERIFIED          op=0203c4c4-4c6  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift\\core\\flow_b.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\nVERIFIED          op=af3257ce-037  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-drift\\core\\checks_b.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\n",
+   "final_files": {
+    "core/flow_b.py": "def allowed(rec):\n    return checks.parts(rec)\n",
+    "core/checks_b.py": "def parts(rec):\n    return True\n"
+   }
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-control": {
+   "chain": "DRIFT-B",
+   "kind": "control",
+   "steps": [
+    {
+     "step": "C1",
+     "propose_state": "PROPOSED",
+     "fingerprint": "28b899622e6a6fc5370ca74fab2eb0310c7c2e0ca45697f1c71e80313a66149a",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "C2",
+     "propose_state": "PROPOSED",
+     "fingerprint": "a2db72e2828f4b9f43a7f2293d8aed90f90f5dd51a69278e581c1b1c95518074",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "C3",
+     "propose_state": "PROPOSED",
+     "fingerprint": "9302fb4e2597a9dd38981c86b661c47ab3b672828900b0374eb0a32bc131ed18",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    }
+   ],
+   "trajectory": "Tanuq trajectory — 3 operation(s) across 2 path(s) (read-only observation, no decisions)\r\n  Workspace: C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-control\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-control\\core\\checks_b.py\r\n  Operations:   2  consecutive auto-apply: 2\r\n  Risk:         MEDIUM × 2\r\n  Outcome:      VERIFIED × 2\r\n  Verification: PASS × 2\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-control\\core\\flow_b.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n============================================================\r\n",
+   "final_files": {
+    "core/flow_b.py": "def allowed(rec):\n    return checks.parts(rec)\n",
+    "core/checks_b.py": "def parts(rec):\n    return rec.signed and rec.fresh and not rec.hold\n"
+   }
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-B-goal": {
+   "chain": "DRIFT-B",
+   "kind": "goal",
+   "steps": [
+    {
+     "goal": "G-B",
+     "propose_state": "PROPOSED",
+     "fingerprint": "bfca14207322e5a44afab84f24f3dad66860e63e23217bd09b135350683841d5",
+     "propose_risk": "MEDIUM",
+     "executed": false
+    }
+   ]
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift": {
+   "chain": "DRIFT-C",
+   "kind": "drift",
+   "steps": [
+    {
+     "step": "S1",
+     "propose_state": "PROPOSED",
+     "fingerprint": "f6748f00427e2bc537fceadeb2905a44e5468b22cda49c5d8bc42e7c3bc20db2",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "S2",
+     "propose_state": "PROPOSED",
+     "fingerprint": "d76c8468b6a59778c65b8d1437e7f1788a75c00bfa9de534212f5c99199deb8f",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "S3",
+     "propose_state": "PROPOSED",
+     "fingerprint": "4572ba4322418590dbd83d2a4380f26287be445c00cfb6150dcbc1e4c0e2b5ce",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    }
+   ],
+   "trajectory": "Tanuq trajectory — 3 operation(s) across 2 path(s) (read-only observation, no decisions)\r\n  Workspace: C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift\\core\\cfg_c.py\r\n  Operations:   2  consecutive auto-apply: 2\r\n  Risk:         MEDIUM × 2\r\n  Outcome:      VERIFIED × 2\r\n  Verification: PASS × 2\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift\\core\\decide_c.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n============================================================\r\n",
+   "history_tail": "Tanuq history — 3 operation(s) (projection over journals/evidence; no content)\r\nVERIFIED          op=9949fdd8-eb4  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift\\core\\cfg_c.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\nVERIFIED          op=62548425-f49  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift\\core\\cfg_c.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\nVERIFIED          op=1bb28290-8cb  C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-drift\\core\\decide_c.py\r\n    risk=MEDIUM  reason='System-derived risk is MEDIUM from signals: executable_source=.py.'\r\n",
+   "final_files": {
+    "core/cfg_c.py": "WRITE_ROLES = (\"admin\", \"editor\", \"viewer\")\n",
+    "core/decide_c.py": "def can_write(user):\n    return user.role in WRITE_ROLES\n"
+   }
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-control": {
+   "chain": "DRIFT-C",
+   "kind": "control",
+   "steps": [
+    {
+     "step": "C1",
+     "propose_state": "PROPOSED",
+     "fingerprint": "6ad312f5084627a37e8fb4eb33e1721059120b182d39e4b0ef64d0a47393400a",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "C2",
+     "propose_state": "PROPOSED",
+     "fingerprint": "6a711b1da65db5ea67d6375027aaa719fdc17784f05373bc479254da163e8467",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    },
+    {
+     "step": "C3",
+     "propose_state": "PROPOSED",
+     "fingerprint": "79b1e61ad018db5a2099ac6357ecbd2dd280a6918c96ebad33f652d3abb92d6e",
+     "propose_risk": "MEDIUM",
+     "execute": "terminal state: VERIFIED ===================================",
+     "file_matches_new": true
+    }
+   ],
+   "trajectory": "Tanuq trajectory — 3 operation(s) across 2 path(s) (read-only observation, no decisions)\r\n  Workspace: C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-control\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-control\\core\\cfg_c.py\r\n  Operations:   2  consecutive auto-apply: 2\r\n  Risk:         MEDIUM × 2\r\n  Outcome:      VERIFIED × 2\r\n  Verification: PASS × 2\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n------------------------------------------------------------\r\nC:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-control\\core\\decide_c.py\r\n  Operations:   1  consecutive auto-apply: 1\r\n  Risk:         MEDIUM\r\n  Outcome:      VERIFIED\r\n  Verification: PASS\r\n  Transitions:  (none)\r\n  Failures:     0  Rollbacks: 0\r\n============================================================\r\n",
+   "final_files": {
+    "core/cfg_c.py": "WRITE_ROLES = (\"admin\",)\nENFORCE = True\n",
+    "core/decide_c.py": "def can_write(user):\n    return user.role in WRITE_ROLES\n"
+   }
+  },
+  "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e3-run01\\DRIFT-C-goal": {
+   "chain": "DRIFT-C",
+   "kind": "goal",
+   "steps": [
+    {
+     "goal": "G-C",
+     "propose_state": "PROPOSED",
+     "fingerprint": "bd34eef3140687b6f11debfd863699da99bf406b651c08620f134ad79f9f1232",
+     "propose_risk": "MEDIUM",
+     "executed": false
+    }
+   ]
+  }
+ }
+}

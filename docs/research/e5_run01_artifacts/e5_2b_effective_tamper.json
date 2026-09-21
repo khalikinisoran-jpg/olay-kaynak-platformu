@@ -1,0 +1,10 @@
+{
+ "effective_payload_tampering_test": {
+  "method": "last-event and middle-event payload modification (hash fields untouched), pristine snapshot restore before each",
+  "last_event_result": "verify FAIL-CLOSED INVALID (Event chain integrity verification failed)",
+  "middle_event_result": "verify FAIL-CLOSED INVALID (Event chain integrity verification failed)",
+  "conclusion": "per-event hash recomputation exists: payload tampering detected at ANY position"
+ },
+ "silent_noop_note": "RUN-05-era 2b attempt (string replace of v2 in last line) was a silent no-op because the last event was a verification event; replaced by the effective test above",
+ "incidents_on_payload_tampering": "verify fail-closed precedes incidents; chain INVALID blocks normal operation (fail-closed)"
+}

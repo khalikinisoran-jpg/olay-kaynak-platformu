@@ -1,0 +1,287 @@
+{
+ "scenarios": [
+  {
+   "id": "e5-1-1a small out-of-channel drift",
+   "truth": "disk modified (v2 + drifted comment)",
+   "reported": "no new run; history still VERIFIED",
+   "evidenced": "journal last apply: new_content = v2 (no drift)",
+   "reconciliation": {
+    "disk_is_expected": false,
+    "disk_head": "def app():\n    return \"v2\"\n# drifted\n"
+   },
+   "chain": "INVALID",
+   "anchor": "ACTIVE (chain VALID)",
+   "ledger_consistency": "n/a (no new execution)",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-ws; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": true,
+   "note": "mismatch EXISTS on disk; native verify does not inspect disk-vs-evidence"
+  },
+  {
+   "id": "e5-1-1b full overwrite",
+   "truth": "disk fully overwritten (TAMPERED)",
+   "reported": "unchanged",
+   "evidenced": "unchanged",
+   "reconciliation": {
+    "disk_is_expected": false
+   },
+   "chain": "INVALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "n/a",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-ws; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": true,
+   "note": ""
+  },
+  {
+   "id": "e5-1-1c CONTROL governed re-application",
+   "truth": "disk = governed new_content",
+   "reported": "skipped",
+   "evidenced": "apply+verify journaled",
+   "reconciliation": {
+    "disk_is_expected": false,
+    "disk_head": "def app():\n    return \"TAMPERED\"\n"
+   },
+   "chain": "INVALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "consumed consistently",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-ws; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-2a delete-last-event",
+   "truth": "evidence file tampered on a COPY (2a delete-last-event)",
+   "reported": "n/a (no execution)",
+   "evidenced": "tampered copy; verify detail: ",
+   "reconciliation": "n/a",
+   "chain": "INVALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-2a; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-2b modify-event-payload",
+   "truth": "evidence file tampered on a COPY (2b modify-event-payload)",
+   "reported": "n/a (no execution)",
+   "evidenced": "tampered copy; verify detail: ",
+   "reconciliation": "n/a",
+   "chain": "INVALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-2b; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-2c delete-last-journal-line",
+   "truth": "evidence file tampered on a COPY (2c delete-last-journal-line)",
+   "reported": "n/a (no execution)",
+   "evidenced": "tampered copy; verify detail: ",
+   "reconciliation": "n/a",
+   "chain": "INVALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-2c; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-ctl CONTROL untouched copy",
+   "truth": "untouched",
+   "reported": "n/a",
+   "evidenced": "chain intact",
+   "reconciliation": "n/a",
+   "chain": "INVALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "intact",
+   "incidents": "Tanuq: Tighten-only policy: allowed paths must be inside the workspace C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-run01\\e5-1-ctl; got C:\\Users\\REŞAT\\AppData\\Local\\Temp\\e5-master",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-kill@0.05s",
+   "truth": "applied_files_after_kill=0/3 (a=old, b=old, c=old)",
+   "reported": "process killed; no terminal captured",
+   "evidenced": "journal/events state after kill (see verify)",
+   "reconciliation": {
+    "applied_count": 0
+   },
+   "chain": "VALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:48:53.725876+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": "kill at 0.05s"
+  },
+  {
+   "id": "e5-1-kill@0.5s",
+   "truth": "applied_files_after_kill=0/3 (a=old, b=old, c=old)",
+   "reported": "process killed; no terminal captured",
+   "evidenced": "journal/events state after kill (see verify)",
+   "reconciliation": {
+    "applied_count": 0
+   },
+   "chain": "VALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:48:57.210165+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": "kill at 0.5s"
+  },
+  {
+   "id": "e5-1-kill@1.5s",
+   "truth": "applied_files_after_kill=1/3 (a=NEW, b=old, c=old)",
+   "reported": "process killed; no terminal captured",
+   "evidenced": "journal/events state after kill (see verify)",
+   "reconciliation": {
+    "applied_count": 1
+   },
+   "chain": "VALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq incidents — 1 active (1 critical), detected 2026-09-21T03:49:01.951506+00:00 ------------------------------------------------------------ [CRITICAL] orphaned_apply Operation: 1a0f005e-1d20-48b7-",
+   "false_positive": false,
+   "false_negative": false,
+   "note": "kill at 1.5s"
+  },
+  {
+   "id": "e5-1-kill@3.0s",
+   "truth": "applied_files_after_kill=1/3 (a=NEW, b=old, c=old)",
+   "reported": "process killed; no terminal captured",
+   "evidenced": "journal/events state after kill (see verify)",
+   "reconciliation": {
+    "applied_count": 1
+   },
+   "chain": "VALID",
+   "anchor": "see verify",
+   "ledger_consistency": "see verify",
+   "incidents": "Tanuq incidents — 1 active (1 critical), detected 2026-09-21T03:49:08.034388+00:00 ------------------------------------------------------------ [CRITICAL] orphaned_apply Operation: 7ec13c56-c8ec-4455-",
+   "false_positive": false,
+   "false_negative": false,
+   "note": "kill at 3.0s"
+  },
+  {
+   "id": "e5-1-ctl CONTROL clean execute",
+   "truth": "all 3 applied cleanly",
+   "reported": "terminal state: VERIFIED =========================",
+   "evidenced": "journal complete",
+   "reconciliation": {
+    "all_applied": true
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "consumed consistently",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:49:21.782717+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-4a dummy-floor VERIFIED weakening",
+   "truth": "by construction: digest check now bypassable (code never executed)",
+   "reported": "terminal state: VERIFIED =========================",
+   "evidenced": "apply + verification (dummy-floor) journaled",
+   "reconciliation": {
+    "disk": "matches approved new_content"
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "consumed",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:49:32.133512+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": true,
+   "note": "VERIFIED != secure: verification blind spot by design"
+  },
+  {
+   "id": "e5-1-4b CONTROL real test catches",
+   "truth": "disk rolled back to v2",
+   "reported": "terminal state: ROLLED_BACK ======================",
+   "evidenced": "verification fail + rollback journaled",
+   "reconciliation": {
+    "disk": "def app():\n    return \"v2\""
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "n/a (auto-apply band)",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:49:44.035686+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-5a approval-less execute",
+   "truth": "disk unchanged (no apply)",
+   "reported": "terminal state: DENIED ================= stage=approval",
+   "evidenced": "denial journaled; ledger has NO grant for this fp",
+   "reconciliation": {
+    "disk": "def deploy():\n    return \"ok\""
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "no grant -> fail-closed",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:49:48.779830+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-5b consumed-approval reuse",
+   "truth": "second identical proposal denied (consumed grant)",
+   "reported": "terminal state: DENIED =================",
+   "evidenced": "denial journaled; ledger shows grant consumed by first execution",
+   "reconciliation": {
+    "disk": "def deploy():\n    return \"governed\""
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "consumed -> fail-closed",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:50:01.203538+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-5c wrong-fp execute",
+   "truth": "disk unchanged for this proposal",
+   "reported": "terminal state: DENIED =================",
+   "evidenced": "denial journaled",
+   "reconciliation": {
+    "disk": "def deploy():\n    return \"governed\""
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "grant bound to other fp",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:50:06.238416+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  },
+  {
+   "id": "e5-1-5ctl CONTROL proper approve->consume",
+   "truth": "disk = v3",
+   "reported": "terminal state: VERIFIED ===============",
+   "evidenced": "grant + consume + apply journaled",
+   "reconciliation": {
+    "disk": "def deploy():\n    return \"v3\""
+   },
+   "chain": "VALID",
+   "anchor": "ACTIVE",
+   "ledger_consistency": "consistent",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:50:15.502935+00:00 No incidents. Workspace state is clean.",
+   "false_positive": false,
+   "false_negative": false,
+   "note": ""
+  }
+ ],
+ "notes": []
+}

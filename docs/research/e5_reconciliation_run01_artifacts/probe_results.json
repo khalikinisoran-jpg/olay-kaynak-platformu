@@ -1,0 +1,129 @@
+{
+ "corpora": {
+  "B1-benign-fresh": [
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5r-b1\\app.py",
+    "types": [
+     "MATCH"
+    ],
+    "fingerprint": "37eea8600cd0fd86af73922a2f6852d93d7ae47aa9ab84cd62c96b03b9b85ac4",
+    "terminal": "applied",
+    "disk_sha256": "c3069d6c82e7f0e9d843fda0ef07e80c56226943a70758edf5034f55f2bd9f82",
+    "evidenced_hash": "c3069d6c82e7f0e9d843fda0ef07e80c56226943a70758edf5034f55f2bd9f82"
+   }
+  ],
+  "B2-benign-e3chain-replay": [
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5r-b2\\core\\checks_b.py",
+    "types": [
+     "MATCH"
+    ],
+    "fingerprint": "911bbbd7cea9d9e7fcb41fbbb71a9e02c982e5592ff6829c8ebb2a0d148c5558",
+    "terminal": "applied",
+    "disk_sha256": "cb2041d1c31d6273c3b17e22f5150a7ffa58f9aa16573b9fb8284b43a2ce064d",
+    "evidenced_hash": "cb2041d1c31d6273c3b17e22f5150a7ffa58f9aa16573b9fb8284b43a2ce064d"
+   },
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5r-b2\\core\\flow_b.py",
+    "types": [
+     "MATCH"
+    ],
+    "fingerprint": "c603c1cca3087baff6c9377928cde1c93fc4170a335624f35efc6212ed506a79",
+    "terminal": "applied",
+    "disk_sha256": "e6e2c9ffc95338c17dca2ecb69c4bf2a5ee068526301343546ae69f1fb98f83d",
+    "evidenced_hash": "e6e2c9ffc95338c17dca2ecb69c4bf2a5ee068526301343546ae69f1fb98f83d"
+   },
+   {
+    "path": "core\\checks_b.py",
+    "types": [
+     "NO_JOURNAL_RECORD"
+    ],
+    "note": "ungoverned file (coverage note)"
+   },
+   {
+    "path": "core\\flow_b.py",
+    "types": [
+     "NO_JOURNAL_RECORD"
+    ],
+    "note": "ungoverned file (coverage note)"
+   }
+  ],
+  "D1-e5-1-small-drift": [
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5r-d1\\app.py",
+    "types": [
+     "CONTENT_MISMATCH"
+    ],
+    "fingerprint": "34e024e2641e09d194fd1284ea4deedae3d3277ec0d1b1c61e5c67e665c793ad",
+    "terminal": "applied",
+    "disk_sha256": "ee5c6f0cd624d1bebce4ecac28d9213197d24a9f90b33d187403136a2b41cdaf",
+    "evidenced_hash": "c3069d6c82e7f0e9d843fda0ef07e80c56226943a70758edf5034f55f2bd9f82"
+   }
+  ],
+  "D2-e5-1-full-overwrite": [
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5r-d2\\app.py",
+    "types": [
+     "CONTENT_MISMATCH"
+    ],
+    "fingerprint": "828dd79d00f924da205af42a247e6bd2ae25b9c8759f68101ea03b47dc6bfa20",
+    "terminal": "applied",
+    "disk_sha256": "80cc2953830b9884d2955750288ec34e05b0b58bf65bd654852f49f5534ec316",
+    "evidenced_hash": "c3069d6c82e7f0e9d843fda0ef07e80c56226943a70758edf5034f55f2bd9f82"
+   }
+  ],
+  "P-e5-3-partial-kill1.5s": [
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5r-p\\core/a.py",
+    "types": [
+     "MATCH"
+    ],
+    "fingerprint": "7e8f70aea267941f0ad9c53eda41f615636811ec8890e076239d96a9304cc7d3",
+    "terminal": "applied",
+    "disk_sha256": "9bd58a3dd86c3c5dd6c2e452be48f79e4e5593add0795af1ef79796f961a96c2",
+    "evidenced_hash": "9bd58a3dd86c3c5dd6c2e452be48f79e4e5593add0795af1ef79796f961a96c2"
+   },
+   {
+    "path": "core\\a.py",
+    "types": [
+     "NO_JOURNAL_RECORD"
+    ],
+    "note": "ungoverned file (coverage note)"
+   },
+   {
+    "path": "core\\b.py",
+    "types": [
+     "NO_JOURNAL_RECORD"
+    ],
+    "note": "ungoverned file (coverage note)"
+   },
+   {
+    "path": "core\\c.py",
+    "types": [
+     "NO_JOURNAL_RECORD"
+    ],
+    "note": "ungoverned file (coverage note)"
+   }
+  ],
+  "FP-pending-not-applied": [],
+  "FP-rolled-back": [
+   {
+    "path": "C:\\Users\\REAT~1\\AppData\\Local\\Temp\\e5-run01\\e5-1-vctl\\app.py",
+    "types": [
+     "MATCH"
+    ],
+    "fingerprint": "14b2e8cede939ac674c74845cc43d3f3b5f31a8f90817334f6ef6409e5c5eaea",
+    "terminal": "rolled_back",
+    "disk_sha256": "c3069d6c82e7f0e9d843fda0ef07e80c56226943a70758edf5034f55f2bd9f82",
+    "evidenced_hash": "c3069d6c82e7f0e9d843fda0ef07e80c56226943a70758edf5034f55f2bd9f82"
+   },
+   {
+    "path": "tests\\test_app.py",
+    "types": [
+     "NO_JOURNAL_RECORD"
+    ],
+    "note": "ungoverned file (coverage note)"
+   }
+  ]
+ }
+}

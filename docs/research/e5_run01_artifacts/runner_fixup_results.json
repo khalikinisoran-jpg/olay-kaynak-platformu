@@ -1,0 +1,122 @@
+{
+ "relocation_finding": [
+  {
+   "copied_workspace_verify": "FAIL-CLOSED (empty stdout; stderr: tighten-only policy rejects allowed_paths pointing to the original location — stderr text captured in e5_verify_check.py output: 'Tighten-only policy: allowed paths must be inside the workspace ...; got ...e5-master')",
+   "classification": "GAP-ONLY observation: governed workspaces are path-bound; relocation is rejected fail-closed (blocks evidence-relocation tampering AND legitimate moves; no fix applied)"
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "E5-1-1a small out-of-channel drift (in place)",
+   "truth": "disk = v2 + drifted comment (out-of-channel edit AFTER VERIFIED)",
+   "reported": "no new CLI run; last terminal remains VERIFIED",
+   "evidenced": "journal last apply still records v2 content; chain untouched",
+   "reconciliation": {
+    "disk_matches_evidenced_content": false,
+    "detecting_tool": "research probe (direct disk read)"
+   },
+   "chain": "VALID",
+   "verify_detail": "Tanuq evidence verification Events in chain: 10 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+   "anchor": "ACTIVE",
+   "ledger": "n/a",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:57:53.606471+00:00\r\nNo incidents. Workspace state is clean.\r\n",
+   "fp": false,
+   "fn": true,
+   "note": "native verify: chain VALID (record integrity) but disk-vs-evidence mismatch NOT flagged by verify/incidents"
+  },
+  {
+   "id": "E5-1-1b full overwrite (in place)",
+   "truth": "disk fully overwritten",
+   "reported": "unchanged",
+   "evidenced": "unchanged",
+   "reconciliation": {
+    "disk_matches": false
+   },
+   "chain": "VALID",
+   "verify_detail": "Tanuq evidence verification Events in chain: 10 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+   "anchor": "ACTIVE",
+   "ledger": "n/a",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:57:55.251200+00:00\r\nNo incidents. Workspace state is clean.\r\n",
+   "fp": false,
+   "fn": true,
+   "note": "same conclusion as 1a"
+  },
+  {
+   "id": "E5-1-1c CONTROL governed re-application",
+   "truth": "disk matches governed new_content",
+   "reported": "== Tanuq execute — terminal state: VERIFIED ====================================",
+   "evidenced": "apply + verify journaled",
+   "reconciliation": {
+    "disk_matches_evidenced_content": true
+   },
+   "chain": "VALID",
+   "verify_detail": "Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+   "anchor": "ACTIVE",
+   "ledger": "consumed",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:58:04.919975+00:00\r\nNo incidents. Workspace state is clean.\r\n",
+   "fp": false,
+   "fn": false,
+   "note": "mismatch resolved THROUGH the governed channel"
+  },
+  {
+   "id": "E5-2-2a delete-last-event",
+   "truth": "evidence tampered in place (2a delete-last-event)",
+   "reported": "n/a",
+   "evidenced": "tampered; verify: Tanuq: fail-closed: Event chain trust anchor verification failed: the anchored chain head does not match the event tail.",
+   "reconciliation": "n/a",
+   "chain": "INVALID/EMPTY",
+   "verify_detail": "Tanuq: fail-closed: Event chain trust anchor verification failed: the anchored chain head does not match the event tail.",
+   "anchor": "see verify",
+   "ledger": "see verify",
+   "incidents": "Tanuq: fail-closed: Event chain trust anchor verification failed: the anchored chain head does not match the event tail.\r\n",
+   "fp": false,
+   "fn": false,
+   "note": "detection by hash-chain/anchor measured"
+  },
+  {
+   "id": "E5-2-2b modify-event-payload",
+   "truth": "evidence tampered in place (2b modify-event-payload)",
+   "reported": "n/a",
+   "evidenced": "tampered; verify: Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and inta",
+   "reconciliation": "n/a",
+   "chain": "VALID",
+   "verify_detail": "Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+   "anchor": "see verify",
+   "ledger": "see verify",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:58:08.614587+00:00\r\nNo incidents. Workspace state is clean.\r\n",
+   "fp": false,
+   "fn": true,
+   "note": "detection by hash-chain/anchor measured"
+  },
+  {
+   "id": "E5-2-2c delete-last-journal-line",
+   "truth": "evidence tampered in place (2c delete-last-journal-line)",
+   "reported": "n/a",
+   "evidenced": "tampered; verify: Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and inta",
+   "reconciliation": "n/a",
+   "chain": "VALID",
+   "verify_detail": "Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+   "anchor": "see verify",
+   "ledger": "see verify",
+   "incidents": "Tanuq incidents — 1 active (1 critical), detected 2026-09-21T03:58:10.365421+00:00\r\n------------------------------------------------------------\r\n[CRI",
+   "fp": false,
+   "fn": true,
+   "note": "detection by hash-chain/anchor measured"
+  },
+  {
+   "id": "E5-2-ctl CONTROL untouched",
+   "truth": "untouched",
+   "reported": "n/a",
+   "evidenced": "verify: Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and inta",
+   "reconciliation": "n/a",
+   "chain": "VALID",
+   "verify_detail": "Tanuq evidence verification Events in chain: 20 Evidence chain: VALID Anchor: ACTIVE (keyed chain-head verified) Approval ledger: VALID OVERALL: evidence is tamper-evident and intact.",
+   "anchor": "ACTIVE",
+   "ledger": "intact",
+   "incidents": "Tanuq incidents — 0 active (0 critical), detected 2026-09-21T03:58:12.423873+00:00\r\nNo incidents. Workspace state is clean.\r\n",
+   "fp": false,
+   "fn": false,
+   "note": "chain VALID on pristine state"
+  }
+ ]
+}
