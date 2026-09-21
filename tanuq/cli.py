@@ -363,6 +363,25 @@ def cmd_pending(args) -> int:
     return 0
 
 
+def cmd_reconcile(args) -> int:
+    """E5 Reconciliation V1 - read-only state-consistency check
+    (observation only; see tanuq/reconciliation.py for the authority
+    boundary)."""
+    from tanuq.reconciliation import reconcile_workspace, render_human
+    try:
+        env = _load_env_quiet(args.workspace)
+    except SystemExit as exc:
+        return _fail(str(exc).replace("Tanuq: ", ""))
+    except TanuqError as exc:
+        return _fail(str(exc))
+    result = reconcile_workspace(str(env.workspace))
+    if getattr(args, "json", False):
+        print(json.dumps(result, ensure_ascii=False, indent=1))
+    else:
+        print(render_human(result))
+    return 0
+
+
 def _chain_status(ws):
     from tanuq.config import read_anchor_key
     from tanuq.evidence import chain_status
@@ -762,6 +781,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_pending.add_argument("--workspace", default=None)
     p_pending.add_argument("--json", action="store_true", help="Machine-readable output")
     p_pending.set_defaults(func=cmd_pending)
+
+    p_reconcile = sub.add_parser(
+        "reconcile",
+        help="Read-only state-consistency check: journal-evidenced content vs actual disk bytes (observation only; MATCH is NOT a security statement)")
+    p_reconcile.add_argument("--workspace", default=None)
+    p_reconcile.add_argument("--json", action="store_true", help="Machine-readable output")
+    p_reconcile.set_defaults(func=cmd_reconcile)
 
     p_verify = sub.add_parser("verify", help="Verify the evidence chain and anchor")
     p_verify.add_argument("--workspace", default=None)
