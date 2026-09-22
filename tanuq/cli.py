@@ -382,6 +382,25 @@ def cmd_reconcile(args) -> int:
     return 0
 
 
+def cmd_observe(args) -> int:
+    """E5/Semantic Observation V1 — read-only post-hoc observation
+    (observation only; see tanuq/observation.py for the authority
+    boundary)."""
+    from tanuq.observation import observe_workspace, render_human
+    try:
+        env = _load_env_quiet(args.workspace)
+    except SystemExit as exc:
+        return _fail(str(exc).replace("Tanuq: ", ""))
+    except TanuqError as exc:
+        return _fail(str(exc))
+    result = observe_workspace(str(env.workspace), evaluator=None)
+    if getattr(args, "json", False):
+        print(json.dumps(result, ensure_ascii=False, indent=1))
+    else:
+        print(render_human(result))
+    return 0
+
+
 def _chain_status(ws):
     from tanuq.config import read_anchor_key
     from tanuq.evidence import chain_status
@@ -788,6 +807,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_reconcile.add_argument("--workspace", default=None)
     p_reconcile.add_argument("--json", action="store_true", help="Machine-readable output")
     p_reconcile.set_defaults(func=cmd_reconcile)
+
+    p_observe = sub.add_parser(
+        "observe",
+        help="Read-only post-hoc observation: state consistency + optional semantic evaluation (observation only)")
+    p_observe.add_argument("--workspace", default=None)
+    p_observe.add_argument("--json", action="store_true", help="Machine-readable output")
+    p_observe.set_defaults(func=cmd_observe)
 
     p_verify = sub.add_parser("verify", help="Verify the evidence chain and anchor")
     p_verify.add_argument("--workspace", default=None)
