@@ -18,7 +18,7 @@
 > `TANUQ — SESSION RESYNC` (format at the bottom), then pick the next
 > valid action.
 
-LAST UPDATED: 2026-09-16
+LAST UPDATED: 2026-09-23
 
 ---
 
@@ -351,6 +351,117 @@ docs, this session's decisions. Anything beyond this: NEEDS OPERATOR
 CONFIRMATION.)
 
 ## DAILY HANDOFF
+
+### 2026-09-23 (continuation 2 — Sol adversarial review consolidation)
+
+- SESSION OBJECTIVE: consolidate the GPT-6 Sol adversarial review
+  (A1-A4/Q1-Q2) with the independent GLM source audit + live
+  disposable verification into tracked research records. Research
+  scope ONLY.
+- WORK COMPLETED: added
+  `docs/research/sol_a1_a4_q1_q2_authority_surface_consolidation_01.md`.
+  Every finding was re-verified against real source and reproduced
+  LIVE in a disposable scratch workspace (production repo untouched):
+  A1 CLI self-approval (mechanism real, `authorizer="human-operator"`
+  is a static string — DEPLOYMENT-DEPENDENT, not a core governance
+  gap in the single-user/local model); A2 `export --out` writes
+  outside scope (live: directory+file created outside the workspace);
+  A3 `init --force --yes` widens a narrowed scope back to the whole
+  workspace (live: config before/after); A4 `GET /api/pending`
+  returns proposal diff content without any token (live: HTTP 200
+  with `new_preview`, localhost-bound); Q1 advertised 3600s approval
+  TTL is NOT enforced (live: ledger grant `expires_at=''`) —
+  fingerprint binding + single-use remain real; Q2 verifier residual
+  (pre-existing test code runs at verification; RT-2/R1/G1
+  mitigations intact — not an agent bypass).
+- KEY DISTINCTION RECORDED: no core authority bypass in the
+  proposal→risk→approval→apply→verification→evidence chain
+  (consistent with LUNA-07..12); the confirmed items live on the
+  SEPARATE operator surface (CLI/local API/operator commands).
+  Classification: A2/A3/A4 = confirmed operator-surface hardening;
+  Q1 = confirmed defense-in-depth hardening; Q2 = PARTIAL residual
+  verifier trust boundary.
+- FILES CHANGED:
+  docs/research/sol_a1_a4_q1_q2_authority_surface_consolidation_01.md
+  (NEW), docs/TANUQ_PROJECT_STATE.md (this entry).
+- FREEZE STATUS: unchanged. **NO PRODUCTION CODE CHANGE** (tanuq/,
+  simulation/, tests/ diff = 0). Production fixes NOT applied — six
+  owner decisions pending (TTL enforcement, /api/pending GET auth,
+  export --out scope-binding, init --force confirmation, CLI approval
+  identity, verifier sandbox) — listed in the consolidation record §8.
+- NEXT ACTION: owner decisions on the operator-surface hardening
+  items; root `luna-*` artifact cleanup still deferred.
+- NEXT HUMAN GATE: operator-surface hardening decisions; freeze reopen
+  condition still NOT met.
+
+### 2026-09-23 (continuation — LUNA research consolidation V2)
+
+- SESSION OBJECTIVE: convert the remaining conversation-derived LUNA
+  research verdicts into tracked records; no production scope.
+- WORK COMPLETED: added
+  `docs/research/luna_governance_consolidation_01.md` — LUNA-07
+  (approval fingerprint binding / single-use: FALSIFIED as a security
+  gap; binding demonstrable from tracked source: fingerprint schema,
+  ApprovalStore single-use + ledger durability, apply-boundary
+  fingerprint compare, per-fingerprint in-flight key) and LUNA-10
+  (governance-input manipulation: FALSIFIED as a security gap;
+  authoritative state confined to GovernanceEvaluator/RiskEngine/
+  RiskPolicy/fingerprint/ApprovalStore/apply/verification — both
+  historical verdicts labeled conversation-derived, corroborated by
+  tracked tests). Root artifact hygiene audit COMPLETED (read-only):
+  root `luna-*` files classified (raw proposer outputs = MOVE
+  candidates; `luna0*-packet.txt` = reproducible repo-source
+  snapshots = DELETE-CANDIDATES; no real secrets found).
+- DECISIONS RECORDED: LUNA-E2E-05 PASS; LUNA-E2E-06 PASS; E5
+  Reconciliation V1 E2E-validated; LUNA-08 security gap NOT confirmed
+  (evidence/UX hardening only — history CLI does not expose content;
+  evidenced_sha256 ↔ disk_sha256 reconciliation exists); LUNA-09
+  production change not required (kept); LUNA-07 security hypothesis
+  falsified; LUNA-10 security hypothesis falsified. Production core
+  unchanged. Root `luna-*` cleanup intentionally DEFERRED pending
+  owner approval (no delete/move/rename, no .gitignore change).
+- FILES CHANGED: docs/research/luna_governance_consolidation_01.md
+  (NEW), docs/research/luna_e2e_05_06_consolidation_01.md (from the
+  first consolidation pass, unchanged this pass),
+  docs/TANUQ_PROJECT_STATE.md (this entry).
+- FREEZE STATUS: unchanged. Production diff (simulation/, tanuq/) = 0.
+- NEXT ACTION: owner-approved root artifact cleanup (separate task);
+  then the standing NEXT VALID ACTION items.
+- NEXT HUMAN GATE: root artifact cleanup approval; freeze reopen
+  condition still NOT met.
+
+### 2026-09-23
+
+- SESSION OBJECTIVE: LUNA research consolidation — permanent, auditable
+  records for LUNA-E2E-05/06; E5 Reconciliation V1 E2E validation;
+  LUNA-08/09 re-evaluation. Research-record scope ONLY.
+- WORK COMPLETED: added
+  `docs/research/luna_e2e_05_06_consolidation_01.md` — third
+  independent untrusted proposer (Luna) drove the canonical
+  `--stdin-json` chain end-to-end (fingerprint
+  `fda806fa…ef33e`, risk LOW, no approval, terminal VERIFIED, chain
+  VALID 52 events, anchor ACTIVE, ledger VALID); controlled
+  out-of-channel mutation observed live as CONTENT_MISMATCH
+  (evidenced_sha256 `f852d77f…` vs disk_sha256 `f56120cd…`) and
+  restore returned MATCH — E5 Reconciliation V1 E2E-validated
+  (observation-only semantics confirmed; MATCH/CONTENT_MISMATCH are
+  NOT security/enforcement statements).
+- DECISIONS RECORDED: LUNA-E2E-05 = PASS; LUNA-E2E-06 = PASS; E5
+  Reconciliation V1 = validated by real E2E; LUNA-08 "actual
+  applied-content fingerprint" suspicion NOT confirmed as a security
+  gap — retained as evidence/observability hardening topic (the
+  architecture already reconciles evidenced_sha256 ↔ disk_sha256);
+  LUNA-09 "no production change required" kept. No production
+  governance/evidence/reconciliation code touched.
+- FILES CHANGED: docs/research/luna_e2e_05_06_consolidation_01.md
+  (NEW), docs/TANUQ_PROJECT_STATE.md (this entry). Untracked raw
+  artifacts (luna-e2e-*.txt/json, luna0*-packet.txt) pending owner
+  hygiene decision — do not commit without review.
+- FREEZE STATUS: unchanged. Core diff = 0.
+- NEXT ACTION: owner hygiene decision on root luna-* artifacts; then
+  the standing NEXT VALID ACTION items (real Claude Write runtime
+  dogfood — credit gate).
+- NEXT HUMAN GATE: none new; freeze reopen condition still NOT met.
 
 ### 2026-09-16
 

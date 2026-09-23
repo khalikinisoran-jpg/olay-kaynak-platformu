@@ -12,8 +12,12 @@ product):
 - Governed + anchored BY DEFAULT: the server refuses to start on an
   uninitialized workspace and always runs the anchored trust model.
 - ALL state-changing POST endpoints require the local device token
-  (X-TANUQ-Token, constant-time compare, fail-closed 403). GET
-  endpoints are read-only views of durable evidence.
+  (X-TANUQ-Token, constant-time compare, fail-closed 403). The same
+  token is required for the sensitive read-only API GET endpoints
+  (pending proposals and durable-evidence views): the pending view
+  carries pre-decision, agent-controlled proposal content, which is
+  not durable evidence. /api/health and the static UI shell stay
+  public (bootstrap/readiness); the server binds 127.0.0.1 only.
 - No fake analyzer in the product flow: proposals arrive as explicit
   JSON (from the user or an agent hook).
 - Data sources: EventStore, ApprovalLedger/ApprovalStore,
@@ -201,6 +205,20 @@ class Handler(BaseHTTPRequestHandler):
             return
         if SETUP_MODE:
             self._json(404, {"error": "not found"}, rid, t0)
+            return
+        # A4 hardening: the remaining /api/* GET endpoints expose pending
+        # proposal content (pre-decision, agent-controlled) and durable
+        # evidence views; they require the local device token with the
+        # same fail-closed contract as every POST. /api/health and the
+        # static UI shell above stay public (bootstrap/readiness; the
+        # server binds 127.0.0.1 only).
+        if path.startswith("/api/") and not self._check_token():
+            self._json(
+                403,
+                {"error": "missing or invalid access token (fail-closed)"},
+                rid,
+                t0,
+            )
             return
         if path == "/api/dashboard":
             self._json(200, _dashboard(), rid, t0)

@@ -272,6 +272,7 @@ def approve(env, fingerprint=None):
             risk_level=decision.risk_level.value,
             attempt=1,
             authorizer="human-operator",
+            expires_at=APPROVAL_TTL_SECONDS,
         )
         granted.append({
             "approval_id": approval.approval_id,
