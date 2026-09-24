@@ -1,0 +1,56 @@
+## 1. EXECUTIVE FINDING
+
+**No security gap is confirmed, but I cannot conclude that no previously missed gap exists.** The conversation contains no TANUQ source code, tests, project state, or research records, and I have no repository-access tool in this review. The requested implementation trace and independent verification therefore cannot be performed.
+
+There are no source-supported hardening-only observations. The security questions below remain unresolved because the evidence needed to answer them was not supplied—not because a particular suspected gap survived examination.
+
+## 2. AUTHORITY MAP
+
+**Not established.** The proposed sequence—proposal → validation → fingerprint → scope → governance/risk → policy → approval → execution → apply → verification → evidence—is the chain to investigate, not a chain I can attribute to TANUQ without source. I cannot identify its authoritative decision point or show that every mutation reaches it.
+
+## 3. MUTATION ENTRY-POINT MAP
+
+**No entry point was discovered or verified.** CLI, API, `WorkerActionPipeline`, `ExternalActionPipeline`, recovery, bridge, coordinator, execute, apply, and internal paths are candidates named in the request. Their existence, callers, and convergence on an authority boundary require source inspection.
+
+## 4. APPROVAL / REPLAY ANALYSIS
+
+The implementation of proposal identity, fingerprint binding, TTL, attempt limits, consumption, ledger persistence, concurrency control, and restart behavior is unavailable. I cannot determine whether an approval can be reused or transferred to another proposal or execution.
+
+## 5. GOVERNANCE-INPUT ANALYSIS
+
+I cannot trace whether agent-supplied fields or metadata influence authoritative risk, policy, allowed paths, approval, verification, or evidence state. The instruction that LLM output is untrusted is an architectural requirement, not evidence that TANUQ enforces it.
+
+## 6. SCOPE / POLICY / TOCTOU ANALYSIS
+
+Allowed-path enforcement, protected-workspace handling, symlinks, traversal, policy binding, and containment are unverified. Whether execution rechecks `old_content` after an external mutation is likewise unresolved; the requested stale-proposal sequence cannot be assessed from the materials present.
+
+## 7. EVIDENCE / RECONCILIATION ANALYSIS
+
+I cannot inspect `EventStore`, `ApplyOutcomeJournal`, `ApprovalLedger`, hash chains, keyed anchors, verification, or reconciliation. **As an analytical distinction**, an observation of content is not authorization to mutate it; this does not establish what TANUQ implements.
+
+The reported `MATCH → external mutation → CONTENT_MISMATCH → restore → MATCH` sequence is a prior claim in the request. I cannot independently verify that the implementation produces those states or determine what its evidence proves.
+
+## 8. PREVIOUS LUNA FINDINGS
+
+The “previous conclusion” column reports only what the request says, **not** an independently verified research record.
+
+| Finding | Previous conclusion as stated | Independent assessment and supporting source evidence | Changed/not changed |
+|---|---|---|---|
+| LUNA-07 | Approval-binding hypothesis falsified | Unassessable; no approval implementation supplied | Neither endorsed nor overturned |
+| LUNA-08 | Applied-content/evidence relationship marked partial, then reconsidered after E2E testing | Unassessable; no apply, evidence, or E2E implementation supplied | Neither endorsed nor overturned |
+| LUNA-09 | Production change considered unnecessary | Unassessable without the underlying path and source | Neither endorsed nor overturned |
+| LUNA-10 | Agent-controlled-governance-input hypothesis falsified | Unassessable; no input-to-decision trace supplied | Neither endorsed nor overturned |
+| LUNA-11 | Real-risk path falsified as a security gap | Unassessable; no risk calculation or decision path supplied | Neither endorsed nor overturned |
+| LUNA-12 | Alternate-entry/recovery-path hypothesis falsified | Unassessable; no entry-point or recovery source supplied | Neither endorsed nor overturned |
+
+## 9. NEW FINDINGS
+
+**None established.** In particular, lack of access to the implementation is not itself a TANUQ security finding. No attack path, mitigation failure, prerequisite, or reproducibility claim can responsibly be assigned a classification or confidence level here.
+
+## 10. UNRESOLVED QUESTIONS
+
+The primary question remains unanswered. Resolving it requires the TANUQ source and tests, relevant project state, and previous research records—especially the entry-point call graph, approval and policy implementations, apply-time checks, and evidence/reconciliation implementation. No exact file or symbol can be named from the supplied text.
+
+## 11. SINGLE MOST VALUABLE NEXT EXPERIMENT
+
+**No experiment is justified yet.** The necessary next step is to supply the source and records for inspection. Only then can a single experiment be selected to test an actual, identified boundary hypothesis rather than inventing one.

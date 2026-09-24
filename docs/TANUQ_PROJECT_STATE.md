@@ -352,6 +352,70 @@ CONFIRMATION.)
 
 ## DAILY HANDOFF
 
+### 2026-09-24
+
+- RELEASE: commit `ecf00fd33f80f5b5c89eb590eb27bf6a01b3e9f3`
+  ("Harden approval TTL and pending API auth") pushed; **origin/main ==
+  HEAD == ecf00fd** (fast-forward from f0d09b6). Scoped commit set:
+  tanuq/agent_adapter.py (Q1), tanuq/web.py (A4),
+  tests/approval_ttl_contract_test.py (NEW),
+  tests/web_api_get_auth_test.py (NEW), docs/TANUQ_PROJECT_STATE.md,
+  3 × docs/research/*consolidation_01.md.
+- CI: GitHub run **35927652074 — 4/4 GREEN**: pytest (ubuntu-latest)
+  PASS, pytest (windows-latest) PASS, packaging-gate (ubuntu-latest)
+  PASS, packaging-gate (windows-latest) PASS. (Annotations: actions
+  Node 20 deprecation + ubuntu-latest image migration notices —
+  informational only.)
+- Q1: Approval TTL **FIXED + VERIFIED + PUSHED** —
+  `APPROVAL_TTL_SECONDS=3600` now bound at grant time
+  (`expires_at` persisted, validated at find_valid/authorize_apply,
+  durable across restart); regression PASS.
+- A4: Sensitive API GET authentication **FIXED + VERIFIED + PUSHED** —
+  tokenless `GET /api/pending` → **403** (fail-closed); valid token →
+  200; `/api/health` + static shell stay public; regression PASS.
+- FINAL AUTHORITY-SURFACE DISPOSITION (unchanged; research records in
+  docs/research/sol_a1_a4_q1_q2_authority_surface_consolidation_01.md):
+  - A1 CLI self-approval: **DEPLOYMENT-DEPENDENT / ACCEPTED CURRENT
+    MODEL** (mechanism real; not a core governance gap in the
+    single-user/local model).
+  - A2 export --out: **ACCEPTED OPERATOR BEHAVIOR** (read-only over
+    governance state; --out is documented external-audit artifact
+    write).
+  - A3 init --force --yes: **ACCEPTED OPERATOR BEHAVIOR** (documented
+    re-init scope reconfiguration; workspace-root ceiling enforced by
+    Tighten-only validation at save+load). Optional Option-2 hardening
+    (force+omit keeps current scope) = **OWNER CHOICE**.
+  - Q2 verifier: **RESIDUAL TRUST BOUNDARY / ACCEPTED** (no
+    unauthorized agent mutation path; pre-existing/approved test code
+    runs with operator privileges — no OS sandbox).
+- SECURITY VALIDATION (final pre-commit audit): scoped regression
+  **573 passed / 3 skipped / 0 failed**; security invariants all PASS
+  (fingerprint binding, single-use, bounded attempts, risk
+  recomputation, UNKNOWN→DENY, HIGH/CRITICAL→approval, advisory
+  cannot lower, apply authorization, evidence chain, reconciliation,
+  Q1 expiry, A4 token requirement); **simulation/ diff = 0**; no
+  unexpected production-core changes (tanuq/ diff = Q1 + A4 only).
+- GIT HYGIENE: scoped release files committed (above). Scoped-out
+  changes remain **uncommitted and preserved**: site/index.html,
+  site/style.css, tests/site_next_step_test.py,
+  tests/test_public_surface.py (separate prior work stream); root
+  luna-*/sol-* artifacts (luna-*, luna0*, sol-01/02*) and other
+  untracked research artifacts (observer packages, site/assets/)
+  remain outside the release commit. The working tree is NOT clean.
+- OPEN OWNER ITEMS: (1) root luna-*/sol-* artifact hygiene — cleanup
+  decision pending; (2) A1/A2/A3/Q2 optional hardening decisions
+  remain owner-choice/deployment decisions — **no immediate
+  production blocker**; these are NOT unresolved core security
+  vulnerabilities and must not be represented as such; (3) standing
+  NEXT VALID ACTION items (real Claude Write runtime dogfood — credit
+  gate).
+- FREEZE STATUS: unchanged. Core governance chain re-validated across
+  LUNA-07..12 + Sol review: no core authority bypass found.
+- NEXT ACTION: owner artifact-hygiene decision; CI already GREEN for
+  the release; then standing items.
+- NEXT HUMAN GATE: artifact cleanup approval; operator-surface
+  hardening choices; freeze reopen condition still NOT met.
+
 ### 2026-09-23 (continuation 2 — Sol adversarial review consolidation)
 
 - SESSION OBJECTIVE: consolidate the GPT-6 Sol adversarial review
