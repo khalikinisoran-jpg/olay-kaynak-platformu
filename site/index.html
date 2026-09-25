@@ -3,169 +3,201 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TANUQ — AI ajanları için bağımsız yönetim katmanı</title>
-<meta name="description" content="TANUQ, AI coding agent'ınız ile dosyalarınız arasına bağımsız bir yönetim katmanı koyar: risk sınıflandırması, insan onayı, kontrollü uygulama, doğrulama ve müdahale edilebilir kayıt zinciri.">
+<title>TANUQ — AI works. You stay in control.</title>
+<meta name="description" content="TANUQ, AI coding agent'ınız ile dosyalarınız arasına bağımsız bir güvenlik katmanı koyar. Ajan değişikliği önerir, TANUQ değerlendirir, riskli değişikliklerde karar sizde kalır.">
+<link rel="icon" type="image/png" href="assets/tanuq-favicon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header class="hero">
-  <div class="wrap">
-    <p class="kicker">AI coding agent'larınız için bağımsız yönetim katmanı</p>
-    <h1>Yapay zekâ kodlama ajanları hızla çalışır.<br>Kontrolünüz kaybolmamalı.</h1>
-    <p class="lede">
-      TANUQ, AI coding agent'ınız ile dosyalarınız arasına bağımsız bir yönetim
-      katmanı koyar. Ajanınız değişikliği <strong>önerir</strong>; TANUQ riski
-      belirler, riskli değişikliklerde karar <strong>sizde</strong> kalır,
-      uygulama <strong>doğrulanır</strong> ve her adım kayıt altına alınır.
-    </p>
-    <p class="cta">
-      <a class="btn primary" href="#try">TANUQ'YU DENEYİN</a>
-      <a class="btn" href="#demo">DEMO TALEP EDİN</a>
-    </p>
+<header class="nav">
+  <div class="nav-wrap">
+    <a href="/" class="nav-logo" aria-label="TANUQ ana sayfa">
+      <img src="assets/tanuq-logo-header-sm.png" alt="TANUQ" height="52">
+    </a>
+    <nav class="nav-links" aria-label="Ana navigasyon">
+      <a href="#how">Nasıl Çalışır</a>
+      <a href="#demo-walkthrough">Demo</a>
+      <a href="#try">Kendi Makinenizde Dene</a>
+    </nav>
   </div>
 </header>
 
-<main class="wrap">
-
-  <section id="problem">
-    <h2>Değişiklikler dosyaya yazılmadan önce kim karar veriyor?</h2>
-    <p>AI coding agent'lar dosya yazabilir, kod değiştirebilir ve makine hızıyla
-       çalışır. Birden fazla değişikliği, insan gözü araya girmeden, kısa sürede
-       üretebilir. Bu hız değerlidir — ama değişikliklerin bir kısmı sonuç doğurur:
-       yapılandırma dosyaları, betikler, dağıtım ile ilgili kodlar.</p>
-    <p>Bugün bu değişikliklerin çoğu doğrudan diske yazılıyor:
-       ne önerildiğini görmek için dosya farkına bakmanız, riski kendiniz
-       değerlendirmeniz ve bir şeyler ters giderse geri almanız gerekiyor.</p>
-    <p class="question">Agent'ın ne yapabileceğini kim kontrol ediyor?</p>
-  </section>
-
-  <section id="solution">
-    <h2>TANUQ nasıl çalışır?</h2>
-    <p>TANUQ tek yönlü dosya yazımını yönetilen bir karara dönüştürür.
-       Ajan değişikliği doğrudan yazmaz; öneri olarak gönderir.</p>
-    <div class="pipe">
-      <div class="pipe-node agent">AJANINIZ</div>
-      <div class="pipe-arrow">öneri gönderir ↓</div>
-      <div class="pipe-node tanuq">TANUQ</div>
-      <div class="pipe-arrow">yönetilen akış ↓</div>
-      <ol class="pipe-steps">
-        <li><span>Risk</span> Her öneri deterministik olarak sınıflandırılır: yol, işlem, içerik ve konum sinyallerine göre.</li>
-        <li><span>Approval</span> Riskli değişiklikler için tek kullanımlık, parmak-izine bağlı insan onayı alınır.</li>
-        <li><span>Execute</span> Onaylı değişiklikler kapsamın içinde, atomik olarak uygulanır.</li>
-        <li><span>Verify</span> Uygulama sonrası derleme ve testler koşar; başarısızlıkta değişiklik otomatik geri alınır.</li>
-        <li><span>Evidence</span> Her öneri, karar ve sonuç bütünlük zincirine yazılır.</li>
-      </ol>
-      <div class="pipe-arrow">onaylı ve doğrulanmış değişiklik ↓</div>
-      <div class="pipe-node code">KODUNUZ</div>
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <h1>Yapay zekâ çalışsın.<br><span class="hero-accent">Kontrol sizde kalsın.</span></h1>
+      <div class="cta">
+        <a class="btn btn-primary" href="#demo-walkthrough">TANUQ'YU ŞİMDİ DENE</a>
+        <a class="btn btn-secondary" href="#how">NASIL ÇALIŞIR</a>
+      </div>
+      <p class="hero-kicker">AI coding agent · file-change control</p>
+      <p class="lede">AI coding agent değişiklik önerir. TANUQ riski değerlendirir. Onay, tam olarak önerilen değişikliğe bağlanır. Değişiklik uygulanır, bağımsız doğrulanır ve kanıt bırakır.</p>
+      <ul class="trust-strip" aria-label="Doğrulanabilir prensipler">
+        <li>Content-bound approval</li>
+        <li>Single-use authorization</li>
+        <li>Independent verification</li>
+        <li>Hash-chained evidence</li>
+      </ul>
     </div>
-  </section>
 
-  <section id="benefits">
+    <div class="hero-visual" aria-label="TANUQ authority chain">
+      <div class="chain-panel">
+        <div class="chain-panel-title">Authority chain</div>
+        <ol class="chain">
+          <li class="chain-node">
+            <span class="chain-icon" aria-hidden="true">A</span>
+            <span class="chain-name">Agent</span>
+            <span class="chain-hint">untrusted proposer</span>
+          </li>
+          <li class="chain-node">
+            <span class="chain-icon" aria-hidden="true">→</span>
+            <span class="chain-name">Proposal</span>
+            <span class="chain-hint">diff · path · reason</span>
+          </li>
+          <li class="chain-node">
+            <span class="chain-icon" aria-hidden="true">R</span>
+            <span class="chain-name">Risk</span>
+            <span class="chain-hint">deterministic</span>
+          </li>
+          <li class="chain-node">
+            <span class="chain-icon" aria-hidden="true">P</span>
+            <span class="chain-name">Policy</span>
+            <span class="chain-hint">fail-closed gate</span>
+          </li>
+          <li class="chain-node chain-node-strong">
+            <span class="chain-icon" aria-hidden="true">✓</span>
+            <span class="chain-name">Approval</span>
+            <span class="chain-hint">single-use</span>
+          </li>
+          <li class="chain-node chain-node-strong">
+            <span class="chain-icon chain-icon-mono" aria-hidden="true">#</span>
+            <span class="chain-name">Fingerprint</span>
+            <span class="chain-hint">SHA-256</span>
+          </li>
+          <li class="chain-node">
+            <span class="chain-icon" aria-hidden="true">E</span>
+            <span class="chain-name">Execute</span>
+            <span class="chain-hint">atomic apply</span>
+          </li>
+          <li class="chain-node chain-node-strong">
+            <span class="chain-icon" aria-hidden="true">V</span>
+            <span class="chain-name">Verify</span>
+            <span class="chain-hint">independent</span>
+          </li>
+          <li class="chain-node chain-node-strong">
+            <span class="chain-icon chain-icon-mono" aria-hidden="true">≡</span>
+            <span class="chain-name">Evidence</span>
+            <span class="chain-hint">hash-chained</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="term term-hero">
+        <div class="term-bar">
+          <span class="term-dot" aria-hidden="true"></span>
+          <span class="term-bar-label">real governed run</span>
+        </div>
+        <pre class="term-proof">propose  → state: APPROVAL_REQUIRED · risk: HIGH
+approve  → single-use · fingerprint-bound
+execute  → terminal state: VERIFIED
+         · Apply success: True
+         · Verification passed: True</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main>
+
+<section id="demo-walkthrough" class="section demo-walkthrough">
+  <div class="wrap">
+    <p class="kicker">TANUQ INTERACTIVE DEMO</p>
+    <h2>TANUQ'yu deneyin.</h2>
+    <p class="section-lede">Gerçek bir TANUQ local run'ından kaydedilmiş governance akışını adım adım deneyin. Recorded playback — tarayıcıda hemen deneyin.</p>
+    <div
+      id="demo-root"
+      data-fixture="demo_fixtures.json"
+      aria-live="polite"
+    >
+      <p class="small">Walkthrough yükleniyor…</p>
+    </div>
+  </div>
+</section>
+
+<section class="section problem">
+  <div class="wrap wrap-narrow">
+    <p class="kicker">PROBLEM</p>
+    <h2>AI agent bir değişiklik yapmak istediğinde son karar kimde?</h2>
+    <p>AI coding agent'lar kod yazabilir, dosya değiştirebilir ve insan müdahalesi olmadan makine hızıyla çalışabilir. Bu hız değerli — ama her değişiklik kontrol gerektirmez. Kritik olan: hangilerinin kontrol gerektirdiğine kim karar veriyor?</p>
+    <p>AI agent bir değişikliği doğrudan diske uyguladığında, insanın karar vereceği an değişiklikten önce değil sonra olabilir. O noktada geri dönüş maliyetli ve zaman alıcıdır.</p>
+  </div>
+</section>
+
+<section id="how" class="section how alt">
+  <div class="wrap">
+    <p class="kicker">NASIL ÇALIŞIR</p>
+    <h2>Altı adımda çalışır.</h2>
+    <p class="section-lede">Propose → Risk → Approval → Execute → Verify → Evidence. Her adım görünür; yetki bir sonraki adıma taşınmaz.</p>
+    <div class="steps">
+      <div class="step"><span class="step-num">1</span><strong>Öneri</strong><p>Agent değişikliği doğrudan diske yazmaz; TANUQ'a öneri olarak gönderir. Önerinin hedef dosyası ve içeriği uygulama öncesinde görünür hale gelir.</p></div>
+      <div class="step"><span class="step-num">2</span><strong>Değerlendirme</strong><p>Her öneri sınıflandırılır: uygun değişiklikler uygulanabilir, riskli değişiklikler onayınızı bekler.</p></div>
+      <div class="step"><span class="step-num">3</span><strong>Onay</strong><p>Riskli değişikliklerde karar sizde kalır. Onay verilmeden ilgili değişiklik uygulanmaz.</p></div>
+      <div class="step"><span class="step-num">4</span><strong>Uygulama</strong><p>Onaylı değişiklikler atomik olarak uygulanır. Kapsam dışına çıkmaz.</p></div>
+      <div class="step"><span class="step-num">5</span><strong>Doğrulama</strong><p>Uygulama sonrası derleme ve testler koşar. Başarısızlık durumunda değişiklik geri alınır.</p></div>
+      <div class="step"><span class="step-num">6</span><strong>Kayıt</strong><p>Her öneri, onay ve sonuç kayıt altına alınır. Kayıt zincirindeki sonradan yapılan değişiklikler tespit edilebilir.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section value">
+  <div class="wrap">
+    <p class="kicker">DEĞER</p>
     <h2>Size ne kazandırır?</h2>
     <div class="cards">
-      <div class="card">
-        <h3>CONTROL</h3>
-        <p>Riskli değişikliklerde karar sizde kalır. Ajan çalışmaya devam eder;
-           riskli adımlarda sizin onayınız olmadan ilerlemez.</p>
-      </div>
-      <div class="card">
-        <h3>VISIBILITY</h3>
-        <p>Ajan'ın önerdiği değişiklik görünür hale gelir: hangi dosya,
-           hangi işlem, hangi içerik farkı — uygulama öncesinde.</p>
-      </div>
-      <div class="card">
-        <h3>VERIFICATION</h3>
-        <p>Uygulama sonrasında sonuç kontrol edilir: derleme ve testler koşar,
-           başarısızlık durumunda değişiklik otomatik geri alınır.</p>
-      </div>
-      <div class="card">
-        <h3>EVIDENCE</h3>
-        <p>Ne önerildiği, neye izin verildiği ve ne olduğu kayıt altında kalır:
-           bütünlük zincirli, sonradan müdahale edildiğinde tespit edilebilir kayıtlar.</p>
-      </div>
-      <div class="card">
-        <h3>VENDOR INDEPENDENCE</h3>
-        <p>Agent veya model değişse bile yönetim sözleşmeniz değişmez.
-           TANUQ herhangi bir ajanı, kendi agent'ını seçen hiçbir kullanıcıyı
-           dışlamadan, ortak bir öneri sözleşmesi üzerinden yönetir.</p>
-      </div>
+      <div class="card"><h3>CONTROL</h3><p>Riskli değişikliklerde karar sizde kalır. İlgili değişiklik, sizin onayınız olmadan uygulanmaz.</p></div>
+      <div class="card"><h3>VISIBILITY</h3><p>Değişiklik uygulamadan önce görünür hale gelir: hangi dosya, hangi işlem, hangi içerik farkı.</p></div>
+      <div class="card"><h3>VERIFICATION</h3><p>Uygulama sonrası derleme ve testler çalıştırılır; sonuç doğrulanır.</p></div>
+      <div class="card"><h3>EVIDENCE</h3><p>Her öneri, onay ve sonuç kayıt altına alınır. Kayıt zincirindeki sonradan yapılan değişiklikler tespit edilebilir.</p></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="paths">
-    <h2>Üç yol ile başlayın</h2>
-    <div class="cards">
-      <div class="card">
-        <h3>1. TANUQ'YU DENEYİN</h3>
-        <p>Kendi makinenizde, geçici bir çalışma klasöründe gerçek yönetilen
-           akışı uçtan uca görün. Üretim dosyalarına dokunmaz, sır istemez,
-           bitince kendini temizler.</p>
-        <a class="btn" href="#try">Denemeye geç</a>
-      </div>
-      <div class="card">
-        <h3>2. AJANINIZI BAĞLAYIN</h3>
-        <p>Kolaylık entegrasyonu: TANUQ, desteklenen bir ajan (örneğin
-           Claude Code) için yönetim hook'unu sizin yerinize kurar.
-           Opsiyoneldir — hiçbir ajan için zorunlu değildir.</p>
-        <p class="small">Başlangıç yolu — kendi projenizde:</p>
-<pre>pip install -e .
-tanuq init
-tanuq ui</pre>
-        <p class="small">Dashboard'u açtıktan sonra ajanınızı Connect
-           kartından bağlayın veya 3. yoldaki genel sözleşmeyi kullanın.</p>
-      </div>
-      <div class="card">
-        <h3>3. GENEL SÖZLEŞME</h3>
-        <p>Kanonik entegrasyon: kabuk çalıştırabilen her ajan, TANUQ'un genel
-           öneri sözleşmesi üzerinden doğrudan çalışır — bağlantı adımı,
-           vendor kilitlenmesi yok.</p>
-        <code>tanuq propose --stdin-json --json</code>
-      </div>
+<section class="section who alt">
+  <div class="wrap">
+    <p class="kicker">KİMLER İÇİN</p>
+    <h2>Kimler için?</h2>
+    <div class="personas">
+      <div class="persona"><strong>AI coding agent kullanan ekipler</strong><p>AI coding agent'ınızın değişiklik akışına bağımsız bir kontrol katmanı ekleyin.</p></div>
+      <div class="persona"><strong>Platform Engineering</strong><p>Agent değişiklik akışına bağımsız bir kontrol katmanı ekleyin.</p></div>
+      <div class="persona"><strong>Security / DevSecOps</strong><p>AI değişikliklerini politika çerçevesinde değerlendirin.</p></div>
+      <div class="persona"><strong>AI Infrastructure</strong><p>Farklı agent ve model sağlayıcılarıyla çalışabilecek bağımsız bir kontrol katmanı kullanın.</p></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="how">
-    <h2>Gerçek akıştan bir kesit</h2>
-    <p>Aşağıdaki çıktılar TANUQ'un gerçek yönetilen akışından alınmıştır:
-       ajan riskli değişikliği önerir, TANUQ kararı hazırlar, siz onaylarsınız,
-       TANUQ uygular ve sonucu doğrular.</p>
+<section class="section product">
+  <div class="wrap">
+    <p class="kicker">ÜRÜN</p>
+    <h2>Bugün çalışan gerçek akış.</h2>
+    <p class="flow-line">Propose → Risk → Approval → Execute → Verify → Evidence</p>
     <div class="term">
-      <div class="term-title">1 · Ajan değişikliği önerir — TANUQ riski belirler</div>
-<pre>{ "path": "deploy.py", "action": "modify", ... }
-→ state: APPROVAL_REQUIRED · risk: HIGH
-→ signals: production_configuration, executable_source</pre>
-      <div class="term-title">2 · Siz onaylarsınız — karar sizde kalır</div>
-<pre>APPROVED deploy.py fingerprint=7572d022fe4f
-risk=HIGH single-use</pre>
+      <div class="term-title">1 · Ajan değişikliği önerir</div>
+      <pre>→ state: APPROVAL_REQUIRED · risk: HIGH</pre>
+      <div class="term-title">2 · Siz onaylarsınız</div>
+      <pre>APPROVED deploy.py · risk=HIGH · single-use</pre>
       <div class="term-title">3 · TANUQ uygular, doğrular ve kaydeder</div>
-<pre>Tanuq execute — terminal state: VERIFIED
-Apply success: True
-Verification passed: True</pre>
-      <p class="small">Bu kesit gerçek bir TANUQ çalışmasından alınmıştır.
-         Onay, tam olarak bu değişikliğe bağlıdır ve tek kullanımlıktır;
-         uygulama sonrası derleme ve testler koşar, her adım kanıt
-         zincirine yazılır.</p>
+      <pre>terminal state: VERIFIED · Apply success: True · Verification passed: True</pre>
     </div>
-  </section>
+    <p class="small">Bu kesit gerçek bir TANUQ çalışmasından alınmıştır. Onay, önerilen değişiklikle ilişkilendirilir ve uygulama sonrası sonuç doğrulanır.</p>
+  </div>
+</section>
 
-  <section id="why">
-    <h2>Why TANUQ?</h2>
-    <p class="why-line">Your agent can change. Your governance contract doesn't have to.</p>
-    <p>TANUQ ajan, model veya sağlayıcıdan bağımsız, ortak bir öneri sözleşmesi
-       üzerinden çalışır: ajanınızı değiştirdiğinizde yönetim katmanınız olduğu
-       gibi kalır. Kurulum zorunlu değildir — herhangi bir ajan, kabuk
-       çalıştırabiliyorsa TANUQ'un genel öneri arayüzünü doğrudan kullanabilir.</p>
-  </section>
-
-  <section id="try">
-    <h2>Kendi makinenizde görün</h2>
-    <p>TANUQ'YU DENEYİN akışı <strong>kendi bilgisayarınızda</strong>, geçici bir
-       çalışma klasöründe, <strong>yalnızca test dosyalarıyla</strong> gerçek
-       yönetilen akışı uçtan uca koşar: öneri → risk → onay → uygulama →
-       doğrulama → kanıt. Bitince çalışma klasörü otomatik silinir.</p>
-    <p class="small">Önkoşul: Python 3.12+ ve git. Demo tamamen yerel çalışır;
-       hiçbir veri herhangi bir sunucuya gönderilmez.</p>
+<section id="try" class="section try alt">
+  <div class="wrap">
+    <p class="kicker">LOCAL TRY</p>
+    <h2>Kendi makinenizde gerçek runtime'ı çalıştırın.</h2>
+    <p>Tarayıcıdaki demo recorded playback'tir. Gerçek TANUQ runtime'ını kendi bilgisayarınızda çalıştırırsınız: geçici çalışma klasöründe yönetilen akışı uçtan uca koşar; bitince kendini temizler.</p>
     <h3>Windows (PowerShell)</h3>
 <pre>git clone https://github.com/khalikinisoran-jpg/olay-kaynak-platformu.git tanuq-demo
 cd tanuq-demo
@@ -176,50 +208,46 @@ powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
 cd tanuq-demo
 pip install -e .
 bash site/try/try_tanuq.sh</pre>
-    <p class="small">Demo, gerçek yönetilen akışı koşar:
-       öneri → risk → onay → kontrollü uygulama → doğrulama → kanıt —
-       ve <code>OVERALL PASS</code> özetiyle biter.</p>
-  </section>
+    <p class="small">Önkoşul: Python 3.12+ ve git. Demo tamamen yerel çalışır; hiçbir veri sunucuya gönderilmez.</p>
+    <p class="small">Sonraki adım: <code>tanuq init</code> ile kendi projenizi koruyun, <code>tanuq ui</code> ile dashboard'u açın.</p>
+  </div>
+</section>
 
-  <section id="demo">
-    <h2>TANUQ'yu ekibinizle değerlendirmek</h2>
-    <p>TANUQ'yu kendi deposunuzda, kendi agent'ınızla pilot olarak koşmak
-       istiyorsanız: kurulum tek komut, çalışma alanı sizin seçtiğiniz klasörle
-       sınırlı, riskli değişiklikler onayınıza gelir.</p>
-    <p class="small">Başlangıç yolu — bugün çalışan kurulum:</p>
-<pre>pip install -e .
-tanuq init
-tanuq ui</pre>
-    <div class="demo-cta">
-      <p>Demo talebi ve pilot değerlendirme için bize ulaşın —
-         kurulumu birlikte, sizin workspace'iniz üzerinde yapalım.</p>
-      <a class="btn primary" href="https://github.com/khalikinisoran-jpg/olay-kaynak-platformu/discussions" rel="noopener">DEMO TALEP EDİN</a>
-      <p class="small">İletişim kanalımız yakında bu alan üzerinden doğrudan sunulacak.</p>
+<section id="demo" class="section demo">
+  <div class="wrap wrap-narrow">
+    <p class="kicker">DEMO TALEBİ</p>
+    <h2>TANUQ'yu ekibinizle değerlendirmek.</h2>
+    <p>Kendi deponuzda, kendi agent'ınızla pilot olarak koşmak istiyorsanız:
+       kurulum tek komut, çalışma alanı sizin seçtiğiniz klasörle sınırlı,
+       riskli değişiklikler onayınıza gelir. Demo talebinde bulunan ekiplere
+       kurulum birlikte, sizin workspace'iniz üzerinde yapılır.</p>
+    <p class="small">Demo talebi için bize ulaşın; doğrudan iletişim kanalı
+       yakında bu alan üzerinden sunulacak.</p>
+  </div>
+</section>
+
+<section class="section cta-final">
+  <div class="wrap">
+    <h2>TANUQ'yu şimdi deneyin.</h2>
+    <div class="cta">
+      <a class="btn btn-primary" href="#demo-walkthrough">TANUQ'YU ŞİMDİ DENE</a>
+      <a class="btn btn-secondary" href="#try">TANUQ'YU DENEYİN · LOCAL TRY</a>
+      <a class="btn btn-secondary" href="#demo">DEMO TALEP EDİN</a>
     </div>
-  </section>
-
-  <section id="limits">
-    <h2>Dürüst sınırlar</h2>
-    <ul class="limits">
-      <li>TANUQ, <strong>tanuq üzerinden gelen</strong> değişiklikleri yönetir —
-          ajanın Tanuq dışında doğrudan yazdığı dosyalar yakalanmaz.</li>
-      <li><strong>İşletim sistemi seviyesinde koruma yok</strong>,
-          <strong>ağ zorlaması yok</strong>.</li>
-      <li>Kayıtlar <strong>tamper-evident</strong>tir: kurcalama girişimleri
-          sonradan <em>tespit edilir</em>; kayıtların mutlak biçimde
-          değiştirilemez olduğu garanti edilmez.</li>
-    </ul>
-  </section>
+  </div>
+</section>
 
 </main>
 
-<footer class="wrap">
-  <p>
-    <a href="https://github.com/khalikinisoran-jpg/olay-kaynak-platformu" rel="noopener">GitHub</a>
-    · <a href="https://github.com/khalikinisoran-jpg/olay-kaynak-platformu/tree/main/docs" rel="noopener">Developer Documentation</a>
-    · TANUQ yerel olarak çalışır. Bu site statiktir: hesap, takip veya veri toplama yoktur.
-  </p>
+<footer>
+  <div class="wrap">
+    <p>
+      <a href="https://github.com/khalikinisoran-jpg/olay-kaynak-platformu" rel="noopener" target="_blank">GitHub</a>
+    </p>
+    <p class="small">TANUQ, AI coding agent'ınızdan gelen dosya değişiklik önerilerini yönetir. İşletim sistemi seviyesinde koruma yok, ağ zorlaması yok. Kayıtlar tamper-evident'tir.</p>
+  </div>
 </footer>
 
+<script src="demo.js" defer></script>
 </body>
 </html>

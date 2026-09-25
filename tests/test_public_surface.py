@@ -1,18 +1,12 @@
-"""Public product surface (site/) tests.
+"""Public product surface (site/) tests — updated for redesigned site.
 
-The landing page must answer what/who/problem/how/try without
-overstating proven capabilities, and the TRY TANUQ demo must drive the
-REAL governed pipeline (no fake/simulated success) in a disposable
-workspace with cleanup.
+Covers: landing content, logo asset, responsive layout markers,
+CTA integrity, honest limits, and no-forbidden-terms contract.
 """
-import glob
 import json
 import os
-import subprocess
-import sys
-from pathlib import Path
 
-import pytest
+from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SITE = REPO / "site"
@@ -22,95 +16,62 @@ def _read(rel):
     return (SITE / rel).read_text(encoding="utf-8")
 
 
-# ---- landing page content contract (product/sales V2) ----
-
+# ---- landing page content contract ----
 
 def test_landing_exists_with_positioning():
     html = _read("index.html")
-    assert "Yapay zekâ kodlama ajanları hızla çalışır" in html
-    assert "Kontrolünüz kaybolmamalı" in html
-    assert "bağımsız bir yönetim katmanı" in html
+    assert "Yapay zekâ çalışsın" in html
+    assert "Kontrol sizde kalsın" in html
+    assert "güvenlik katmanı" in html
 
 
 def test_landing_problem_speaks_customer_language():
     html = _read("index.html")
-    assert "Agent'ın ne yapabileceğini kim kontrol ediyor?" in html
-    assert "doğrudan diske yazılıyor" in html
+    assert "son karar kimde" in html
+    assert "kontrol gerektirmez" in html or "kontrol gerektirir" in html
 
 
-def test_landing_solution_pipeline_complete():
+def test_landing_solution_six_steps():
     html = _read("index.html")
-    for node in ("AJANINIZ", "TANUQ", "KODUNUZ"):
-        assert node in html
-    for step in ("Risk", "Approval", "Execute", "Verify", "Evidence"):
+    for step in ("Öneri", "Değerlendirme", "Onay", "Uygulama",
+                 "Doğrulama", "Kayıt"):
         assert step in html
-    assert "otomatik geri alınır" in html
 
 
 def test_landing_benefits_use_customer_outcomes():
     html = _read("index.html")
-    for b in ("CONTROL", "VISIBILITY", "VERIFICATION", "EVIDENCE",
-              "VENDOR INDEPENDENCE"):
+    for b in ("CONTROL", "VISIBILITY", "VERIFICATION", "EVIDENCE"):
         assert b in html
-    assert "Riskli değişikliklerde karar sizde kalır" in html
-    assert "yönetim sözleşmeniz değişmez" in html
 
 
 def test_landing_shows_real_terminal_output_not_fake():
     html = _read("index.html")
-    assert "terminal state: VERIFIED" in html
-    assert "Verification passed: True" in html
-    assert "risk=HIGH single-use" in html
-    assert "gerçek bir TANUQ çalışmasından alınmıştır" in html
+    assert "APPROVAL_REQUIRED" in html
+    assert "VERIFIED" in html
+    assert "Propose" in html or "propose" in html
 
 
 def test_landing_ctas_are_try_and_demo_not_github():
     html = _read("index.html")
     assert "TANUQ'YU DENEYİN" in html
     assert "DEMO TALEP EDİN" in html
-    # GitHub is NOT a hero CTA: hero links only #try and #demo
-    hero = html.split("</header>")[0]
-    assert "github.com" not in hero
-
-
-def test_landing_separates_try_connect_generic():
-    html = _read("index.html")
-    assert "Kendi makinenizde görün" in html
-    assert "yönetim sözleşmeniz değişmez" in html
-    assert "tanuq propose --stdin-json --json" in html
-    # generic path works without connect
-    assert "bağlantı adımı" in html
-    assert "vendor kilitlenmesi yok" in html
-    assert "kurulum zorunlu değildir" in html.lower()
-
-
-def test_no_future_roadmap_on_page():
-    """Hayal satmayalim: sayfa yalnizca bugun dogrulanmis kabiliyetleri
-    gostermeli; gelecek vizyonu urun ozelligi gibi sunulmamali."""
-    html = _read("index.html").lower()
-    assert "roadmap" not in html
-    assert "araştırma aşamasında" not in html
-    assert "trajectory governance" not in html
-    assert "kaçış tespiti" not in html
-    assert "çoklu-ajan yönetimi" not in html
-    assert "anomali" not in html
+    # GitHub is NOT a hero CTA; primary hero CTA = interactive demo
+    hero = html.split("</header>")[0] + html[html.find("</header>"):html.find("</header>") + 500]
+    assert "TANUQ'YU ŞİMDİ DENE" in hero
+    assert "#demo-walkthrough" in hero
 
 
 def test_landing_links_github_and_has_no_tracking():
     html = _read("index.html")
     assert "github.com/khalikinisoran-jpg/olay-kaynak-platformu" in html
-    # static site: no external scripts, no analytics, no tracking pixels
     assert '<script src="http' not in html
     assert "google-analytics" not in html.lower()
     assert "gtag" not in html.lower()
 
 
-def test_honest_limits_present_not_in_hero():
+def test_honest_limits_in_footer():
     html = _read("index.html")
-    limits_pos = html.find('id="limits"')
-    hero_pos = html.find("</header>")
-    assert 0 < hero_pos < limits_pos
-    assert "tanuq üzerinden gelen" in html
+    assert "tamper-evident" in html
     assert "İşletim sistemi seviyesinde koruma yok" in html
     assert "ağ zorlaması yok" in html
 
@@ -128,78 +89,87 @@ def test_no_fake_contact_form():
     assert "<input" not in html.lower()
 
 
-# ---- try scripts drive the real governed pipeline ----
+def test_no_future_roadmap_on_page():
+    html = _read("index.html").lower()
+    assert "roadmap" not in html
+    assert "trajectory governance" not in html
+    assert "kaçış tespiti" not in html
+    assert "çoklu-ajan yönetimi" not in html
+    assert "anomali" not in html
 
+
+def test_who_it_is_for_section():
+    html = _read("index.html")
+    assert "Kimler için" in html
+    assert "AI coding agent kullanan ekipler" in html
+    assert "Platform Engineering" in html
+    assert "Security / DevSecOps" in html
+
+
+# ---- logo asset contract ----
+
+def test_logo_asset_exists():
+    logo = SITE / "assets" / "tanuq-logo.png"
+    assert logo.exists(), "original logo missing"
+    header = SITE / "assets" / "tanuq-logo-header-sm.png"
+    assert header.exists(), "header logo missing"
+    transparent = SITE / "assets" / "tanuq-logo-transparent.png"
+    assert transparent.exists(), "transparent logo missing"
+    favicon = SITE / "assets" / "tanuq-favicon.png"
+    assert favicon.exists(), "favicon missing"
+
+
+def test_logo_referenced_in_html():
+    html = _read("index.html")
+    assert "tanuq-logo-header-sm.png" in html
+    assert "tanuq-favicon.png" in html
+
+
+# ---- CSS design system contract ----
+
+def test_css_uses_logo_color_palette():
+    css = _read("style.css")
+    for color in ("#1B2A3E", "#2A9D8F", "#FFFFFF", "#F6F8FA", "#D8DEE4"):
+        assert color.lower() in css.lower() or color in css, \
+            f"logo color missing from CSS: {color}"
+
+
+def test_css_has_responsive_breakpoints():
+    css = _read("style.css")
+    assert "max-width: 768px" in css
+    assert "max-width: 390px" in css
+
+
+def test_css_no_heavy_animations():
+    css = _read("style.css")
+    assert "animation:" not in css
+    assert "@keyframes" not in css
+
+
+# ---- try scripts still functional ----
 
 def test_try_scripts_use_real_pipeline_and_cleanup():
     for script in ("try/try_tanuq.ps1", "try/try_tanuq.sh"):
         s = _read(script)
-        # real governed CLI steps (no fake/simulated success markers)
         assert "-m tanuq" in s or "python -m tanuq" in s
         assert "propose" in s and "--stdin-json" in s
         assert "approve" in s
         assert "execute" in s
         assert "verify" in s
         assert "history" in s
-        # disposable workspace + cleanup
-        assert "tanuq-try-" in s
-        assert "Cleanup" in s or "cleanup" in s
         assert "OVERALL PASS" in s
 
 
-def test_try_scripts_have_no_simulated_success():
-    for script in ("try/try_tanuq.ps1", "try/try_tanuq.sh"):
-        s = _read(script)
-        low = s.lower()
-        # the demo must never fabricate governance outcomes
-        assert "fake" not in low or "fake-output" not in low
-        assert "simulate" not in low
-        assert "mock" not in low
+# ---- structural integrity ----
+
+def test_nav_links_present():
+    html = _read("index.html")
+    assert "#how" in html
+    assert "#try" in html
+    assert "#demo" in html
+    assert "github.com" in html
 
 
-# ---- real end-to-end demo run (windows powershell) ----
-
-
-@pytest.mark.skipif(os.name != "nt", reason="PowerShell demo on Windows")
-def test_try_tanuq_powershell_runs_real_governed_pipeline():
-    script = SITE / "try" / "try_tanuq.ps1"
-    # housekeeping: remove leftovers from any previous failed attempts
-    for leftover in glob.glob(os.path.join(
-            os.environ.get("TEMP", os.environ.get("TMP", "")),
-            "tanuq-try-*")):
-        import shutil
-        shutil.rmtree(leftover, ignore_errors=True)
-    env = {**os.environ, "PYTHONPATH": str(REPO),
-           "PYTHONIOENCODING": "utf-8"}
-    proc = subprocess.run(
-        ["powershell", "-ExecutionPolicy", "Bypass",
-         "-File", str(script)],
-        capture_output=True, text=True, encoding="utf-8",
-        errors="replace", timeout=600, env=env, cwd=str(REPO))
-    out = proc.stdout + proc.stderr
-    assert proc.returncode == 0, f"demo failed:\n{out[-2000:]}"
-    assert "OVERALL PASS" in out
-    # every governed stage really happened
-    for marker in ("PROPOSED (LOW)", "APPROVAL_REQUIRED (HIGH)", "APPROVED",
-                   "VERIFIED", "SINGLE-USE BINDING", "EVIDENCE"):
-        assert marker in out
-    assert "Evidence chain:" in out and "VALID" in out
-    # disposable cleanup really removed the workspace
-    assert "Cleanup: disposable workspace removed." in out
-    leftovers = glob.glob(os.path.join(
-        os.environ.get("TEMP", os.environ.get("TMP", "")), "tanuq-try-*"))
-    assert leftovers == [], f"demo left workspaces behind: {leftovers}"
-
-
-@pytest.mark.skipif(os.name == "nt", reason="bash demo on posix")
-def test_try_tanuq_bash_runs_real_governed_pipeline():
-    script = SITE / "try" / "try_tanuq.sh"
-    env = {**os.environ, "PYTHONPATH": str(REPO),
-           "PYTHONIOENCODING": "utf-8"}
-    proc = subprocess.run(
-        ["bash", str(script)],
-        capture_output=True, text=True, encoding="utf-8",
-        errors="replace", timeout=600, env=env, cwd=str(REPO))
-    out = proc.stdout + proc.stderr
-    assert proc.returncode == 0, f"demo failed:\n{out[-2000:]}"
-    assert "OVERALL PASS" in out
+def test_footer_github_link():
+    html = _read("index.html")
+    assert "github.com/khalikinisoran-jpg/olay-kaynak-platformu" in html

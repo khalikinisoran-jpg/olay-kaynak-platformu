@@ -1,0 +1,142 @@
+{
+  "source": {
+    "type": "recorded_real_run",
+    "label": "Recorded from a real TANUQ local run",
+    "operation_id": "8f363a75-d1b3-46bc-9c3c-cc333c7cf6b0",
+    "operation_id_short": "8f363a75-d1b",
+    "capture": "temp:tanuq-high-capture-bbb5d617 (raw CLI steps 01–10 + ws journals; absolute path redacted)"
+  },
+  "scenario": {
+    "name": "HIGH change requires single-use approval then verified apply",
+    "risk": "HIGH",
+    "path_display": "deploy_demo.py",
+    "action": "modify",
+    "reason": "demo capture: HIGH happy path"
+  },
+  "steps": [
+    {
+      "id": "propose",
+      "state": "APPROVAL_REQUIRED",
+      "data": {
+        "action": "modify",
+        "path_display": "deploy_demo.py",
+        "reason": "demo capture: HIGH happy path",
+        "old_preview": "def deploy(): return \"ok\"",
+        "new_preview": "def deploy(): return \"governed by Tanuq\"",
+        "fingerprint": "06d0ba48d949c653cceddde7fa3f99629034e7e80fd635cf30e8b9b0373feb77",
+        "fingerprint_short": "06d0ba48d949",
+        "approval_required": true,
+        "message": "Risk: HIGH — approval required (single-use, fingerprint-bound, TTL 3600s)."
+      }
+    },
+    {
+      "id": "risk",
+      "state": "HIGH",
+      "data": {
+        "risk": "HIGH",
+        "allowed": true,
+        "approval_required": true,
+        "reason": "System-derived risk is HIGH from signals: production_configuration=<workspace>/deploy_demo.py, executable_source=.py.",
+        "signals": [
+          ["production_configuration", "<workspace>/deploy_demo.py"],
+          ["executable_source", ".py"]
+        ]
+      }
+    },
+    {
+      "id": "policy",
+      "state": "APPROVAL_REQUIRED",
+      "data": {
+        "requires_human": true,
+        "single_use": true,
+        "ttl_seconds": 3600,
+        "fingerprint_bound": true,
+        "fingerprint_short": "06d0ba48d949",
+        "what_this_authorizes": "Approving authorizes EXACTLY this change: modify on deploy_demo.py replacing the approved old content with the approved new content. The approval is bound to fingerprint 06d0ba48d949 and is single-use (expires 3600s after granting). Any other change requires a new approval."
+      }
+    },
+    {
+      "id": "approval_required",
+      "state": "APPROVAL_REQUIRED",
+      "data": {
+        "pending": true,
+        "risk": "HIGH",
+        "fingerprint_short": "06d0ba48d949"
+      }
+    },
+    {
+      "id": "approve",
+      "state": "APPROVED",
+      "data": {
+        "approval_id": "864c6050",
+        "approval_id_full": "864c6050-4c06-4ace-abdc-e7a1b8e4fdf5",
+        "risk": "HIGH",
+        "single_use": true,
+        "ttl_seconds": 3600,
+        "fingerprint_short": "06d0ba48d949",
+        "authorizer": "human-operator",
+        "status": "applied",
+        "stdout": "APPROVED deploy_demo.py fingerprint=06d0ba48d949 approval_id=864c6050 risk=HIGH single-use TTL=3600s"
+      }
+    },
+    {
+      "id": "execute",
+      "state": "APPLIED",
+      "data": {
+        "apply_success": true,
+        "fingerprint_short": "06d0ba48d949",
+        "intent_id": "8f363a75-d1b3-46bc-9c3c-cc333c7cf6b0",
+        "old_content": "def deploy(): return \"ok\"",
+        "new_content": "def deploy(): return \"governed by Tanuq\"",
+        "stdout": "Change applied and verified. Evidence recorded in the tamper-evident journal."
+      }
+    },
+    {
+      "id": "verify",
+      "state": "VERIFIED",
+      "data": {
+        "terminal_state": "VERIFIED",
+        "apply_success": true,
+        "verification_passed": true,
+        "fingerprint_short": "06d0ba48d949",
+        "verification_profile": {
+          "profile": "related-tests-v1",
+          "mode": "dummy_floor"
+        },
+        "stdout": "terminal state: VERIFIED · Apply success: True · Verification passed: True"
+      }
+    },
+    {
+      "id": "evidence",
+      "state": "EVIDENCE_VALID",
+      "data": {
+        "events_in_chain": 11,
+        "sequence": "1..11",
+        "chain": "VALID",
+        "anchor": "ACTIVE",
+        "approval_ledger": "VALID",
+        "outcome": "VERIFIED",
+        "stdout": "Evidence chain:  VALID · Anchor:  ACTIVE (keyed chain-head verified) · Approval ledger: VALID"
+      }
+    }
+  ],
+  "integrity": {
+    "fingerprint": "06d0ba48d949c653cceddde7fa3f99629034e7e80fd635cf30e8b9b0373feb77",
+    "fingerprint_short": "06d0ba48d949",
+    "approval": "864c6050",
+    "approval_full": "864c6050-4c06-4ace-abdc-e7a1b8e4fdf5",
+    "verification": "VERIFIED",
+    "apply_success": true,
+    "verification_passed": true,
+    "evidence": {
+      "chain": "VALID",
+      "anchor": "ACTIVE",
+      "approval_ledger": "VALID",
+      "events_in_chain": 11
+    },
+    "identity_consistency": {
+      "propose_approve_execute_lineage": "06d0ba48d949c653cceddde7fa3f99629034e7e80fd635cf30e8b9b0373feb77",
+      "checked": true
+    }
+  }
+}

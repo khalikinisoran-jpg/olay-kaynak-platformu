@@ -42,16 +42,17 @@ def _segment(text, start_marker, end_marker):
 
 def test_landing_connect_card_shows_concrete_starting_commands():
     html = _read("index.html")
-    card = _segment(html, "AJANINIZI BAĞLAYIN", "GENEL SÖZLEŞME")
+    # New site: starting commands live in the TRY section (git clone + pip install + tanuq init/ui)
     for cmd in START_COMMANDS:
-        assert cmd in card, f"connect card missing starting command: {cmd}"
+        assert cmd in html, f"landing page missing starting command: {cmd}"
 
 
 def test_landing_demo_section_shows_starting_commands():
     html = _read("index.html")
-    section = _segment(html, 'id="demo"', 'id="limits"')
+    # New site: the TRY section carries the starting commands (same contract, new IA)
+    section = _segment(html, 'class="section try', 'class="section cta-final')
     for cmd in START_COMMANDS:
-        assert cmd in section, f"#demo section missing starting command: {cmd}"
+        assert cmd in section, f"TRY section missing starting command: {cmd}"
 
 
 def test_try_demo_powershell_prints_next_steps_after_success():
