@@ -61,9 +61,31 @@ def test_landing_ctas_are_try_and_demo_not_github():
     assert "#demo-walkthrough" in hero
 
 
-def test_landing_links_github_and_has_no_tracking():
+def _github_anchor_hrefs(html):
+    """href values of anchors pointing at github.com (visible links only).
+
+    Plain `git clone ...` command text in the LOCAL TRY section is NOT an
+    anchor and must stay untouched.
+    """
+    import re
+    return [
+        m.group(1)
+        for m in re.finditer(r'<a\b[^>]*?href\s*=\s*"([^"]+)"', html, re.I)
+        if "github.com" in m.group(1).lower()
+    ]
+
+
+def test_no_visible_github_link_anywhere():
     html = _read("index.html")
-    assert "github.com/khalikinisoran-jpg/olay-kaynak-platformu" in html
+    assert _github_anchor_hrefs(html) == [], \
+        f"visible GitHub link(s) present: {_github_anchor_hrefs(html)}"
+    # local installation command must stay
+    assert "git clone" in html
+
+
+def test_landing_has_no_github_link_and_no_tracking():
+    html = _read("index.html")
+    assert _github_anchor_hrefs(html) == []
     assert '<script src="http' not in html
     assert "google-analytics" not in html.lower()
     assert "gtag" not in html.lower()
@@ -167,9 +189,12 @@ def test_nav_links_present():
     assert "#how" in html
     assert "#try" in html
     assert "#demo" in html
-    assert "github.com" in html
+    # no GitHub anchor anywhere (git clone command text is not a link)
+    assert _github_anchor_hrefs(html) == []
 
 
-def test_footer_github_link():
+def test_footer_has_no_github_link():
     html = _read("index.html")
-    assert "github.com/khalikinisoran-jpg/olay-kaynak-platformu" in html
+    footer = html.split("<footer>")[1] if "<footer>" in html else html
+    assert "github.com" not in footer.lower()
+    assert _github_anchor_hrefs(html) == []
