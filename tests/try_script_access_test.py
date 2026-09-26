@@ -20,8 +20,10 @@ def test_landing_does_not_link_try_scripts_as_downloads():
     html = _read("index.html")
     assert 'href="try/' not in html
     assert 'href="try_tanuq' not in html
-    # the repo-internal usage commands must stay
-    assert "git clone" in html
+    # owner decision (site V2): no GitHub/clone surface on the page;
+    # the repo-internal script names must stay
+    assert "git clone" not in html
+    assert "github" not in html.lower()
     assert "try_tanuq.ps1" in html and "try_tanuq.sh" in html
 
 

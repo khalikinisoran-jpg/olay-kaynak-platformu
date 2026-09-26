@@ -7,7 +7,7 @@ components, no accounts, no tracking.
 ## What to deploy
 
 Upload the contents of `site/` to any static hosting provider
-(GitHub Pages, Cloudflare Pages, Netlify, or a simple web server):
+(Cloudflare Pages, Netlify, or a simple web server):
 
 ```
 site/index.html        -> /

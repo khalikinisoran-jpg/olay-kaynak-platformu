@@ -6,6 +6,10 @@
   var root = document.getElementById("demo-root");
   if (!root) return;
 
+  /* Real recorded-run summary shipped in index.html. It stays visible in
+     every failure mode so the public page never shows an error box. */
+  var staticHTML = root.innerHTML;
+
   var FIXTURE_URL = root.getAttribute("data-fixture") || "demo_fixtures.json";
   var ORDER = [
     "propose",
@@ -351,11 +355,16 @@
     }
   }
 
-  function fail(msg) {
-    root.innerHTML =
-      '<div class="dw-error"><strong>Walkthrough unavailable.</strong><p class="small">' +
-      esc(msg) +
-      "</p></div>";
+  function restoreStatic(reason) {
+    root.innerHTML = staticHTML;
+    if (window.console && console.warn) {
+      console.warn("TANUQ walkthrough: static recorded summary kept visible (" + reason + ")");
+    }
+  }
+
+  function fail(reason) {
+    /* Never render an error state into the public page. */
+    restoreStatic(reason);
   }
 
   function boot(data) {
@@ -386,10 +395,6 @@
     })
     .then(boot)
     .catch(function (e) {
-      fail(
-        "Could not load demo_fixtures.json (" +
-          e.message +
-          "). Serve site/ over HTTP to play the recorded walkthrough."
-      );
+      restoreStatic((e && e.message) || "fixture fetch failed");
     });
 })();

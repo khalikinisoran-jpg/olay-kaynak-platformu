@@ -20,7 +20,9 @@ def _read(rel):
 
 def test_landing_exists_with_positioning():
     html = _read("index.html")
-    assert "Yapay zekâ çalışsın" in html
+    # product-led positioning (sales model: Site → Ürün → Fiyat → Satın Al)
+    assert "bağımsız yönetim katmanı" in html
+    assert "Ajan değişikliği önerir. TANUQ riski belirler" in html
     assert "Kontrol sizde kalsın" in html
     assert "güvenlik katmanı" in html
 
@@ -51,21 +53,29 @@ def test_landing_shows_real_terminal_output_not_fake():
     assert "Propose" in html or "propose" in html
 
 
-def test_landing_ctas_are_try_and_demo_not_github():
+def test_landing_ctas_are_buy_and_how_not_demo():
     html = _read("index.html")
-    assert "TANUQ'YU DENEYİN" in html
-    assert "DEMO TALEP EDİN" in html
-    # GitHub is NOT a hero CTA; primary hero CTA = interactive demo
-    hero = html.split("</header>")[0] + html[html.find("</header>"):html.find("</header>") + 500]
-    assert "TANUQ'YU ŞİMDİ DENE" in hero
-    assert "#demo-walkthrough" in hero
+    start = html.find('<section class="hero">')
+    end = html.find("</section>", start)
+    hero = html[start:end]
+    # primary hero CTA = start acquisition (no fake purchase claim)
+    assert 'href="#pricing">EDİNİMİ BAŞLAT' in hero
+    assert 'href="#how">NASIL ÇALIŞIR' in hero
+    assert "DEMO" not in hero.upper()
+    # demo-request / demo-drive CTAs are gone from the page
+    assert "DEMO TALEP EDİN" not in html
+    assert "TANUQ'YU DENEYİN" not in html
+    assert "TANUQ'YU ŞİMDİ DENE" not in html
+    assert 'id="demo"' not in html
+    # no unproven "buy now" claim while checkout is not connected
+    assert "TANUQ'YU AL" not in html
 
 
 def _github_anchor_hrefs(html):
     """href values of anchors pointing at github.com (visible links only).
 
-    Plain `git clone ...` command text in the LOCAL TRY section is NOT an
-    anchor and must stay untouched.
+    Owner decision (site V2): the public site carries NO GitHub surface —
+    no anchor, no URL, no `git clone` command text.
     """
     import re
     return [
@@ -79,8 +89,17 @@ def test_no_visible_github_link_anywhere():
     html = _read("index.html")
     assert _github_anchor_hrefs(html) == [], \
         f"visible GitHub link(s) present: {_github_anchor_hrefs(html)}"
-    # local installation command must stay
-    assert "git clone" in html
+    # owner decision (site V2): no GitHub surface anywhere on the page
+    assert "git clone" not in html
+    assert "github" not in html.lower()
+
+
+def test_public_site_sources_have_no_github():
+    """§26 audit: rendered public sources carry zero GitHub references."""
+    for rel in ("index.html", "style.css", "demo.js", "demo_fixtures.json"):
+        text = _read(rel).lower()
+        assert "github" not in text, f"github reference in site/{rel}"
+        assert "github.com" not in text
 
 
 def test_landing_has_no_github_link_and_no_tracking():
@@ -186,9 +205,14 @@ def test_try_scripts_use_real_pipeline_and_cleanup():
 
 def test_nav_links_present():
     html = _read("index.html")
-    assert "#how" in html
-    assert "#try" in html
-    assert "#demo" in html
+    nav = html[html.find("<nav"):html.find("</nav>")]
+    assert 'href="#how"' in nav
+    assert 'href="#demo-walkthrough"' in nav
+    assert 'href="#pricing"' in nav
+    assert 'class="nav-buy" href="#pricing"' in nav
+    # sales-flow anchors resolve on the page
+    for anchor in ("#pricing", "#buy", "#acquire", "#faq"):
+        assert 'id="' + anchor[1:] + '"' in html or anchor in html
     # no GitHub anchor anywhere (git clone command text is not a link)
     assert _github_anchor_hrefs(html) == []
 
