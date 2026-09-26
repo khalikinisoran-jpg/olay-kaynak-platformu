@@ -18,7 +18,7 @@
 > `TANUQ — SESSION RESYNC` (format at the bottom), then pick the next
 > valid action.
 
-LAST UPDATED: 2026-09-23
+LAST UPDATED: 2026-09-26
 
 ---
 
@@ -32,6 +32,15 @@ sequential behind them. FAZ 6-lite A/B (resume + cross-source correlation) are *
 (fresh-install path, status --json, docs entry chain, honest limits,
 ADR). Current phase: **early-adopter productization** —
 awaiting real-usage evidence and operator decisions (Claude access).
+
+REPOSITORY CHECKPOINT (2026-09-26): **HEAD == origin/main ==
+2222b07ef9b4fb6ba690c49855d695e31b25afc7** —
+`feat(site): add English default and Turkish /tr public site`
+(pushed, fast-forward, hosted CI GREEN 4/4 = run 36234640245).
+Public-site release chain: `508382b` (polish) → `45b2296` (finalize) →
+`2222b07` (EN default + TR `/tr/`). **LIVE tanuq.net now serves this
+exact build — DEPLOY PASS / LIVE VERIFIED (2026-09-26)**; see
+PUBLIC SITE CHECKPOINT for byte-level identity.
 
 ## CURRENT OBJECTIVE
 
@@ -128,12 +137,35 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
 
 ## IN PROGRESS
 
-- Nothing uncommitted (working tree clean at 0a9bd45). Next candidate
-  work is designed but not started: real Claude Write runtime dogfood
-  (blocked on API credit).
+- Tracked working tree: **only this state file** is modified
+  (this state-sync commit); all other tracked files are clean at
+  `2222b07` (verified `git status --short`). Untracked release-outside
+  artifacts (`.venv-validation/`, 31 × `docs/research/*`,
+  `site/assets/tanuq-logo-header.png`) are **OUT OF RELEASE SCOPE** and
+  deliberately untouched.
+- Next candidate work is designed but not started: real Claude Write
+  runtime dogfood (blocked on API credit); Sol/Codex review resume
+  (artifact manifest ready).
 
 ## NEXT VALID ACTION
 
+**CURRENT (2026-09-26) — single next task:** **Commercial validation /
+acquisition validation.** The public site is live and verified
+(`https://tanuq.net/` — EN `/` + TR `/tr/`, release `2222b07`); next
+phase is taking it to real acquisition signals: install-from-source
+feedback from the first external users, then a 10-user / WTP check,
+then the commercial decision. **Do NOT mark any of these as done:**
+WTP, real payment, first external user, acquisition conversion all
+remain **UNKNOWN** until measured. Site-side commercial truth (as
+released and live): TANUQ PRO `$49/month` = launch pricing hypothesis,
+payment/licensing infrastructure **NOT YET LIVE**, acquisition CTA =
+`START ACQUISITION`/`EDİNİMİ BAŞLAT` (in-page, no checkout).
+
+Historical (RESOLVED 2026-09-26): "deploy `site/` to tanuq.net" gate —
+owner executed the manual upload; agent-side deploy was BLOCKED once
+(no hosting credentials/channel available) and is no longer pending.
+
+Standing items (unchanged):
 1. Real Claude Code Write runtime dogfood (BLOCKED on API credit):
    scratch workspace + stdin-capture PreToolUse hook (method proven)
    → observe REAL Write tool_input vs vendor-documented contract →
@@ -225,6 +257,13 @@ OperationCoordinator: no grant/consume/apply/verify authority
 ## RECENT COMMITS
 
 ```text
+2222b07 feat(site): add English default and Turkish /tr public site  <- CURRENT CHECKPOINT (HEAD == origin/main; LIVE)
+45b2296 feat(site): finalize public TANUQ product experience
+508382b feat(site): polish public TANUQ experience
+5d90ff9 feat(site): add interactive TANUQ demo experience
+98da708 chore(research): archive Luna and Sol raw artifacts
+ecf00fd Harden approval TTL and pending API auth
+f0d09b6 feat(observation): add read-only post-hoc observation projection (E5/Semantic V1)
 ebd52b1 feat(adapter): govern Claude Code Write as create
 654bf56 feat(governance): governed new-file creation via create action
 3b8e259 feat(orchestration): cross-source resume via adapter content correlation
@@ -236,11 +275,95 @@ b061d03 feat(adapter): add Claude Code PreToolUse governed entry
 
 ## CI STATUS
 
-Hosted CI (Ubuntu+Windows pytest, packaging-gate ×2): SUCCESS on
+**LATEST: SUCCESS on `2222b07`** — GitHub Actions run **36234640245**
+(workflow `CI`, status `completed`, conclusion `success`, branch
+`main`, headSha `2222b07ef9b4fb6ba690c49855d695e31b25afc7`, created
+2026-09-26T10:03:46Z). **4/4 jobs green:** pytest (ubuntu) 234s,
+pytest (windows) 441s, packaging-gate (ubuntu) 23s, packaging-gate
+(windows) 51s; failure = NONE (verified via `gh run view 36234640245`).
+
+Recent releases (also green, 4/4): `45b2296` = run 36212828174;
+`508382b` = run 36099397583 (headSha verified 2026-09-25).
+
+History (unchanged): hosted CI (Ubuntu+Windows pytest, packaging-gate
+×2): SUCCESS on
 `7525c66`, `2536af0`, `69f8d39`, `b061d03`, `7de6a55`, `3b8e259`,
 `654bf56`, `ebd52b1`, `2e2bf55`, `003fe9b`, `a67069d`, `0a9bd45`, `738a158`, `2f842ac`, and `4302409`
-(latest run 34642040793 — 4/4 jobs, propose-stale warning included).
-Latest local full suite: 1469 passed / 15 skipped / 0 failed.
+(latest run 34642040793 — 4/4 jobs, propose-stale warning included);
+plus run 35927652074 (4/4 GREEN) for `ecf00fd`.
+**Known red:** run 35951091911 = FAILURE on `98da708`
+(packaging-gate "Whitespace check" only — both pytest jobs green);
+hygiene/process follow-up, not a product failure.
+
+Latest local site+i18n suite: **89 passed / 0 failed / 0 skipped**
+(site_sales_model + public_surface + next_step + walkthrough +
+authority_chain + try_script + connect_registry + readme_identity +
+site_i18n). Latest local full suite (recorded): 1469 passed /
+15 skipped / 0 failed. CI full-suite = authoritative at HEAD.
+
+## RELEASE CHECKPOINT (LAST KNOWN GOOD)
+
+- **`2222b07ef9b4fb6ba690c49855d695e31b25afc7`** —
+  `feat(site): add English default and Turkish /tr public site`,
+  pushed fast-forward from `45b2296`, **hosted CI GREEN 4/4
+  (run 36234640245)**, **deployed and LIVE VERIFIED 2026-09-26**.
+- Scope (7 files, +836/−137): `site/index.html` (EN default),
+  `site/style.css` (language switch), `site/DEPLOY.md` (/tr/ static
+  layout), `site/tr/index.html` (NEW), `tests/test_public_surface.py`,
+  `tests/site_sales_model_test.py`, `tests/site_i18n_test.py` (NEW).
+- Core diff for this release: **`tanuq/`, `simulation/`, `p5/`,
+  `agent_run.py` = 0** (`git diff 45b2296..2222b07 -- tanuq simulation
+  p5 agent_run.py` empty).
+- History (previous release checkpoints):
+  - `45b2296` `feat(site): finalize public TANUQ product experience`
+    (7 files, +692/−75) — CI GREEN 4/4 (run 36212828174).
+  - `508382b` `feat(site): polish public TANUQ experience`
+    (4 files, +157/−10: footer GitHub anchor removed, Authority Chain
+    gap-independent spacing) — CI GREEN 4/4 (run 36099397583).
+
+## PUBLIC SITE CHECKPOINT
+
+- **CURRENT (2026-09-26): LIVE == RELEASE == `2222b07` —
+  DEPLOY PASS / LIVE VERIFIED.**
+  - English `/`: HTTP 200, 24343 B, `Last-Modified: 26-Sep-2026
+    10:28:21 GMT`, `<html lang="en">`.
+  - Turkish `/tr/` (and `/tr/index.html`): HTTP 200, 25202 B,
+    `<html lang="tr">`; EN↔TR language switch working both ways;
+    `../`-relative assets resolve (`../style.css`, `../demo.js`,
+    `data-fixture="../demo_fixtures.json"`).
+  - **Byte-level identity:** live `index.html` git-blob
+    `972e02112bdb7976fba3650a6c1e1e85e6429c26` ==
+    `2222b07:site/index.html` (**EQUAL**); SHA-256
+    `1bfe6f0714670e76545f86d06cd20449a8a8ff9a057c3b9f1b29eb2b1e38e4e2`;
+    size 24343 B. Live TR index blob `1f9623e347c7f5a77ef86b7af1a9715ad3e9c2ec`
+    == `2222b07:site/tr/index.html` (**EQUAL**).
+    Release assets **7/7 EQUAL**: `index.html`, `tr/index.html`,
+    `style.css`, `demo.js`, `demo_fixtures.json`, favicon, header logo.
+  - Walkthrough on live (headless render): **STEP 1/8 · PROPOSAL**
+    with real capture values (HIGH, fingerprint `06d0ba48d949…`,
+    approval `864c6050`), **no error box**.
+- **HISTORY (resolved):** through the morning of 2026-09-26, LIVE was
+  the `508382b` build (blob `6d119622338ad48d0da5bacb122970d6ea2db315`,
+  served since 25-Sep 07:28 GMT); before that the 22-Sep-2026 manual
+  upload (byte-identical to `107d764`/`5504d36` blobs). **LIVE == old
+  `508382b` → NO (verified)**; old build no longer served.
+  Deploy path: agent-side upload was once BLOCKED (no hosting
+  credentials/channel in the agent environment, document-root path
+  unverifiable from outside) → **owner executed the manual upload**.
+- Deploy mechanics (unchanged): no CI deploy (only `ci.yml`); hosting =
+  Güzel Hosting (NS guzelhosting.com, A 104.247.168.115, PTR
+  `115gtgwfg.guzel.net.tr`); manual upload; `style.css`
+  `Cache-Control: max-age=604800` (7-day cache may serve stale CSS
+  after future deploys — re-verify by hash after any deploy).
+- Commercial truth live on the site: TANUQ PRO `$49/month` = **launch
+  pricing hypothesis**; **payment/licensing infrastructure NOT YET
+  LIVE** (explicitly stated EN+TR); acquisition CTA = `START
+  ACQUISITION` ×4 (EN) / `EDİNİMİ BAŞLAT` ×4 (TR), in-page only (no
+  checkout); GitHub surface = 0; DEMO TALEP = 0; trajectory /
+  multi-agent / anomaly research NOT presented as product capability;
+  limits stated (not OS-level, not network enforcement, not sandbox).
+- Out of release scope (unchanged): `site/assets/tanuq-logo-header.png`
+  (untracked, referenced nowhere, never tracked).
 
 ## OPEN RISKS
 
@@ -351,6 +474,126 @@ docs, this session's decisions. Anything beyond this: NEEDS OPERATOR
 CONFIRMATION.)
 
 ## DAILY HANDOFF
+
+### 2026-09-26 (public site: finalize → i18n release → CI → owner deploy → LIVE VERIFIED → state sync)
+
+- SESSION OBJECTIVE: move the public site from "release candidate" to
+  "released + live", then align this state file with verified reality.
+- WORK COMPLETED (chronological):
+  1. **Finalize release committed + pushed** — `45b2296`
+     `feat(site): finalize public TANUQ product experience` (7 files,
+     +692/−75: GitHub fully removed from the public site incl. clone
+     commands, commercial-truth copy, nav separation, silent demo
+     fallback). Pre-push safety fast-forward `508382b..45b2296`;
+     **CI run 36212828174 = success 4/4**.
+  2. **Comprehensive Reality Map** (read-only audit): governance chain
+     traced in code (fingerprint = SHA-256 over
+     `{path,action,reason,old_content,new_content,allowed_paths}`);
+     single mutation writer = `FileApplier` (one instantiation,
+     `apply_executor.py:62`); observer ≠ authority confirmed by import
+     scan; advisory LLM risk raise-only (`max_level`); docs staleness
+     list recorded; tests: 1693 collected, security 337/6 skipped
+     locally, CI full suite authoritative.
+  3. **Global English + Turkish `/tr` release candidate** —
+     `site/index.html` becomes EN default (`lang=en`), Turkish
+     preserved at `site/tr/index.html` (`lang=tr`, `../` assets),
+     language switch both ways; site tests updated + new
+     `tests/site_i18n_test.py`; validation: **89 passed / 0 failed /
+     0 skipped**, public scans (GitHub/claims/demo-errors) = 0,
+     viewports 390/768/1280/1440 overflow = 0 (EN+TR).
+  4. **Final release check (read-only)** — release set = 7 files,
+     all anchor/asset/path checks OK, user-reported garbled strings
+     ("AAjan/RRisk/EUygulamak") **not present in source** (copy-paste
+     artifact of chain icon+label spans) → no code change needed.
+  5. **Commit + push (PM/owner-approved)** — `2222b07`
+     `feat(site): add English default and Turkish /tr public site`
+     (exactly 7 files, +836/−137; state-doc/artifacts excluded) →
+     `45b2296..2222b07` fast-forward; **HEAD == origin/main**.
+  6. **CI verified** — run **36234640245 = success 4/4** (pytest
+     ubuntu 234s / windows 441s, packaging-gate ubuntu 23s / windows
+     51s; failure NONE).
+  7. **Deploy** — agent-side deploy **BLOCKED** (no hosting
+     credentials/channel; document root unverifiable) and reported
+     with a ready upload manifest; **owner executed the manual upload**
+     to Güzel Hosting.
+  8. **LIVE VERIFIED (post-deploy, read-only)** — `/` EN 200 (24343 B),
+     `/tr/` 200 (25202 B), static 5/5 blob-EQUAL to release, live
+     index blob `972e02112b…` == `2222b07:site/index.html`
+     (**LIVE == old `508382b` → NO**), walkthrough STEP 1/8 with real
+     values and no error box, claims/pricing/limits live and honest
+     (GitHub surface 0, DEMO TALEP 0, no future-feature claims).
+- TEST RESULTS: site+i18n suite **89 passed / 0 failed / 0 skipped**
+  (pre-commit); CI full suite green at HEAD.
+- PUBLIC SITE: **LIVE == RELEASE == `2222b07` — DEPLOY PASS / LIVE
+  VERIFIED** (details in PUBLIC SITE CHECKPOINT).
+- COMMERCIAL STATUS (unchanged, not validated): launch pricing
+  hypothesis `$49/month`; payment/licensing NOT YET LIVE; WTP, first
+  external user, acquisition conversion = **UNKNOWN**.
+- FREEZE STATUS: unchanged — `tanuq/`, `simulation/`, `p5/`,
+  `agent_run.py` diff = 0 across both commits; core freeze verified
+  before every commit.
+- NEXT ACTION: **commercial validation / acquisition validation**
+  (single next task) — first external users → install feedback →
+  10-user/WTP signal → commercial decision.
+- NEXT HUMAN GATE: commercial decisions (payment/licensing build,
+  pricing confirmation) — all still UNKNOWN, none recorded as done.
+
+### 2026-09-25 (site release → cleanup → chain fix → push → artifact audit → state sync)
+
+- SESSION OBJECTIVE: land the public-site release package, remove
+  public GitHub visibility, fix the Authority Chain icon/label
+  gluing, then record the truth as a checkpoint.
+- WORK COMPLETED (chronological):
+  1. **Release package committed** — `5d90ff9`
+     `feat(site): add interactive TANUQ demo experience` (11 files:
+     4 logo/favicon assets, `demo.js`, `demo_fixtures.json`,
+     `index.html`, `style.css`, 3 test modules; +1884/−423). Staged
+     scope verified (no `tanuq/`, `simulation/`, `p5/`,
+     `docs/research/`, `site/try/`, no debug artifacts).
+  2. **GitHub visibility cleanup** — footer
+     `<a href="https://github.com/…">GitHub</a>` removed from
+     `site/index.html` (LOCAL TRY `git clone` command text kept on
+     purpose); public-surface tests inverted
+     (`test_footer_has_no_github_link`, `test_no_visible_github_link_anywhere`);
+     HTTP smoke 200 + "NO GITHUB ANCHOR".
+  3. **Authority Chain visual fix** — root cause CONFIRMED by
+     simulation: icon↔label separation relied solely on flexbox
+     `gap:6px` (`icon margin:0`), so gap-less engines rendered the
+     icon letter flush against the label ("AAgent/RRisk/PPolicy";
+     sim: touch=true on 9/9 nodes at 390/768/1280). Fix = explicit
+     `margin: 0 0 6px` on `.chain-icon`/`.chain-name` + `gap`
+     removed from `.chain-node` (style.css, 4 lines). Verified via
+     Chrome CDP emulation: 390/768/1280 → v_gap=6, touch=0, 9
+     labels exact, no overflow; before/after screenshots
+     byte-identical (SHA256 equal) → zero visual regression. New
+     test module `tests/site_authority_chain_test.py` (5 tests, G1
+     ✔ new module).
+  4. **Commit + push (owner-approved)** — `508382b`
+     `feat(site): polish public TANUQ experience`, exactly 4 files
+     (+157/−10); pre-push safety (local ahead 2, remote ahead 0,
+     fast-forward) → `98da708..508382b`; **HEAD == origin/main**.
+  5. **Exact release artifact audit (read-only)** — `site/` @508382b
+     = 11 tracked files; all 6 runtime-referenced assets tracked and
+     present (worktree diff empty); `tanuq-logo-header.png`
+     untracked/referenced-nowhere/never-tracked → deploy-not-needed.
+- CI: GitHub Actions run **36099397583 — `CI` → SUCCESS** for
+  `508382b` (4-job workflow; verified via `gh run view`).
+- TEST RESULTS: site-scope suite **55 passed / 0 failed** (re-run
+  before the commit).
+- PUBLIC SITE: live tanuq.net still serves the 22-Sep-2026 manual
+  upload (= repo blobs at `107d764`/`5504d36`), NOT `508382b` —
+  **deploy not performed** (no CI deploy path; manual upload on
+  Güzel Hosting required).
+- WORKING TREE: tracked clean; untracked (`.venv-validation/`,
+  12 × `docs/research/*`, `site/assets/tanuq-logo-header.png`)
+  intentionally left untouched (release scope = `site/` tree only).
+- FREEZE STATUS: unchanged — `tanuq/`, `simulation/`, `p5/` diffs =
+  0 across both commits; no core/security/fingerprint/approval
+  semantics touched.
+- NEXT ACTION: resume Sol/Codex review on the 508382b artifact
+  manifest (single next task), then owner-gated deploy.
+- NEXT HUMAN GATE: deploy approval (tanuq.net); header.png
+  keep/ignore/delete decision; freeze reopen condition still NOT met.
 
 ### 2026-09-24
 
