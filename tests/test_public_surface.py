@@ -13,6 +13,15 @@ SITE = REPO / "site"
 
 
 def _read(rel):
+    """Read a site file.
+
+    The landing-content contract in this module targets the TURKISH
+    surface (site/tr/index.html) — its copy assertions are Turkish.
+    The English default (site/index.html) is covered by
+    tests/site_i18n_test.py.
+    """
+    if rel == "index.html":
+        rel = "tr/index.html"
     return (SITE / rel).read_text(encoding="utf-8")
 
 
@@ -95,10 +104,18 @@ def test_no_visible_github_link_anywhere():
 
 
 def test_public_site_sources_have_no_github():
-    """§26 audit: rendered public sources carry zero GitHub references."""
-    for rel in ("index.html", "style.css", "demo.js", "demo_fixtures.json"):
-        text = _read(rel).lower()
-        assert "github" not in text, f"github reference in site/{rel}"
+    """§26 audit: all rendered public sources (EN default + TR + shared)
+    carry zero GitHub references."""
+    sources = (
+        SITE / "index.html",
+        SITE / "tr" / "index.html",
+        SITE / "style.css",
+        SITE / "demo.js",
+        SITE / "demo_fixtures.json",
+    )
+    for path in sources:
+        text = path.read_text(encoding="utf-8").lower()
+        assert "github" not in text, f"github reference in {path}"
         assert "github.com" not in text
 
 

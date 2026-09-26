@@ -1113,3 +1113,14 @@ main a:not(.btn):hover { color: #238B7E; }
     border-left: none;
   }
 }
+
+
+/* ---- Language switch (i18n V1: EN default / TR subpath) ---- */
+.nav-links a.lang-switch {
+  color: var(--teal-light);
+  letter-spacing: 0.08em;
+  margin-right: 6px;
+  padding-right: 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+}
+.nav-links a.lang-switch:hover { color: var(--white); }

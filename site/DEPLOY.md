@@ -10,11 +10,20 @@ Upload the contents of `site/` to any static hosting provider
 (Cloudflare Pages, Netlify, or a simple web server):
 
 ```
-site/index.html        -> /
+site/index.html        -> /        (English — default language)
+site/tr/               -> /tr/     (Turkish, directory index)
 site/style.css         -> /style.css
+site/demo.js           -> /demo.js
+site/demo_fixtures.json -> /demo_fixtures.json
+site/assets/*          -> /assets/*
 site/try/*             -> /try/*   (optional; NOT linked from the page —
                                    scripts are repo-internal, see below)
 ```
+
+The English page is the default document; the Turkish page lives at
+`/tr/` as a plain static subpath (`tr/index.html`). No routing rules
+are required — any static file server that maps directories to
+`index.html` serves both languages.
 
 ## Domain
 

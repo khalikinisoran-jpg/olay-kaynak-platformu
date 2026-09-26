@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TANUQ — AI works. You stay in control.</title>
-<meta name="description" content="TANUQ, AI coding agent'ınız ile dosyalarınız arasına bağımsız bir güvenlik katmanı koyar. Ajan değişikliği önerir, TANUQ değerlendirir, riskli değişikliklerde karar sizde kalır.">
+<title>TANUQ — An independent governance layer for AI coding agents</title>
+<meta name="description" content="TANUQ is an independent governance layer between your AI coding agent and your files. The agent proposes; TANUQ assesses risk, requests your approval when required, executes, verifies, and records evidence.">
 <link rel="icon" type="image/png" href="assets/tanuq-favicon.png">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -12,14 +12,15 @@
 
 <header class="nav">
   <div class="nav-wrap">
-    <a href="/" class="nav-logo" aria-label="TANUQ ana sayfa">
+    <a href="/" class="nav-logo" aria-label="TANUQ home">
       <img src="assets/tanuq-logo-header-sm.png" alt="TANUQ" height="52">
     </a>
-    <nav class="nav-links" aria-label="Ana navigasyon">
-      <a href="#how">Nasıl Çalışır</a>
-      <a href="#demo-walkthrough">Gerçek Kanıt</a>
-      <a href="#pricing">Fiyat</a>
-      <a class="nav-buy" href="#pricing">Edinimi Başlat</a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a class="lang-switch" href="tr/index.html" hreflang="tr">TR</a>
+      <a href="#how">How It Works</a>
+      <a href="#demo-walkthrough">Real Proof</a>
+      <a href="#pricing">Pricing</a>
+      <a class="nav-buy" href="#pricing">Start acquisition</a>
     </nav>
   </div>
 </header>
@@ -27,14 +28,14 @@
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <h1>AI coding agent'ınız için<br><span class="hero-accent">bağımsız yönetim katmanı</span></h1>
+      <h1>An independent governance layer<br><span class="hero-accent">for your AI coding agent</span></h1>
       <div class="cta">
-        <a class="btn btn-primary" href="#pricing">EDİNİMİ BAŞLAT</a>
-        <a class="btn btn-secondary" href="#how">NASIL ÇALIŞIR</a>
+        <a class="btn btn-primary" href="#pricing">START ACQUISITION</a>
+        <a class="btn btn-secondary" href="#how">HOW IT WORKS</a>
       </div>
-      <p class="hero-kicker">AI coding agent · file-change control</p>
-      <p class="lede">Ajan değişikliği önerir. TANUQ riski belirler, gerektiğinde sizden onay alır, uygular, doğrular ve kanıtlar.</p>
-      <ul class="trust-strip" aria-label="Doğrulanabilir prensipler">
+      <p class="hero-kicker">AI CODING AGENT · FILE-CHANGE GOVERNANCE</p>
+      <p class="lede">The agent proposes. TANUQ assesses risk, requests your approval when required, executes, verifies, and provides evidence of what happened.</p>
+      <ul class="trust-strip" aria-label="Verifiable principles">
         <li>Content-bound approval</li>
         <li>Single-use authorization</li>
         <li>Independent verification</li>
@@ -114,35 +115,35 @@ execute  → terminal state: VERIFIED
 <section class="section problem">
   <div class="wrap wrap-narrow">
     <p class="kicker">PROBLEM</p>
-    <h2>AI agent bir değişiklik yapmak istediğinde son karar kimde?</h2>
-    <p>AI coding agent'lar kod yazabilir, dosya değiştirebilir ve insan müdahalesi olmadan makine hızıyla çalışabilir. Bu hız değerli — ama her değişiklik kontrol gerektirmez. Kritik olan: hangilerinin kontrol gerektirdiğine kim karar veriyor?</p>
-    <p>AI agent bir değişikliği doğrudan diske uyguladığında, insanın karar vereceği an değişiklikten önce değil sonra olabilir. O noktada geri dönüş maliyetli ve zaman alıcıdır.</p>
-    <p>AI coding agent'ın hızlı olması, yaptığı değişikliklerin otomatik olarak yönetildiği ve kanıtlandığı anlamına gelmez. Hız ile yönetim aynı şey değildir: hangi değişikliğin uygulanacağına, kimin karar verdiği ve bunun nasıl kanıtlandığı ayrı bir sorudur.</p>
-    <p>TANUQ bu boşluğu bağımsız bir governance katmanı olarak doldurur: agent'ın dosya değişikliği önerisi ile değişikliğin uygulanması arasındaki governance katmanını yönetir; öneriyi değerlendirir, riskli değişikliklerde insandan onay alır, onaylı değişikliği uygular, doğrular ve her adımı kanıt zincirine işler.</p>
+    <h2>When an AI agent changes code, who has the final say?</h2>
+    <p>AI coding agents write code and change files at machine speed, without human intervention. That speed is valuable — but not every change should go unchecked. The critical question is: who decides which changes need control?</p>
+    <p>When an agent applies a change straight to disk, the moment a human decides may come after the change rather than before it. At that point, rollback is costly and slow.</p>
+    <p>A fast agent does not mean its changes are automatically governed and evidenced. Speed and governance are different things: which change gets applied, who decides, and how that is proven are separate questions.</p>
+    <p>TANUQ fills that gap as an independent governance layer. It manages the governance step between the agent's proposed file change and its execution — assessing the proposal, requesting human approval for risky changes, applying the approved change, verifying it, and recording every step in the evidence chain.</p>
   </div>
 </section>
 
 <section id="how" class="section how alt">
   <div class="wrap">
-    <p class="kicker">NASIL ÇALIŞIR</p>
-    <h2>Altı adımda çalışır.</h2>
-    <p class="section-lede">Propose → Risk → Approval → Execute → Verify → Evidence. Her adım görünür; yetki bir sonraki adıma taşınmaz.</p>
+    <p class="kicker">HOW IT WORKS</p>
+    <h2>Six steps.</h2>
+    <p class="section-lede">Propose → Risk → Approval → Execute → Verify → Evidence. Every step is visible; authority never moves to the next step on its own.</p>
     <div class="steps">
-      <div class="step"><span class="step-num">1</span><strong>Öneri</strong><p>Agent değişikliği doğrudan diske yazmaz; TANUQ'a öneri olarak gönderir. Önerinin hedef dosyası ve içeriği uygulama öncesinde görünür hale gelir.</p></div>
-      <div class="step"><span class="step-num">2</span><strong>Değerlendirme</strong><p>Her öneri sınıflandırılır: uygun değişiklikler uygulanabilir, riskli değişiklikler onayınızı bekler.</p></div>
-      <div class="step"><span class="step-num">3</span><strong>Onay</strong><p>Riskli değişikliklerde karar sizde kalır. Onay verilmeden ilgili değişiklik uygulanmaz.</p></div>
-      <div class="step"><span class="step-num">4</span><strong>Uygulama</strong><p>Onaylı değişiklikler atomik olarak uygulanır. Kapsam dışına çıkmaz.</p></div>
-      <div class="step"><span class="step-num">5</span><strong>Doğrulama</strong><p>Uygulama sonrası derleme ve testler koşar. Doğrulama başarısız olduğunda değişiklik geri alma mekanizması devreye girer ve sonuç kayda geçirilir.</p></div>
-      <div class="step"><span class="step-num">6</span><strong>Kayıt</strong><p>Her öneri, onay ve sonuç kayıt altına alınır. Kayıt zincirindeki sonradan yapılan değişiklikler tespit edilebilir.</p></div>
+      <div class="step"><span class="step-num">1</span><strong>Proposal</strong><p>The agent does not write to disk directly; it sends a change proposal to TANUQ. The target file and its content become visible before anything is applied.</p></div>
+      <div class="step"><span class="step-num">2</span><strong>Assessment</strong><p>Every proposal is classified: acceptable changes can be applied, risky changes wait for your approval.</p></div>
+      <div class="step"><span class="step-num">3</span><strong>Approval</strong><p>You keep the decision on risky changes. Nothing is applied without your approval.</p></div>
+      <div class="step"><span class="step-num">4</span><strong>Execution</strong><p>Approved changes are applied atomically. They never leave the approved scope.</p></div>
+      <div class="step"><span class="step-num">5</span><strong>Verification</strong><p>Compilation and tests run after the apply. If verification fails, the rollback mechanism engages and the outcome is recorded.</p></div>
+      <div class="step"><span class="step-num">6</span><strong>Evidence</strong><p>Every proposal, approval and outcome is recorded. Later modifications to the record can be detected.</p></div>
     </div>
   </div>
 </section>
 
 <section id="demo-walkthrough" class="section demo-walkthrough">
   <div class="wrap">
-    <p class="kicker">GERÇEK KANIT · KAYITLI AKIŞ</p>
-    <h2>Gerçekte nasıl çalışıyor?</h2>
-    <p class="section-lede">Gerçek bir TANUQ local run'ından kaydedilmiş governance akışı: Proposal → Risk → Approval → Fingerprint → Execute → Verify → Evidence. Site HTTP ile servis edildiğinde kayıt adım adım oynatılır; doğrudan dosya olarak açıldığında aynı kaydın gerçek özetini görürsünüz.</p>
+    <p class="kicker">REAL PROOF · RECORDED RUN</p>
+    <h2>What it looks like in practice.</h2>
+    <p class="section-lede">A governance run recorded from a real TANUQ local run: Proposal → Risk → Approval → Fingerprint → Execute → Verify → Evidence. Served over HTTP, the recording plays step by step; opened directly as a file, you see the real summary of the same recording.</p>
     <div
       id="demo-root"
       data-fixture="demo_fixtures.json"
@@ -178,198 +179,198 @@ execute  → terminal state: VERIFIED
 execute  → Apply success: True
 verify   → terminal state: VERIFIED · Verification passed: True
 evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
-      <p class="dw-source">Kaydın özeti statik olarak gösteriliyor. Site HTTP ile servis edildiğinde bu alan aynı kaydı adım adım oynatan etkileşimli akışa dönüşür.</p>
+      <p class="dw-source">The recorded summary is shown statically. When the site is served over HTTP, this area plays the same run step by step.</p>
     </div>
   </div>
 </section>
 
 <section class="section value">
   <div class="wrap">
-    <p class="kicker">DEĞER</p>
-    <h2>Size ne kazandırır?</h2>
+    <p class="kicker">VALUE</p>
+    <h2>What you get.</h2>
     <div class="cards">
-      <div class="card"><h3>CONTROL</h3><p>Riskli değişikliklerde karar sizde kalır. İlgili değişiklik, sizin onayınız olmadan uygulanmaz.</p></div>
-      <div class="card"><h3>VISIBILITY</h3><p>Değişiklik uygulamadan önce görünür hale gelir: hangi dosya, hangi işlem, hangi içerik farkı.</p></div>
-      <div class="card"><h3>VERIFICATION</h3><p>Uygulama sonrası derleme ve testler çalıştırılır; sonuç doğrulanır.</p></div>
-      <div class="card"><h3>EVIDENCE</h3><p>Her öneri, onay ve sonuç kayıt altına alınır. Kayıt zincirindeki sonradan yapılan değişiklikler tespit edilebilir.</p></div>
+      <div class="card"><h3>CONTROL</h3><p>You keep the decision on risky changes; nothing is applied without your approval.</p></div>
+      <div class="card"><h3>VISIBILITY</h3><p>Changes become visible before they are applied: which file, which action, which content diff.</p></div>
+      <div class="card"><h3>VERIFICATION</h3><p>Compilation and tests run after the apply; the outcome is verified.</p></div>
+      <div class="card"><h3>EVIDENCE</h3><p>Every proposal, approval and outcome is recorded. Later modifications to the record can be detected.</p></div>
     </div>
   </div>
 </section>
 
 <section id="features" class="section features alt">
   <div class="wrap">
-    <p class="kicker">ÖZELLİKLER</p>
-    <h2>Gerçekten çalışan yetenekler.</h2>
-    <p class="section-lede">Her madde, mevcut governance zincirinin parçası ve testlerle doğrulanmış bir davranıştır.</p>
+    <p class="kicker">FEATURES</p>
+    <h2>Capabilities that actually run.</h2>
+    <p class="section-lede">Each item is part of the live governance chain and is verified by tests.</p>
     <div class="cards">
-      <div class="card"><h3>DETERMINISTIC RISK</h3><p>Risk sınıflandırması kural tabanlı ve deterministiktir; aynı öneri aynı kararı verir.</p></div>
-      <div class="card"><h3>POLICY BINDING</h3><p>Her öneri politika çerçevesinde değerlendirilir; politika dışı davranış varsayılan olarak reddedilir.</p></div>
-      <div class="card"><h3>AUTHORIZATION</h3><p>Riskli değişiklik uygulanmadan açık insan onayı gerekir; onaysız uygulama gerçekleşmez.</p></div>
-      <div class="card"><h3>FINGERPRINT-BOUND</h3><p>Onay, SHA-256 parmak iziyle önerilen içeriğe bağlanır; içerik değişirse onay geçersiz olur.</p></div>
-      <div class="card"><h3>SINGLE-USE</h3><p>Her onay tek kullanımlıktır; aynı onayla ikinci bir uygulama yapılamaz.</p></div>
-      <div class="card"><h3>BOUNDED ATTEMPTS</h3><p>Uygulama denemeleri sınırlıdır; belirsiz (UNKNOWN) sonuçlar başarı sayılmaz.</p></div>
-      <div class="card"><h3>CONTROLLED EXECUTION</h3><p>Onaylı değişiklik atomik olarak uygulanır ve onaylanan kapsamın dışına çıkmaz.</p></div>
-      <div class="card"><h3>VERIFICATION</h3><p>Uygulama sonrası derleme ve gerçek testler çalıştırılır; doğrulama başarısız olursa geri alma mekanizması devreye girer ve sonuç kayda geçer.</p></div>
-      <div class="card"><h3>TAMPER-EVIDENT EVIDENCE</h3><p>Her öneri, onay ve sonuç salt-ekleme (append-only) kayda yazılır.</p></div>
-      <div class="card"><h3>HASH-CHAIN LINEAGE</h3><p>Kayıtlar hash zincirindedir; geçmişte yapılan bir değişiklik tespit edilebilir.</p></div>
+      <div class="card"><h3>DETERMINISTIC RISK</h3><p>Risk classification is rule-based and deterministic; the same proposal gets the same decision.</p></div>
+      <div class="card"><h3>POLICY BINDING</h3><p>Every proposal is evaluated within policy; behavior outside policy is denied by default.</p></div>
+      <div class="card"><h3>AUTHORIZATION</h3><p>Risky changes require explicit human approval before execution; no approval, no apply.</p></div>
+      <div class="card"><h3>FINGERPRINT-BOUND</h3><p>Approval is bound by SHA-256 fingerprint to the proposed content; if the content changes, the approval becomes invalid.</p></div>
+      <div class="card"><h3>SINGLE-USE</h3><p>Each approval is single-use; the same approval cannot authorize a second execution.</p></div>
+      <div class="card"><h3>BOUNDED ATTEMPTS</h3><p>Execution attempts are bounded; uncertain (UNKNOWN) outcomes are never treated as success.</p></div>
+      <div class="card"><h3>CONTROLLED EXECUTION</h3><p>Approved changes are applied atomically and never leave the approved scope.</p></div>
+      <div class="card"><h3>VERIFICATION</h3><p>Real tests and compilation run after the apply; if verification fails, the rollback mechanism engages and the outcome is recorded.</p></div>
+      <div class="card"><h3>TAMPER-EVIDENT EVIDENCE</h3><p>Every proposal, approval and outcome is written to an append-only record.</p></div>
+      <div class="card"><h3>HASH-CHAIN LINEAGE</h3><p>Records live in a hash chain; later modifications to history can be detected.</p></div>
     </div>
   </div>
 </section>
 
 <section class="section statement">
   <div class="wrap wrap-narrow">
-    <p class="kicker">FARK</p>
-    <p class="statement-line">Yapay zekâ değişebilir.<br>Yönetim ve kanıt katmanı değişmemeli.</p>
+    <p class="kicker">THE DIFFERENCE</p>
+    <p class="statement-line">Models change.<br>The governance and evidence layer must not.</p>
     <p class="statement-en">Agent intelligence is replaceable. Governance state is not.</p>
-    <p class="section-lede">Model değişir. Provider değişir. Tool değişir. TANUQ'un yönettiği governance durumu — parmak izi, onay, uygulama kaydı ve kanıt zinciri — aynı kalır. Çekirdek vendor-blind tasarlanmıştır; kararlar kişiye veya modele değil, değişikliğin kendisine bağlıdır.</p>
-    <p class="small">Bugün doğrulanmış yollar: Claude Code için resmi adaptör ve farklı modellerle uçtan uca denenmiş genel <code>--stdin-json</code> kanalı.</p>
+    <p class="section-lede">The model changes. The provider changes. The tool changes. The governance state TANUQ manages — fingerprint, approval, execution record and evidence chain — stays the same. The core is vendor-blind; decisions bind to the change itself, not to a person or a model.</p>
+    <p class="small">Validated today: the official Claude Code adapter and the general <code>--stdin-json</code> channel, tested end-to-end with a different model.</p>
   </div>
 </section>
 
 <section id="trust" class="section trust">
   <div class="wrap">
-    <p class="kicker">NEDEN GÜVENMELİSİNİZ?</p>
-    <h2>Güven, mekanizmadan gelir.</h2>
-    <p class="section-lede">Pazarlama iddiası değil; her adım deterministik, denetlenebilir ve kayıt altındadır.</p>
+    <p class="kicker">WHY TRUST IT</p>
+    <h2>Trust comes from mechanisms.</h2>
+    <p class="section-lede">Not a marketing claim; every step is deterministic, auditable and recorded.</p>
     <div class="personas">
-      <div class="persona"><strong>Değişiklik kimliği</strong><p>Her öneri SHA-256 parmak iziyle kimliklenir; onay bu kimliğe bağlanır.</p></div>
-      <div class="persona"><strong>Authorization</strong><p>Uygulama, riskli değişikliklerde açık ve tek kullanımlık insan onayı olmadan başlamaz.</p></div>
-      <div class="persona"><strong>Fingerprint</strong><p>İçerik değişirse parmak izi değişir; eski onay yeni içerik için geçersizdir.</p></div>
-      <div class="persona"><strong>Verification</strong><p>Uygulama sonrası bağımsız doğrulama koşar; başarısızlıkta geri alma mekanizması devreye girer.</p></div>
-      <div class="persona"><strong>Evidence &amp; hash chain</strong><p>Kayıtlar salt-ekleme ve hash zincirindedir; sonradan müdahale tespit edilir.</p></div>
-      <div class="persona"><strong>Fail-closed</strong><p>Bilinmeyen, eksik veya belirsiz durum varsayılan olarak reddedilir.</p></div>
+      <div class="persona"><strong>Change identity</strong><p>Every proposal is identified by a SHA-256 fingerprint; approval binds to that identity.</p></div>
+      <div class="persona"><strong>Authorization</strong><p>Execution never starts on risky changes without explicit, single-use human approval.</p></div>
+      <div class="persona"><strong>Fingerprint</strong><p>If the content changes, the fingerprint changes; the old approval is invalid for new content.</p></div>
+      <div class="persona"><strong>Verification</strong><p>Independent verification runs after execution; on failure the rollback mechanism engages.</p></div>
+      <div class="persona"><strong>Evidence &amp; hash chain</strong><p>Records are append-only and hash-chained; later tampering can be detected.</p></div>
+      <div class="persona"><strong>Fail-closed</strong><p>Unknown, missing or uncertain states are denied by default.</p></div>
     </div>
   </div>
 </section>
 
 <section class="section who alt">
   <div class="wrap">
-    <p class="kicker">KİMLER İÇİN</p>
-    <h2>Kimler için?</h2>
+    <p class="kicker">WHO IT'S FOR</p>
+    <h2>Who is it for?</h2>
     <div class="personas">
-      <div class="persona"><strong>AI coding agent kullanan ekipler</strong><p>AI coding agent'ınızın değişiklik akışına bağımsız bir kontrol katmanı ekleyin.</p></div>
-      <div class="persona"><strong>Platform Engineering</strong><p>Agent değişiklik akışına bağımsız bir kontrol katmanı ekleyin.</p></div>
-      <div class="persona"><strong>Security / DevSecOps</strong><p>AI değişikliklerini politika çerçevesinde değerlendirin.</p></div>
-      <div class="persona"><strong>AI Infrastructure</strong><p>Agent/model seçiminden ayrıştırılmış, vendor-blind bir governance katmanı kullanın.</p></div>
+      <div class="persona"><strong>Teams using AI coding agents</strong><p>Add an independent control layer to your agent's change flow.</p></div>
+      <div class="persona"><strong>Platform Engineering</strong><p>Add an independent governance layer to the agent change flow.</p></div>
+      <div class="persona"><strong>Security / DevSecOps</strong><p>Evaluate AI changes within a policy framework.</p></div>
+      <div class="persona"><strong>AI Infrastructure</strong><p>Use a vendor-blind governance layer, separated from agent and model selection.</p></div>
     </div>
   </div>
 </section>
 
 <section class="section product">
   <div class="wrap">
-    <p class="kicker">ÜRÜN</p>
-    <h2>Bugün çalışan gerçek akış.</h2>
+    <p class="kicker">PRODUCT</p>
+    <h2>The real flow that runs today.</h2>
     <p class="flow-line">Propose → Risk → Approval → Execute → Verify → Evidence</p>
     <div class="term">
-      <div class="term-title">1 · Ajan değişikliği önerir</div>
+      <div class="term-title">1 · The agent proposes a change</div>
       <pre>→ state: APPROVAL_REQUIRED · risk: HIGH</pre>
-      <div class="term-title">2 · Siz onaylarsınız</div>
+      <div class="term-title">2 · You approve</div>
       <pre>APPROVED deploy.py · risk=HIGH · single-use</pre>
-      <div class="term-title">3 · TANUQ uygular, doğrular ve kaydeder</div>
+      <div class="term-title">3 · TANUQ executes, verifies and records</div>
       <pre>terminal state: VERIFIED · Apply success: True · Verification passed: True</pre>
     </div>
-    <p class="small">Bu kesit gerçek bir TANUQ çalışmasından alınmıştır. Onay, önerilen değişiklikle ilişkilendirilir ve uygulama sonrası sonuç doğrulanır.</p>
+    <p class="small">This excerpt is taken from a real TANUQ run. Approval is bound to the proposed change, and the outcome is verified after execution.</p>
   </div>
 </section>
 
 <section id="pricing" class="section pricing alt">
   <div class="wrap wrap-narrow">
-    <p class="kicker">FİYAT</p>
-    <h2>Net fiyat.</h2>
-    <p class="section-lede">TANUQ PRO, TANUQ'nun mevcut ürün paketidir.</p>
+    <p class="kicker">PRICING</p>
+    <h2>Simple pricing.</h2>
+    <p class="section-lede">TANUQ PRO is TANUQ's current product package.</p>
     <div class="price-card">
       <p class="price-name">TANUQ PRO</p>
-      <p class="price-amount">$49 <span>/ ay</span></p>
-      <p class="price-tag">Kur. Bağla. Yönet.</p>
-      <a class="btn btn-primary" id="buy" href="#acquire">EDİNİMİ BAŞLAT</a>
+      <p class="price-amount">$49 <span>/ month</span></p>
+      <p class="price-tag">Install. Connect. Manage.</p>
+      <a class="btn btn-primary" id="buy" href="#acquire">START ACQUISITION</a>
     </div>
-    <p class="small price-note">$49/ay lansman öncesi fiyatıdır. Ödeme ve lisanslama altyapısı henüz açılmamıştır.</p>
+    <p class="small price-note">$49/month launch pricing. Payment and licensing infrastructure is not yet live.</p>
   </div>
 </section>
 
 <section id="acquire" class="section acquire">
   <div class="wrap">
-    <p class="kicker">EDİNME VE KURULUM</p>
-    <h2>Kurulum ve kullanım akışı.</h2>
-    <p class="section-lede">Ne yapacağınız baştan belli: edinim durumunu görür, kurar, agent'ını bağlar, yönetir, kullanırsınız.</p>
+    <p class="kicker">ACQUISITION &amp; INSTALL</p>
+    <h2>Install and get started.</h2>
+    <p class="section-lede">The path is clear from the start: review the acquisition status, install, connect your agent, manage, use.</p>
     <div class="steps">
-      <div class="step"><span class="step-num">1</span><strong>Edinim durumunu gör</strong><p>Fiyat bölümündeki paket ve statüyü görün: ödeme altyapısı bu aşamada bağlı değildir.</p></div>
-      <div class="step"><span class="step-num">2</span><strong>İndir ve kur</strong><p>Python 3.12+ gerekir. Kurulum komutları teknik bölümde (Local Try) verilmiştir.</p></div>
-      <div class="step"><span class="step-num">3</span><strong>Agent'ını bağla</strong><p>Claude Code resmi adaptörü veya model seçimine bağlanmamış genel <code>--stdin-json</code> kanalı.</p></div>
-      <div class="step"><span class="step-num">4</span><strong>Yönet</strong><p><code>tanuq init</code> ile çalışma alanını başlatın, <code>tanuq ui</code> ile dashboard'u açın; riskli değişiklikler onayınıza gelir.</p></div>
-      <div class="step"><span class="step-num">5</span><strong>Kullan</strong><p>Günlük akışınız bu: öneri → risk → onay → uygulama → doğrulama → kanıt.</p></div>
+      <div class="step"><span class="step-num">1</span><strong>Review acquisition status</strong><p>See the package and status in the pricing section: payment infrastructure is not connected yet.</p></div>
+      <div class="step"><span class="step-num">2</span><strong>Install</strong><p>Python 3.12+ is required. Install commands are in the technical section (Local Try).</p></div>
+      <div class="step"><span class="step-num">3</span><strong>Connect your agent</strong><p>The official Claude Code adapter, or the general <code>--stdin-json</code> channel that is not tied to a specific model.</p></div>
+      <div class="step"><span class="step-num">4</span><strong>Manage</strong><p>Start a workspace with <code>tanuq init</code> and open the dashboard with <code>tanuq ui</code>; risky changes come to you for approval.</p></div>
+      <div class="step"><span class="step-num">5</span><strong>Use</strong><p>Your daily flow: proposal → risk → approval → execution → verification → evidence.</p></div>
     </div>
     <div class="cta">
-      <a class="btn btn-secondary" href="#try">KURULUM KOMUTLARI</a>
+      <a class="btn btn-secondary" href="#try">INSTALL COMMANDS</a>
     </div>
   </div>
 </section>
 
 <section id="try" class="section try alt">
   <div class="wrap">
-    <p class="kicker">TEKNİK DOĞRULAMA · LOCAL TRY</p>
-    <h2>Kendi makinenizde gerçek runtime'ı çalıştırın.</h2>
-    <p>Tarayıcıdaki kanıt recorded playback'tir. Gerçek TANUQ runtime'ını kendi bilgisayarınızda çalıştırırsınız: geçici çalışma klasöründe yönetilen akışı uçtan uca koşar; bitince kendini temizler. Bu bölüm teknik doğrulama içindir — ana edinim akışı yukarıdaki fiyat ve edinim bölümlerindedir.</p>
-    <p class="small">Kaynak erişimi gerekir: TANUQ şu anda kaynak üzerinden kurulur. Dağıtım paketi henüz yayınlanmamıştır; resmi indirme bağlantısı bu sayfada sunulmaz.</p>
-    <h3>Yerel kurulum (Windows)</h3>
+    <p class="kicker">TECHNICAL VALIDATION · LOCAL TRY</p>
+    <h2>Run the real runtime on your own machine.</h2>
+    <p>The proof in the browser is a recorded playback. You run the real TANUQ runtime on your own machine: it walks the governed flow end to end in a disposable workspace and cleans up afterwards. This section is for technical validation — the main acquisition flow is in the pricing and acquisition sections above.</p>
+    <p class="small">Source access required: TANUQ is currently installed from source. The official distribution package is not yet published; no download link is offered on this page.</p>
+    <h3>Local install (Windows)</h3>
 <pre>pip install -e .
 powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
-    <h3>Yerel kurulum (Linux / macOS)</h3>
+    <h3>Local install (Linux / macOS)</h3>
 <pre>pip install -e .
 bash site/try/try_tanuq.sh</pre>
-    <p class="small">Önkoşul: Python 3.12+. Deneme tamamen yerel çalışır; hiçbir veri sunucuya gönderilmez.</p>
-    <p class="small">Sonraki adım: <code>tanuq init</code> ile kendi çalışma alanınızda TANUQ akışını başlatın, <code>tanuq ui</code> ile dashboard'u açın.</p>
+    <p class="small">Prerequisite: Python 3.12+. The run is fully local; no data is sent to a server.</p>
+    <p class="small">Next step: start the TANUQ flow in your own workspace with <code>tanuq init</code>, then open the dashboard with <code>tanuq ui</code>.</p>
   </div>
 </section>
 
 <section id="faq" class="section faq">
   <div class="wrap wrap-narrow">
-    <p class="kicker">SIKÇA SORULANLAR</p>
-    <h2>Edinmeden önce</h2>
+    <p class="kicker">FAQ</p>
+    <h2>Before you get started</h2>
     <div class="faq-list">
       <details class="faq-item">
-        <summary>TANUQ nedir?</summary>
-        <p>AI coding agent'ın dosya değişikliği önerisi ile uygulama arasındaki bağımsız yönetim (governance) katmanıdır. Agent değişikliği önerir; TANUQ değerlendirir, riskli değişikliklerde onay alır, uygular, doğrular ve kanıtlar.</p>
+        <summary>What is TANUQ?</summary>
+        <p>An independent governance layer between your AI coding agent's proposed file change and its execution. The agent proposes; TANUQ assesses it, requests approval for risky changes, applies, verifies and records evidence.</p>
       </details>
       <details class="faq-item">
-        <summary>Hangi agent'larla çalışır?</summary>
-        <p>Doğrulanmış iki yol vardır: Claude Code için resmi adaptör ve model seçimine bağlanmamış genel <code>--stdin-json</code> kanalı (kanal farklı bir modelle uçtan uca doğrulandı). Bunların dışındaki agent entegrasyonları henüz doğrulanmamıştır.</p>
+        <summary>Which agents does TANUQ support?</summary>
+        <p>Two validated paths: the official Claude Code adapter and the general <code>--stdin-json</code> channel, which is not tied to a specific model (validated end-to-end with a different model). Other agent integrations are not yet validated.</p>
       </details>
       <details class="faq-item">
-        <summary>Agent değişirse TANUQ ne olur?</summary>
-        <p>Çekirdek vendor-blind tasarlanmıştır. Adaptör yalnızca gelen aracı olayını çeviri eder; parmak izi, risk, onay ve kanıt semantikleri aynı kalır. Yeni bir agent = yeni bir çeviri modülü; yönetim çekirdeği değişmez.</p>
+        <summary>What happens when I change agents?</summary>
+        <p>The core is vendor-blind. Adapters only translate incoming tool events; fingerprint, risk, approval and evidence semantics stay the same. A new agent means a new translation module; the governance core does not change.</p>
       </details>
       <details class="faq-item">
-        <summary>TANUQ agent'ın yerine mi geçer?</summary>
-        <p>Hayır. Agent yazar ve önerir; TANUQ o öneriyi yönetir. Agent'ınız çalışmaya devam eder, değişiklik akışı araya girer.</p>
+        <summary>Does TANUQ replace my coding agent?</summary>
+        <p>No. The agent writes and proposes; TANUQ governs that proposal. Your agent keeps working — the change flow passes through TANUQ.</p>
       </details>
       <details class="faq-item">
-        <summary>Approval nasıl çalışır?</summary>
-        <p>Riskli değişiklikler için zorunludur: tek kullanımlıktır, parmak izine (içeriğe) bağlıdır ve süre (TTL) ile sınırlıdır. Onay verilmeden ilgili değişiklik uygulanmaz.</p>
+        <summary>How does approval work?</summary>
+        <p>Required for risky changes: single-use, bound to the fingerprint (content), and time-limited (TTL). Nothing is applied without approval.</p>
       </details>
       <details class="faq-item">
-        <summary>Risk nasıl belirlenir?</summary>
-        <p>Deterministik risk motoru ve politika ile, öneriden bağımsız kural tabanlı olarak. LLM tavsiyesi riski yalnızca yükseltebilir; asla düşüremez.</p>
+        <summary>How is risk determined?</summary>
+        <p>By a deterministic risk engine and policy — rule-based and independent of the proposal source. An LLM recommendation can only raise risk; it can never lower it.</p>
       </details>
       <details class="faq-item">
-        <summary>Verification ne yapar?</summary>
-        <p>Uygulamadan sonra derleme ve gerçek çalışma alanı testlerini çalıştırır. Doğrulama başarısız olursa geri alma mekanizması devreye girer ve sonuç kayda geçer.</p>
+        <summary>What does verification do?</summary>
+        <p>It runs compilation and real workspace tests after execution. If verification fails, the rollback mechanism engages and the outcome is recorded.</p>
       </details>
       <details class="faq-item">
-        <summary>Evidence neden önemlidir?</summary>
-        <p>Her adım salt-ekleme ve hash zincirinde tutulur. Kayıt sonradan değiştirilirse bu tespit edilebilir; kanıt zinciri bağımsız olarak doğrulanır.</p>
+        <summary>Why does evidence matter?</summary>
+        <p>Every step is kept in an append-only hash chain. If a record is modified later, that can be detected; the evidence chain verifies independently.</p>
       </details>
       <details class="faq-item">
-        <summary>Kurulum nasıl yapılır?</summary>
-        <p>Python 3.12+ gerekir. Yerel kurulum komutları <a href="#try">Teknik Doğrulama</a> bölümünde verilmiştir; dağıtım paketi henüz yayınlanmamıştır.</p>
+        <summary>How do I install TANUQ?</summary>
+        <p>Python 3.12+ is required. Local install commands are in the <a href="#try">Technical Validation</a> section; the distribution package is not yet published.</p>
       </details>
       <details class="faq-item">
-        <summary>Nasıl edinilir?</summary>
-        <p>Fiyat bölümündeki <strong>EDİNİMİ BAŞLAT</strong> adımından edinim akışına geçersiniz: paket ve statü açık, kurulum adımları teknik bölümde. Sayfa üzerinden gerçek bir ödeme işlemi başlatılmaz — ödeme ve lisans altyapısı bu aşamada bağlı değildir.</p>
+        <summary>How can I get TANUQ?</summary>
+        <p>Start the acquisition flow with <strong>START ACQUISITION</strong> in the pricing section: the package and status are clear, and the install steps are in the technical section. No real payment is started from this page — payment and licensing infrastructure is not live yet.</p>
       </details>
       <details class="faq-item">
-        <summary>TANUQ'nun sınırları nelerdir?</summary>
-        <p>İşletim sistemi seviyesinde koruma değildir ve ağ zorlaması değildir; agent'ı sandbox'lamaz. TANUQ değişim akışını yönetir: öneriyi görünür kılar, onaylatır, doğrular ve kaydeder.</p>
+        <summary>What are TANUQ's limits?</summary>
+        <p>It is not operating-system-level protection and not network enforcement; it does not sandbox your agent. TANUQ governs the change flow: it makes proposals visible, requests approval, verifies and records them.</p>
       </details>
     </div>
   </div>
@@ -377,10 +378,10 @@ bash site/try/try_tanuq.sh</pre>
 
 <section class="section cta-final">
   <div class="wrap">
-    <h2>Kontrol sizde kalsın. TANUQ ile başlayın.</h2>
+    <h2>Stay in control. Get started with TANUQ.</h2>
     <div class="cta">
-      <a class="btn btn-primary" href="#pricing">EDİNİMİ BAŞLAT</a>
-      <a class="btn btn-secondary" href="#how">NASIL ÇALIŞIR</a>
+      <a class="btn btn-primary" href="#pricing">START ACQUISITION</a>
+      <a class="btn btn-secondary" href="#how">HOW IT WORKS</a>
     </div>
   </div>
 </section>
@@ -389,7 +390,7 @@ bash site/try/try_tanuq.sh</pre>
 
 <footer>
   <div class="wrap">
-    <p class="small">TANUQ, AI coding agent'ınızdan gelen dosya değişiklik önerilerini yönetir. İşletim sistemi seviyesinde koruma yok, ağ zorlaması yok. Kayıtlar tamper-evident'tir.</p>
+    <p class="small">TANUQ manages file-change proposals coming from your AI coding agent. No operating-system-level protection, no network enforcement. Records are tamper-evident.</p>
   </div>
 </footer>
 

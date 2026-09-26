@@ -24,7 +24,9 @@ SITE = REPO / "site"
 
 
 def _html():
-    return (SITE / "index.html").read_text(encoding="utf-8")
+    """Sales-flow contract targets the TURKISH surface (site/tr/index.html);
+    the English default is covered by tests/site_i18n_test.py."""
+    return (SITE / "tr" / "index.html").read_text(encoding="utf-8")
 
 
 def _segment(html, start_marker, end_marker=None):
@@ -260,8 +262,8 @@ def test_faq_covers_required_questions():
 def test_interactive_walkthrough_evidence_preserved():
     html = _html()
     walkthrough = _segment(html, 'id="demo-walkthrough"')
-    assert 'data-fixture="demo_fixtures.json"' in walkthrough
-    assert 'src="demo.js"' in html
+    assert 'data-fixture="../demo_fixtures.json"' in walkthrough  # /tr/ subpath
+    assert 'src="../demo.js"' in html
     fixture = json.loads((SITE / "demo_fixtures.json").read_text(encoding="utf-8"))
     assert fixture["source"]["type"] == "recorded_real_run"
     assert fixture["scenario"]["risk"] == "HIGH"
