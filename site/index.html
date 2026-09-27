@@ -19,8 +19,8 @@
       <a class="lang-switch" href="tr/index.html" hreflang="tr">TR</a>
       <a href="#how">How It Works</a>
       <a href="#demo-walkthrough">Real Proof</a>
-      <a href="#pricing">Pricing</a>
-      <a class="nav-buy" href="#pricing">Start acquisition</a>
+      <a href="#pricing">Free</a>
+      <a class="nav-buy" href="#acquire">Start using</a>
     </nav>
   </div>
 </header>
@@ -30,11 +30,11 @@
     <div class="hero-copy">
       <h1>An independent governance layer<br><span class="hero-accent">for your AI coding agent</span></h1>
       <div class="cta">
-        <a class="btn btn-primary" href="#pricing">START ACQUISITION</a>
+        <a class="btn btn-primary" href="#acquire">START USING TANUQ</a>
         <a class="btn btn-secondary" href="#how">HOW IT WORKS</a>
       </div>
       <p class="hero-kicker">AI CODING AGENT · FILE-CHANGE GOVERNANCE</p>
-      <p class="lede">The agent proposes. TANUQ assesses risk, requests your approval when required, executes, verifies, and provides evidence of what happened.</p>
+      <p class="lede">The agent proposes. TANUQ assesses risk, requests your approval when required, executes, verifies, and provides evidence of what happened. TANUQ is free to use.</p>
       <ul class="trust-strip" aria-label="Verifiable principles">
         <li>Content-bound approval</li>
         <li>Single-use authorization</li>
@@ -276,26 +276,25 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
 <section id="pricing" class="section pricing alt">
   <div class="wrap wrap-narrow">
     <p class="kicker">PRICING</p>
-    <h2>Simple pricing.</h2>
-    <p class="section-lede">TANUQ PRO is TANUQ's current product package.</p>
+    <h2>Free to use.</h2>
+    <p class="section-lede">TANUQ is free to use. No account, no payment, no subscription.</p>
     <div class="price-card">
       <p class="price-name">TANUQ PRO</p>
-      <p class="price-amount">$49 <span>/ month</span></p>
+      <p class="price-amount">FREE</p>
       <p class="price-tag">Install. Connect. Manage.</p>
-      <a class="btn btn-primary" id="buy" href="#acquire">START ACQUISITION</a>
+      <a class="btn btn-primary" id="get" href="#acquire">START USING TANUQ</a>
     </div>
-    <p class="small price-note">$49/month launch pricing. Payment and licensing infrastructure is not yet live.</p>
   </div>
 </section>
 
 <section id="acquire" class="section acquire">
   <div class="wrap">
-    <p class="kicker">ACQUISITION &amp; INSTALL</p>
-    <h2>Install and get started.</h2>
-    <p class="section-lede">The path is clear from the start: review the acquisition status, install, connect your agent, manage, use.</p>
+    <p class="kicker">GET TANUQ · FREE</p>
+    <h2>Install TANUQ and start using it.</h2>
+    <p class="section-lede">TANUQ is free to use. The flow below is all it takes: install, connect your agent, govern your changes, use it in your real environment.</p>
     <div class="steps">
-      <div class="step"><span class="step-num">1</span><strong>Review acquisition status</strong><p>See the package and status in the pricing section: payment infrastructure is not connected yet.</p></div>
-      <div class="step"><span class="step-num">2</span><strong>Install</strong><p>Python 3.12+ is required. Install commands are in the technical section (Local Try).</p></div>
+      <div class="step"><span class="step-num">1</span><strong>Get TANUQ (free)</strong><p>TANUQ is free to use: no account, no payment, no subscription.</p></div>
+      <div class="step"><span class="step-num">2</span><strong>Install</strong><p>Python 3.12+ is required. Install commands are in the Install section (Local Try) below.</p></div>
       <div class="step"><span class="step-num">3</span><strong>Connect your agent</strong><p>The official Claude Code adapter, or the general <code>--stdin-json</code> channel that is not tied to a specific model.</p></div>
       <div class="step"><span class="step-num">4</span><strong>Manage</strong><p>Start a workspace with <code>tanuq init</code> and open the dashboard with <code>tanuq ui</code>; risky changes come to you for approval.</p></div>
       <div class="step"><span class="step-num">5</span><strong>Use</strong><p>Your daily flow: proposal → risk → approval → execution → verification → evidence.</p></div>
@@ -308,10 +307,10 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
 
 <section id="try" class="section try alt">
   <div class="wrap">
-    <p class="kicker">TECHNICAL VALIDATION · LOCAL TRY</p>
+    <p class="kicker">INSTALL · LOCAL TRY</p>
     <h2>Run the real runtime on your own machine.</h2>
-    <p>The proof in the browser is a recorded playback. You run the real TANUQ runtime on your own machine: it walks the governed flow end to end in a disposable workspace and cleans up afterwards. This section is for technical validation — the main acquisition flow is in the pricing and acquisition sections above.</p>
-    <p class="small">Source access required: TANUQ is currently installed from source. The official distribution package is not yet published; no download link is offered on this page.</p>
+    <p>The proof in the browser is a recorded playback. TANUQ is free: this is where you install it and run the real runtime on your own machine — it walks the governed flow end to end in a disposable workspace and cleans up afterwards.</p>
+    <p class="small">TANUQ is distributed as source today. The official distribution package is not yet published; everything needed to install is on this page.</p>
     <h3>Local install (Windows)</h3>
 <pre>pip install -e .
 powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
@@ -362,11 +361,15 @@ bash site/try/try_tanuq.sh</pre>
       </details>
       <details class="faq-item">
         <summary>How do I install TANUQ?</summary>
-        <p>Python 3.12+ is required. Local install commands are in the <a href="#try">Technical Validation</a> section; the distribution package is not yet published.</p>
+        <p>Python 3.12+ is required. Local install commands are in the <a href="#try">Install</a> section; the distribution package is not yet published.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Is TANUQ free?</summary>
+        <p>Yes — TANUQ is free to use. Future pricing has not been decided yet.</p>
       </details>
       <details class="faq-item">
         <summary>How can I get TANUQ?</summary>
-        <p>Start the acquisition flow with <strong>START ACQUISITION</strong> in the pricing section: the package and status are clear, and the install steps are in the technical section. No real payment is started from this page — payment and licensing infrastructure is not live yet.</p>
+        <p>TANUQ is free to use. Install it from this page — see the <a href="#try">Install</a> section. There is no account and no payment.</p>
       </details>
       <details class="faq-item">
         <summary>What are TANUQ's limits?</summary>
@@ -376,11 +379,26 @@ bash site/try/try_tanuq.sh</pre>
   </div>
 </section>
 
+<section id="feedback" class="section feedback alt">
+  <div class="wrap">
+    <p class="kicker">FEEDBACK</p>
+    <h2>Tell us how TANUQ actually worked.</h2>
+    <p class="section-lede">TANUQ is free while we learn where it genuinely helps. There is no form on this page yet: copy the prompts below and send them through the project's public repository conversation. Nothing on this page collects data automatically.</p>
+    <div class="cards">
+      <div class="card"><h3>WHERE AND WHICH AGENT</h3><p>Where did you run TANUQ, and which agent or model did you connect?</p></div>
+      <div class="card"><h3>WHAT IT GOVERNED</h3><p>Which change did you want governed — and what happened at risk, approval and verification?</p></div>
+      <div class="card"><h3>WHERE YOU GOT STUCK</h3><p>Install, setup, agent connection: what slowed you down, and what was missing?</p></div>
+      <div class="card"><h3>WOULD YOU USE IT AGAIN</h3><p>Would you run TANUQ on your next change? Would you recommend it — and why?</p></div>
+    </div>
+    <p class="small">We collect nothing automatically — no tracking, no accounts. Feedback only reaches us when you send it yourself.</p>
+  </div>
+</section>
+
 <section class="section cta-final">
   <div class="wrap">
     <h2>Stay in control. Get started with TANUQ.</h2>
     <div class="cta">
-      <a class="btn btn-primary" href="#pricing">START ACQUISITION</a>
+      <a class="btn btn-primary" href="#acquire">START USING TANUQ</a>
       <a class="btn btn-secondary" href="#how">HOW IT WORKS</a>
     </div>
   </div>

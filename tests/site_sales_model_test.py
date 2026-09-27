@@ -1,16 +1,17 @@
-"""Sales-model contract for the public site (product-led / self-serve).
+"""Free-distribution contract for the public site (TANUQ FREE strategy).
 
 Contract under test:
-  Site → Ürünü anla → Değerini gör → Güven → Fiyat → Satın Al → Kur → Kullan
+  Site → Ürünü anla → Kanıt → ÜCRETSİZ (no price/payment) → Kur → Kullan
+  + GERİ BİLDİRİM (honest feedback call, no fake form/backend)
 
 Guards:
-- purchase CTA is the primary path (no demo-request / demo-drive CTA)
-- pricing block: single plan TANUQ PRO, $49 / ay, "Kur. Bağla. Yönet."
-- GitHub is OUT of the sales path (hero/nav/pricing/purchase)
+- FREE model: no $49, no $19, no subscription/checkout/purchase claims
+- primary CTA = start using TANUQ (no demo-request, no buy-now CTA)
+- GitHub is OUT of the page (hero/nav/pricing/feedback)
 - no build-vs-buy math and no unproven security claims
-- FAQ covers the required pre-purchase questions with real content
+- FAQ covers the required questions with real content (incl. free)
 - interactive-demo evidence (fixture + walkthrough) is preserved
-- no fake checkout/form is introduced
+- no fake checkout/form/back end is introduced
 
 Read-only static-content test (index.html + fixture file existence).
 No core files, no demo fixture content, no new dependencies.
@@ -58,52 +59,51 @@ def _github_anchor_hrefs(text):
     ]
 
 
-# ---- pricing ----
+# ---- pricing (FREE model) ----
 
-def test_pricing_block_single_plan_and_price():
+def test_pricing_block_is_free():
     html = _html()
     pricing = _segment(html, 'id="pricing"')
     assert "TANUQ PRO" in pricing
-    assert "$49" in pricing
-    assert "/ ay" in pricing
+    assert "ÜCRETSİZ" in pricing
     assert "Kur. Bağla. Yönet." in pricing
-    assert "EDİNİMİ BAŞLAT" in pricing
-    # commercial status is stated honestly (no checkout / license claims)
-    assert "lansman öncesi" in pricing
-    assert "açılmamıştır" in pricing
-    # no completed-packaging claim without a real subscription system
-    assert "tek plan" not in html.lower()
-    assert "tek paket" not in html.lower()
-    # single plan only: no invented tiers
-    for tier in ("Free", "Enterprise", "Team plan", "Business"):
+    assert "TANUQ ücretsizdir" in pricing
+    # FREE strategy: no price, no period, no payment language anywhere
+    for leftover in ("$49", "$19", "/ ay", "/ month", "lansman öncesi",
+                     "açılmamıştır", "abonelik fiyat"):
+        assert leftover not in html, f"sales leftover present: {leftover}"
+    # no invented tiers (only the free product package)
+    for tier in ("Enterprise", "Team plan", "Business"):
         assert tier not in pricing
 
 
-def test_pricing_checkout_is_honest():
+def test_no_payment_language_left():
     html = _html()
-    pricing = _segment(html, 'id="pricing"')
-    assert "ödeme ve lisanslama" in pricing.lower()
+    # no fake checkout machinery, no purchase claims
     assert "<form" not in html and "<input" not in html.lower()
-    # no unproven "buy now" claim while no payment flow exists
-    assert "TANUQ'YU AL" not in html
-    assert "satın al" not in html.lower()
+    assert "checkout" not in html.lower()
+    for claim in ("TANUQ'YU AL", "SATIN AL", "START ACQUISITION",
+                  "EDİNİMİ BAŞLAT", "PURCHASE"):
+        assert claim not in html, f"purchase/acquisition claim present: {claim}"
+    # free-truth statements exist
+    assert "TANUQ ücretsizdir" in html
+    assert "hesap yok, ödeme yok" in html
 
 
-# ---- purchase CTAs ----
+# ---- primary CTAs (free use) ----
 
-def test_primary_cta_starts_acquisition_not_fake_checkout():
+def test_primary_cta_starts_using_not_purchase():
     html = _html()
     hero = _hero(html)
     nav = _nav(html)
     final = _cta_final(html)
-    # every primary CTA starts the acquisition flow at the price block
-    assert 'href="#pricing">EDİNİMİ BAŞLAT' in hero
-    assert 'class="nav-buy" href="#pricing"' in nav
-    assert 'href="#pricing">EDİNİMİ BAŞLAT' in final
-    # the buy anchor exists for a future real checkout integration
-    assert 'id="buy"' in html
-    assert 'id="buy" href="#acquire"' in html
-    # acquire + pricing anchors exist for the self-serve flow
+    # every primary CTA starts the free install/use flow
+    assert 'href="#acquire">TANUQ\'U KULLAN' in hero
+    assert 'class="nav-buy" href="#acquire"' in nav
+    assert 'href="#acquire">TANUQ\'U KULLAN' in final
+    # free-flow anchors: get (pricing card) + acquire exist; buy anchor gone
+    assert 'id="get" href="#acquire"' in html
+    assert 'id="buy"' not in html
     assert 'id="acquire"' in html and 'id="pricing"' in html
 
 
@@ -208,14 +208,14 @@ def test_acquire_flow_has_five_steps():
     html = _html()
     acquire = _segment(html, 'id="acquire"')
     assert acquire.count('<span class="step-num">') == 5
-    assert "Edinim durumunu gör" in acquire
+    assert "TANUQ'u edin (ücretsiz)" in acquire
+    assert "hesap yok, ödeme yok, abonelik yok" in acquire
     assert "Agent'ını bağla" in acquire
-    assert "ödeme altyapısı bu aşamada bağlı değildir" in acquire
-    assert 'href="#try"' in acquire  # install commands stay technical, after purchase
+    assert 'href="#try"' in acquire  # install commands stay reachable
 
 
-def test_section_order_matches_sales_flow():
-    """Site → Ürünü anla → Kanıt → Ürün → Fiyat → Edinim → Teknik → SSS."""
+def test_section_order_matches_free_flow():
+    """Site → Kanıt → Ürün → ÜCRETSİZ → Edinim/Kur → Teknik → SSS → Geri bildirim."""
     html = _html()
     markers = [
         'class="section problem"',
@@ -226,12 +226,31 @@ def test_section_order_matches_sales_flow():
         'id="acquire"',
         'id="try"',
         'id="faq"',
+        'id="feedback"',
         'class="section cta-final"',
     ]
     positions = [html.index(m) for m in markers]
     assert positions == sorted(positions), list(zip(markers, positions))
     # no GitHub clone commands anywhere (owner decision: site V2)
     assert "git clone" not in html
+
+
+# ---- feedback (free strategy second pillar) ----
+
+def test_feedback_section_is_honest_without_fake_backend():
+    html = _html()
+    feedback = _segment(html, 'id="feedback"')
+    assert "GERİ BİLDİRİM" in feedback
+    # honest channel statement: no form on the page, no automatic collection
+    assert "form yok" in feedback
+    assert "otomatik toplamaz" in feedback
+    assert "izleme yok" in feedback
+    # the signals we want are present as prompts (not a required form)
+    for prompt in ("Hangi agent", "Hangi değişikliği", "ZORLANDINIZ",
+                   "tekrar çalıştırır"):
+        assert prompt in feedback, f"feedback prompt missing: {prompt}"
+    # no fake form / fake backend anywhere
+    assert "<form" not in html and "<input" not in html.lower()
 
 
 # ---- FAQ ----
@@ -249,6 +268,7 @@ def test_faq_covers_required_questions():
         "Verification ne yapar?",
         "Evidence neden önemlidir?",
         "Kurulum nasıl yapılır?",
+        "TANUQ ücretsiz mi?",
         "Nasıl edinilir?",
         "TANUQ'nun sınırları nelerdir?",
     )

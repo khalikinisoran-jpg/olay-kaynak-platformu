@@ -42,6 +42,11 @@ def _nav(page):
     return page[page.index("<nav"):page.index("</nav>")]
 
 
+def _segment(page, marker):
+    start = page.index(marker)
+    return page[start:page.index("</section>", start)]
+
+
 def _github_anchors(page):
     return [
         m.group(1)
@@ -65,6 +70,7 @@ SECTION_MARKERS = [
     'id="acquire"',
     'id="try"',
     'id="faq"',
+    'id="feedback"',
     'class="section cta-final"',
 ]
 
@@ -83,6 +89,10 @@ FORBIDDEN_CLAIMS = (
     "tam koruma", "anında erişim", "5 dakika", "daha ucuz", "tasarruf",
     "build vs buy", "kendiniz geliştirm", "çalışabilecek bağımsız",
     "satın al", "tanuq'yu al",
+    # old pricing / sales model leftovers (FREE strategy)
+    "$49", "$19", "/ month", "/ ay", "one-time", "tek seferlik",
+    "launch pricing", "lansman öncesi", "acquisition", "checkout",
+    "start acquisition",
 )
 
 DEMO_ERROR_STRINGS = (
@@ -105,7 +115,7 @@ PROOF_VALUES = (
 
 FAKE_PURCHASE_LABELS = (
     "BUY NOW", "PURCHASE", "GET IT NOW", "SATIN AL", "TANUQ'YU AL",
-    "HEMEN SATIN AL",
+    "HEMEN SATIN AL", "START ACQUISITION", "EDİNİMİ BAŞLAT",
 )
 
 
@@ -118,8 +128,10 @@ def test_default_document_is_english():
     assert "An independent governance layer" in en  # hero H1
     assert "governance layer" in en  # meta description
     # Turkish-only UI copy must not leak into the English default
-    for tr_only in ("EDİNİMİ BAŞLAT", "Nasıl Çalışır", "Kontrol sizde kalsın"):
+    for tr_only in ("TANUQ ücretsizdir", "Nasıl Çalışır", "Kontrol sizde kalsın"):
         assert tr_only not in en, f"Turkish copy leaked into EN: {tr_only}"
+    # free message present on the EN default
+    assert "TANUQ is free to use" in en
 
 
 def test_turkish_route_exists_and_is_turkish():
@@ -129,8 +141,8 @@ def test_turkish_route_exists_and_is_turkish():
     # Turkish content preserved (not lost in the EN default switch)
     assert "bağımsız yönetim katmanı" in tr
     assert "son karar kimde" in tr
-    assert "Kurulum ve kullanım akışı" in tr
-    assert "Edinmeden önce" in tr
+    assert "TANUQ'u kurun ve kullanmaya başlayın" in tr
+    assert "Kullanmadan önce" in tr
     # subpath-relative asset resolution (/tr/ directory index)
     assert 'href="../style.css"' in tr
     assert 'src="../demo.js"' in tr
@@ -183,8 +195,9 @@ def test_forbidden_claims_zero_in_both_languages():
     for page in (_en(), _tr()):
         low = page.lower()
         for phrase in FORBIDDEN_CLAIMS:
-            # word-boundary match so "other agent" != forbidden "her agent"
-            pattern = r"\b" + re.escape(phrase) + r"\b"
+            # word-edge match so "other agent" != forbidden "her agent",
+            # and so "$49" / "/ month" (non-word edges) still match
+            pattern = r"(?<!\w)" + re.escape(phrase) + r"(?!\w)"
             assert not re.search(pattern, low), \
                 f"forbidden claim present: {phrase}"
 
@@ -199,20 +212,26 @@ def test_demo_error_strings_zero_in_both_languages():
             assert text not in demo_js, f"demo error string in demo.js: {text}"
 
 
-# ---- 8: pricing truth in both ----
+# ---- 8: FREE pricing truth in both ----
 
 def test_pricing_truth_in_both_languages():
     en, tr = _en(), _tr()
-    assert "$49" in en and "/ month" in en
-    assert "launch pricing" in en
-    assert "Payment and licensing infrastructure is not yet live" in en
-    assert "$49" in tr and "/ ay" in tr
-    assert "lansman öncesi" in tr
-    assert "açılmamıştır" in tr
-    # no fake checkout machinery in either page
+    # EN free surface
+    assert "FREE" in _segment(en, 'id="pricing"')
+    assert "free to use" in en
+    assert "Future pricing has not been decided" in en
+    # TR free surface
+    assert "ÜCRETSİZ" in _segment(tr, 'id="pricing"')
+    assert "TANUQ ücretsizdir" in tr
+    assert "fiyatlandırma henüz belirlenmedi" in tr
+    # old price model and checkout language completely gone
     for page in (en, tr):
-        assert "<form" not in page.lower()
-        assert "<input" not in page.lower()
+        low = page.lower()
+        for leftover in ("$49", "$19", "/ month", "/ ay", "checkout",
+                         "purchase", "start acquisition", "launch pricing"):
+            assert leftover not in low, f"sales leftover present: {leftover}"
+        assert "<form" not in low
+        assert "<input" not in low
 
 
 # ---- 9: no fake purchase CTA ----
@@ -226,9 +245,11 @@ def test_no_fake_purchase_cta_in_both_languages():
         for text in anchor_texts:
             up = text.upper()
             assert not any(w in up for w in ("BUY", "PURCHASE", "SATIN")), text
-    # honest primary CTA exists in both
-    assert 'href="#pricing">START ACQUISITION' in en
-    assert 'href="#pricing">EDİNİMİ BAŞLAT' in tr
+    # honest primary CTA exists in both (start using, not buying)
+    assert 'href="#acquire">START USING TANUQ' in en
+    assert 'href="#acquire">TANUQ\'U KULLAN' in tr
+    assert 'id="get" href="#acquire"' in en
+    assert 'id="get" href="#acquire"' in tr
 
 
 # ---- proof parity: real capture values in both ----

@@ -67,8 +67,8 @@ def test_landing_ctas_are_buy_and_how_not_demo():
     start = html.find('<section class="hero">')
     end = html.find("</section>", start)
     hero = html[start:end]
-    # primary hero CTA = start acquisition (no fake purchase claim)
-    assert 'href="#pricing">EDİNİMİ BAŞLAT' in hero
+    # primary hero CTA = start using TANUQ (FREE model; no purchase CTA)
+    assert 'href="#acquire">TANUQ\'U KULLAN' in hero
     assert 'href="#how">NASIL ÇALIŞIR' in hero
     assert "DEMO" not in hero.upper()
     # demo-request / demo-drive CTAs are gone from the page
@@ -76,8 +76,10 @@ def test_landing_ctas_are_buy_and_how_not_demo():
     assert "TANUQ'YU DENEYİN" not in html
     assert "TANUQ'YU ŞİMDİ DENE" not in html
     assert 'id="demo"' not in html
-    # no unproven "buy now" claim while checkout is not connected
+    # no purchase / old acquisition claims (FREE distribution)
     assert "TANUQ'YU AL" not in html
+    assert "EDİNİMİ BAŞLAT" not in html
+    assert "$49" not in html and "$19" not in html
 
 
 def _github_anchor_hrefs(html):
@@ -226,9 +228,9 @@ def test_nav_links_present():
     assert 'href="#how"' in nav
     assert 'href="#demo-walkthrough"' in nav
     assert 'href="#pricing"' in nav
-    assert 'class="nav-buy" href="#pricing"' in nav
-    # sales-flow anchors resolve on the page
-    for anchor in ("#pricing", "#buy", "#acquire", "#faq"):
+    assert 'class="nav-buy" href="#acquire"' in nav
+    # free-flow anchors resolve on the page
+    for anchor in ("#pricing", "#acquire", "#faq", "#feedback"):
         assert 'id="' + anchor[1:] + '"' in html or anchor in html
     # no GitHub anchor anywhere (git clone command text is not a link)
     assert _github_anchor_hrefs(html) == []

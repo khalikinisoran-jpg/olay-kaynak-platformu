@@ -19,8 +19,8 @@
       <a class="lang-switch" href="../index.html" hreflang="en">EN</a>
       <a href="#how">Nasıl Çalışır</a>
       <a href="#demo-walkthrough">Gerçek Kanıt</a>
-      <a href="#pricing">Fiyat</a>
-      <a class="nav-buy" href="#pricing">Edinimi Başlat</a>
+      <a href="#pricing">Ücretsiz</a>
+      <a class="nav-buy" href="#acquire">Kullanmaya Başla</a>
     </nav>
   </div>
 </header>
@@ -30,11 +30,11 @@
     <div class="hero-copy">
       <h1>AI coding agent'ınız için<br><span class="hero-accent">bağımsız yönetim katmanı</span></h1>
       <div class="cta">
-        <a class="btn btn-primary" href="#pricing">EDİNİMİ BAŞLAT</a>
+        <a class="btn btn-primary" href="#acquire">TANUQ'U KULLAN</a>
         <a class="btn btn-secondary" href="#how">NASIL ÇALIŞIR</a>
       </div>
       <p class="hero-kicker">AI coding agent · file-change control</p>
-      <p class="lede">Ajan değişikliği önerir. TANUQ riski belirler, gerektiğinde sizden onay alır, uygular, doğrular ve kanıtlar.</p>
+      <p class="lede">Ajan değişikliği önerir. TANUQ riski belirler, gerektiğinde sizden onay alır, uygular, doğrular ve kanıtlar. TANUQ ücretsizdir.</p>
       <ul class="trust-strip" aria-label="Doğrulanabilir prensipler">
         <li>Content-bound approval</li>
         <li>Single-use authorization</li>
@@ -276,26 +276,25 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
 <section id="pricing" class="section pricing alt">
   <div class="wrap wrap-narrow">
     <p class="kicker">FİYAT</p>
-    <h2>Net fiyat.</h2>
-    <p class="section-lede">TANUQ PRO, TANUQ'nun mevcut ürün paketidir.</p>
+    <h2>Ücretsiz.</h2>
+    <p class="section-lede">TANUQ ücretsizdir. Hesap yok, ödeme yok, abonelik yok.</p>
     <div class="price-card">
       <p class="price-name">TANUQ PRO</p>
-      <p class="price-amount">$49 <span>/ ay</span></p>
+      <p class="price-amount">ÜCRETSİZ</p>
       <p class="price-tag">Kur. Bağla. Yönet.</p>
-      <a class="btn btn-primary" id="buy" href="#acquire">EDİNİMİ BAŞLAT</a>
+      <a class="btn btn-primary" id="get" href="#acquire">TANUQ'U KULLAN</a>
     </div>
-    <p class="small price-note">$49/ay lansman öncesi fiyatıdır. Ödeme ve lisanslama altyapısı henüz açılmamıştır.</p>
   </div>
 </section>
 
 <section id="acquire" class="section acquire">
   <div class="wrap">
-    <p class="kicker">EDİNME VE KURULUM</p>
-    <h2>Kurulum ve kullanım akışı.</h2>
-    <p class="section-lede">Ne yapacağınız baştan belli: edinim durumunu görür, kurar, agent'ını bağlar, yönetir, kullanırsınız.</p>
+    <p class="kicker">TANUQ'U EDİN · ÜCRETSİZ</p>
+    <h2>TANUQ'u kurun ve kullanmaya başlayın.</h2>
+    <p class="section-lede">TANUQ ücretsizdir. Aşağıdaki akış yeterli: kurun, agent'ınızı bağlayın, değişikliklerinizi yönetin, gerçek ortamınızda kullanın.</p>
     <div class="steps">
-      <div class="step"><span class="step-num">1</span><strong>Edinim durumunu gör</strong><p>Fiyat bölümündeki paket ve statüyü görün: ödeme altyapısı bu aşamada bağlı değildir.</p></div>
-      <div class="step"><span class="step-num">2</span><strong>İndir ve kur</strong><p>Python 3.12+ gerekir. Kurulum komutları teknik bölümde (Local Try) verilmiştir.</p></div>
+      <div class="step"><span class="step-num">1</span><strong>TANUQ'u edin (ücretsiz)</strong><p>TANUQ ücretsizdir: hesap yok, ödeme yok, abonelik yok.</p></div>
+      <div class="step"><span class="step-num">2</span><strong>Kur</strong><p>Python 3.12+ gerekir. Kurulum komutları aşağıdaki Kurulum (Local Try) bölümünde.</p></div>
       <div class="step"><span class="step-num">3</span><strong>Agent'ını bağla</strong><p>Claude Code resmi adaptörü veya model seçimine bağlanmamış genel <code>--stdin-json</code> kanalı.</p></div>
       <div class="step"><span class="step-num">4</span><strong>Yönet</strong><p><code>tanuq init</code> ile çalışma alanını başlatın, <code>tanuq ui</code> ile dashboard'u açın; riskli değişiklikler onayınıza gelir.</p></div>
       <div class="step"><span class="step-num">5</span><strong>Kullan</strong><p>Günlük akışınız bu: öneri → risk → onay → uygulama → doğrulama → kanıt.</p></div>
@@ -308,10 +307,10 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
 
 <section id="try" class="section try alt">
   <div class="wrap">
-    <p class="kicker">TEKNİK DOĞRULAMA · LOCAL TRY</p>
+    <p class="kicker">KURULUM · LOCAL TRY</p>
     <h2>Kendi makinenizde gerçek runtime'ı çalıştırın.</h2>
-    <p>Tarayıcıdaki kanıt recorded playback'tir. Gerçek TANUQ runtime'ını kendi bilgisayarınızda çalıştırırsınız: geçici çalışma klasöründe yönetilen akışı uçtan uca koşar; bitince kendini temizler. Bu bölüm teknik doğrulama içindir — ana edinim akışı yukarıdaki fiyat ve edinim bölümlerindedir.</p>
-    <p class="small">Kaynak erişimi gerekir: TANUQ şu anda kaynak üzerinden kurulur. Dağıtım paketi henüz yayınlanmamıştır; resmi indirme bağlantısı bu sayfada sunulmaz.</p>
+    <p>Tarayıcıdaki kanıt recorded playback'tir. TANUQ ücretsizdir: burada TANUQ'u kurar ve gerçek runtime'ı kendi bilgisayarınızda çalıştırırsınız — geçici çalışma klasöründe yönetilen akışı uçtan uca koşar; bitince kendini temizler.</p>
+    <p class="small">TANUQ bugün kaynak üzerinden dağıtılır. Resmi dağıtım paketi henüz yayınlanmadı; kurulum için gereken her şey bu sayfadadır.</p>
     <h3>Yerel kurulum (Windows)</h3>
 <pre>pip install -e .
 powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
@@ -326,7 +325,7 @@ bash site/try/try_tanuq.sh</pre>
 <section id="faq" class="section faq">
   <div class="wrap wrap-narrow">
     <p class="kicker">SIKÇA SORULANLAR</p>
-    <h2>Edinmeden önce</h2>
+    <h2>Kullanmadan önce</h2>
     <div class="faq-list">
       <details class="faq-item">
         <summary>TANUQ nedir?</summary>
@@ -362,11 +361,15 @@ bash site/try/try_tanuq.sh</pre>
       </details>
       <details class="faq-item">
         <summary>Kurulum nasıl yapılır?</summary>
-        <p>Python 3.12+ gerekir. Yerel kurulum komutları <a href="#try">Teknik Doğrulama</a> bölümünde verilmiştir; dağıtım paketi henüz yayınlanmamıştır.</p>
+        <p>Python 3.12+ gerekir. Yerel kurulum komutları <a href="#try">Kurulum</a> bölümünde verilmiştir; dağıtım paketi henüz yayınlanmamıştır.</p>
+      </details>
+      <details class="faq-item">
+        <summary>TANUQ ücretsiz mi?</summary>
+        <p>Evet — TANUQ şu anda ücretsizdir. Gelecekteki fiyatlandırma henüz belirlenmedi.</p>
       </details>
       <details class="faq-item">
         <summary>Nasıl edinilir?</summary>
-        <p>Fiyat bölümündeki <strong>EDİNİMİ BAŞLAT</strong> adımından edinim akışına geçersiniz: paket ve statü açık, kurulum adımları teknik bölümde. Sayfa üzerinden gerçek bir ödeme işlemi başlatılmaz — ödeme ve lisans altyapısı bu aşamada bağlı değildir.</p>
+        <p>TANUQ ücretsizdir. Bu sayfadan kurulum yapın — <a href="#try">Kurulum</a> bölümüne bakın. Hesap yok, ödeme yok.</p>
       </details>
       <details class="faq-item">
         <summary>TANUQ'nun sınırları nelerdir?</summary>
@@ -376,11 +379,26 @@ bash site/try/try_tanuq.sh</pre>
   </div>
 </section>
 
+<section id="feedback" class="section feedback alt">
+  <div class="wrap">
+    <p class="kicker">GERİ BİLDİRİM</p>
+    <h2>TANUQ gerçekte nasıl çalıştı? Bize anlatın.</h2>
+    <p class="section-lede">TANUQ nerede gerçekten işe yaradığını öğrenirken ücretsizdir. Bu sayfada henüz form yok: aşağıdaki soruları kopyalayın ve projenin herkese açık repository konuşması üzerinden gönderin. Bu sayfa hiçbir veriyi otomatik toplamaz.</p>
+    <div class="cards">
+      <div class="card"><h3>NEREDE / HANGİ AGENT</h3><p>TANUQ'u nerede çalıştırdınız? Hangi agent veya modeli bağladınız?</p></div>
+      <div class="card"><h3>NEYİ YÖNETTİ</h3><p>Hangi değişikliği yönetmek istediniz — risk, onay ve doğrulamada ne oldu?</p></div>
+      <div class="card"><h3>NEREDE ZORLANDINIZ</h3><p>Kurulum, ayar, agent bağlantısı: neyi yavaşlatan, ne eksikti?</p></div>
+      <div class="card"><h3>TEKRAR KULLANIR MISINIZ</h3><p>Sonraki değişikliğinizde TANUQ'u tekrar çalıştırır mıydınız? Önerir miydiniz — neden?</p></div>
+    </div>
+    <p class="small">Hiçbir veriyi otomatik toplamıyoruz — izleme yok, hesap yok. Geri bildirim yalnızca siz gönderdiğinizde bize ulaşır.</p>
+  </div>
+</section>
+
 <section class="section cta-final">
   <div class="wrap">
     <h2>Kontrol sizde kalsın. TANUQ ile başlayın.</h2>
     <div class="cta">
-      <a class="btn btn-primary" href="#pricing">EDİNİMİ BAŞLAT</a>
+      <a class="btn btn-primary" href="#acquire">TANUQ'U KULLAN</a>
       <a class="btn btn-secondary" href="#how">NASIL ÇALIŞIR</a>
     </div>
   </div>
