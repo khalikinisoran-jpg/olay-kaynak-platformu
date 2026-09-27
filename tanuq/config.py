@@ -337,3 +337,94 @@ def list_registered_workspaces():
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Anonymous usage telemetry preference (user level) - FAZ 2.1
+# ---------------------------------------------------------------------------
+# This is a USER PREFERENCE, never a governance knob: it can only stop a
+# future telemetry transport from running. It cannot relax any security
+# rule (risk / policy / approval / apply / verify are untouched here).
+
+USAGE_ENV_VAR = "TANUQ_USAGE"
+USAGE_ENDPOINT_ENV_VAR = "TANUQ_USAGE_ENDPOINT"
+USER_CONFIG_FILE_NAME = "config.json"  # at ~/.tanuq/ (NOT the workspace one)
+_USAGE_TRUE = frozenset({"on", "true", "1", "yes"})
+_USAGE_FALSE = frozenset({"off", "false", "0", "no"})
+
+
+def user_config_path() -> Path:
+    """User-level preference file: ``~/.tanuq/config.json``.
+
+    Deliberately NOT the workspace config: one preference must apply to
+    every workspace of this user.
+    """
+    return tanuq_home() / USER_CONFIG_FILE_NAME
+
+
+def _read_user_config(config_path=None) -> dict:
+    path = Path(config_path) if config_path is not None else user_config_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def read_usage_remote_preference(env=None, config_path=None):
+    """Resolve the telemetry preference: valid ENV > user config > ON.
+
+    Returns ``(enabled, source)`` with ``source`` in
+    ``{"env", "config", "default"}``.
+
+    Deterministic contract (FAZ 2.1):
+    - a valid env value (on/true/1/yes | off/false/0/no, case-insensitive,
+      trimmed) wins over everything;
+    - an INVALID env value is ignored (treated as unset) so a typo can
+      never silently override an explicit user config choice;
+    - the config file is honored only when ``usage_remote`` is a real
+      boolean; corrupt/missing config falls back to the default;
+    - no setting at all -> DEFAULT = ON.
+    """
+    environ = os.environ if env is None else env
+    raw = environ.get(USAGE_ENV_VAR)
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in _USAGE_TRUE:
+            return True, "env"
+        if value in _USAGE_FALSE:
+            return False, "env"
+        # invalid value: fall through (deterministic)
+    flag = _read_user_config(config_path).get("usage_remote")
+    if isinstance(flag, bool):
+        return flag, "config"
+    return True, "default"
+
+
+def is_usage_endpoint_configured(env=None, config_path=None) -> bool:
+    """Presence check only — the value is never returned or printed."""
+    environ = os.environ if env is None else env
+    raw = environ.get(USAGE_ENDPOINT_ENV_VAR)
+    if isinstance(raw, str) and raw.strip():
+        return True
+    endpoint = _read_user_config(config_path).get("usage_endpoint")
+    return isinstance(endpoint, str) and bool(endpoint.strip())
+
+
+def write_usage_remote_preference(enabled: bool, config_path=None):
+    """Persist the user-level preference (atomic read-modify-write).
+
+    Creates ``~/.tanuq/config.json`` on first explicit write; preserves
+    unrelated existing keys; stores ONLY a boolean.
+    """
+    path = Path(config_path) if config_path is not None else user_config_path()
+    data = _read_user_config(path)
+    data["usage_remote"] = bool(enabled)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+    return bool(enabled), "config"

@@ -746,6 +746,68 @@ def cmd_ui(args) -> int:
     return 0
 
 
+def cmd_usage_on(args) -> int:
+    """Persist the user preference: remote usage telemetry = ON."""
+    from tanuq.config import write_usage_remote_preference
+    try:
+        enabled, source = write_usage_remote_preference(True)
+    except Exception:
+        print("Tanuq: usage preference could not be written")
+        return 1
+    print(f"usage remote: {'ON' if enabled else 'OFF'} (source: {source})")
+    print("network: none in this build (remote transport = FAZ 2.2)")
+    return 0
+
+
+def cmd_usage_off(args) -> int:
+    """Persist the user preference: remote usage telemetry = OFF."""
+    from tanuq.config import write_usage_remote_preference
+    try:
+        enabled, source = write_usage_remote_preference(False)
+    except Exception:
+        print("Tanuq: usage preference could not be written")
+        return 1
+    print(f"usage remote: {'ON' if enabled else 'OFF'} (source: {source})")
+    print("network: none in this build (remote transport = FAZ 2.2)")
+    return 0
+
+
+def cmd_usage_status(args) -> int:
+    """Show the telemetry preference: counts and flags only.
+
+    Never prints paths, secrets, workspace identity, fingerprints or
+    any other user data (FAZ 2.1 privacy contract).
+    """
+    from tanuq.config import (
+        is_usage_endpoint_configured,
+        read_usage_remote_preference,
+        tanuq_home,
+    )
+    enabled, source = read_usage_remote_preference()
+    endpoint = is_usage_endpoint_configured()
+    print(f"usage remote: {'ON' if enabled else 'OFF'} (source: {source})")
+    print(f"endpoint configured: {'yes' if endpoint else 'no'}")
+    recorded = 0
+    state_saved = False
+    try:
+        usage_dir = tanuq_home() / "usage"
+        signals = usage_dir / "usage_signals.jsonl"
+        if signals.exists():
+            with open(signals, encoding="utf-8") as handle:
+                for line in handle:
+                    if line.strip():
+                        recorded += 1
+        state_saved = (usage_dir / "state.json").exists()
+    except Exception:
+        recorded, state_saved = 0, False
+    print(
+        f"local signals recorded: {recorded} "
+        f"(state: {'saved' if state_saved else 'absent'})"
+    )
+    print("network: none in this build (remote transport = FAZ 2.2)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tanuq",
@@ -863,6 +925,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_ui.add_argument("--workspace", default=None)
     p_ui.add_argument("--port", type=int, default=8770)
     p_ui.set_defaults(func=cmd_ui)
+
+    p_usage = sub.add_parser(
+        "usage",
+        help="Anonymous usage telemetry preference (no network in this build)",
+    )
+    usage_sub = p_usage.add_subparsers(dest="usage_command")
+    p_usage_on = usage_sub.add_parser(
+        "on", help="Allow future anonymous usage telemetry (default ON)"
+    )
+    p_usage_on.set_defaults(func=cmd_usage_on)
+    p_usage_off = usage_sub.add_parser(
+        "off", help="Disallow future anonymous usage telemetry"
+    )
+    p_usage_off.set_defaults(func=cmd_usage_off)
+    p_usage_status = usage_sub.add_parser(
+        "status", help="Show telemetry preference (no user data printed)"
+    )
+    p_usage_status.set_defaults(func=cmd_usage_status)
+    p_usage.set_defaults(func=cmd_usage_status)
 
     return parser
 
