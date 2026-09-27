@@ -241,16 +241,21 @@ def test_feedback_section_is_honest_without_fake_backend():
     html = _html()
     feedback = _segment(html, 'id="feedback"')
     assert "GERİ BİLDİRİM" in feedback
-    # honest channel statement: no form on the page, no automatic collection
-    assert "form yok" in feedback
+    assert "TANUQ'u denedin mi?" in feedback  # net çağrı (§3/§7)
+    # honest channel statement: no form / no public channel yet,
+    # no automatic collection (privacy truth)
+    assert "geri bildirim formu veya herkese açık iletişim kanalı yok" in feedback
     assert "otomatik toplamaz" in feedback
     assert "izleme yok" in feedback
-    # the signals we want are present as prompts (not a required form)
-    for prompt in ("Hangi agent", "Hangi değişikliği", "ZORLANDINIZ",
-                   "tekrar çalıştırır"):
+    # the five signals as short prompts (not a required form)
+    for prompt in ("Hangi agent", "Hangi değişikliği", "ZORLANDIN",
+                   "tekrar kullanır mısın"):
         assert prompt in feedback, f"feedback prompt missing: {prompt}"
-    # no fake form / fake backend anywhere
+    # no fake form / fake backend / invented channel anywhere
     assert "<form" not in html and "<input" not in html.lower()
+    assert "mailto:" not in html.lower()
+    # no link inside the feedback section: no real channel = no CTA target
+    assert "<a " not in feedback
 
 
 # ---- FAQ ----

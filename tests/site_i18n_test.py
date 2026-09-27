@@ -279,3 +279,30 @@ def test_walkthrough_assets_exist_for_both_languages():
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert fixture["source"]["type"] == "recorded_real_run"
     assert fixture["scenario"]["risk"] == "HIGH"
+
+
+# ---- feedback channel: honest in both languages, no invented channel ----
+
+def test_feedback_channel_is_honest_in_both_languages():
+    en, tr = _en(), _tr()
+    fe = _segment(en, 'id="feedback"')
+    ft = _segment(tr, 'id="feedback"')
+    # required call-to-action copy (§3/§7), per language
+    assert "Tried TANUQ? Tell us what happened." in fe
+    assert "TANUQ'u denedin mi?" in ft
+    # five prompts in both languages
+    assert fe.count("<h3>") == 5
+    assert ft.count("<h3>") == 5
+    # privacy honesty preserved
+    assert "no tracking" in fe and "no analytics" in fe
+    assert "izleme yok" in ft and "analytics yok" in ft
+    # NO invented channel: no mailto, no link inside the feedback block,
+    # no dead pointer to an inaccessible repository
+    for page, block in ((en, fe), (tr, ft)):
+        assert "mailto:" not in page.lower()
+        assert "<a " not in block, "feedback section must not link a fake channel"
+        assert "repository conversation" not in block
+    # no form / input anywhere (no fake backend)
+    for page in (en, tr):
+        assert "<form" not in page.lower()
+        assert "<input" not in page.lower()
