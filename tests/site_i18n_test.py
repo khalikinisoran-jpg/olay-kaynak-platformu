@@ -92,7 +92,7 @@ FORBIDDEN_CLAIMS = (
     # old pricing / sales model leftovers (FREE strategy)
     "$49", "$19", "/ month", "/ ay", "one-time", "tek seferlik",
     "launch pricing", "lansman öncesi", "acquisition", "checkout",
-    "start acquisition",
+    "start acquisition", "purchase",
 )
 
 DEMO_ERROR_STRINGS = (
@@ -290,19 +290,32 @@ def test_feedback_channel_is_honest_in_both_languages():
     # required call-to-action copy (§3/§7), per language
     assert "Tried TANUQ? Tell us what happened." in fe
     assert "TANUQ'u denedin mi?" in ft
+    assert "Send your experience directly to the TANUQ team" in fe
+    assert "Deneyimini doğrudan TANUQ ekibine gönder" in ft
     # five prompts in both languages
     assert fe.count("<h3>") == 5
     assert ft.count("<h3>") == 5
-    # privacy honesty preserved
+    # REAL channel wired exactly once per page, inside the feedback block
+    assert en.count("mailto:feedback@tanuq.net") == 1
+    assert tr.count("mailto:feedback@tanuq.net") == 1
+    assert fe.count("mailto:feedback@tanuq.net") == 1
+    assert ft.count("mailto:feedback@tanuq.net") == 1
+    # encoded subject + body (spaces/newlines/turkish chars safe)
+    assert "subject=TANUQ%20Feedback" in fe
+    assert "subject=TANUQ%20Geri%20Bildirim" in ft
+    assert "body=" in fe and "%0A" in fe
+    assert "body=" in ft and "%0A" in ft
+    assert "SEND FEEDBACK" in fe
+    assert "GERİ BİLDİRİM GÖNDER" in ft
+    # old "no channel yet" copy is gone
+    assert "public contact channel on this page yet" not in en
+    assert "herkese açık iletişim kanalı yok" not in tr
+    # privacy honesty preserved; no auto-collection claim
     assert "no tracking" in fe and "no analytics" in fe
     assert "izleme yok" in ft and "analytics yok" in ft
-    # NO invented channel: no mailto, no link inside the feedback block,
-    # no dead pointer to an inaccessible repository
-    for page, block in ((en, fe), (tr, ft)):
-        assert "mailto:" not in page.lower()
-        assert "<a " not in block, "feedback section must not link a fake channel"
-        assert "repository conversation" not in block
-    # no form / input anywhere (no fake backend)
     for page in (en, tr):
-        assert "<form" not in page.lower()
-        assert "<input" not in page.lower()
+        low = page.lower()
+        assert "automatically collected" not in low
+        # no fake form/backend; GitHub stays out of the public surface
+        assert "<form" not in low and "<input" not in low
+        assert "github" not in low

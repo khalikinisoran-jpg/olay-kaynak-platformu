@@ -237,25 +237,28 @@ def test_section_order_matches_free_flow():
 
 # ---- feedback (free strategy second pillar) ----
 
-def test_feedback_section_is_honest_without_fake_backend():
+def test_feedback_section_has_real_email_channel():
     html = _html()
     feedback = _segment(html, 'id="feedback"')
     assert "GERİ BİLDİRİM" in feedback
     assert "TANUQ'u denedin mi?" in feedback  # net çağrı (§3/§7)
-    # honest channel statement: no form / no public channel yet,
-    # no automatic collection (privacy truth)
-    assert "geri bildirim formu veya herkese açık iletişim kanalı yok" in feedback
+    assert "Deneyimini doğrudan TANUQ ekibine gönder" in feedback
+    # REAL channel: owner-created mail account, wired exactly once
+    assert html.count("mailto:feedback@tanuq.net") == 1
+    assert feedback.count("mailto:feedback@tanuq.net") == 1
+    # subject + body correctly percent-encoded (spaces/newlines/tr chars)
+    assert "subject=TANUQ%20Geri%20Bildirim" in feedback
+    assert "body=" in feedback and "%0A" in feedback
+    # honesty preserved: user sends the mail themselves, no auto-collect
     assert "otomatik toplamaz" in feedback
     assert "izleme yok" in feedback
     # the five signals as short prompts (not a required form)
     for prompt in ("Hangi agent", "Hangi değişikliği", "ZORLANDIN",
                    "tekrar kullanır mısın"):
         assert prompt in feedback, f"feedback prompt missing: {prompt}"
-    # no fake form / fake backend / invented channel anywhere
+    # no fake form / fake backend / github redirect anywhere
     assert "<form" not in html and "<input" not in html.lower()
-    assert "mailto:" not in html.lower()
-    # no link inside the feedback section: no real channel = no CTA target
-    assert "<a " not in feedback
+    assert "github" not in html.lower()
 
 
 # ---- FAQ ----
