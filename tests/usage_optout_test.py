@@ -155,11 +155,24 @@ def test_no_network_calls_anywhere(tmp_path, monkeypatch, capsys):
     tconfig.write_usage_remote_preference(True, cfg)
     tconfig.is_usage_endpoint_configured(config_path=cfg)
 
+    # ISOLATION: the CLI commands resolve ~/.tanuq via Path.home()
+    # (USERPROFILE on Windows / HOME on POSIX). Point both into tmp so
+    # `usage on/off` can never write the real user config.
+    home = tmp_path / "isolated-home"
+    home.mkdir()
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("HOME", str(home))
+
     args = types.SimpleNamespace()
     from tanuq.cli import cmd_usage_off, cmd_usage_on, cmd_usage_status
     assert cmd_usage_on(args) == 0
     assert cmd_usage_off(args) == 0
     assert cmd_usage_status(args) == 0
+    # proof: the write landed inside the isolated home only
+    written = json.loads(
+        (home / ".tanuq" / "config.json").read_text(encoding="utf-8")
+    )
+    assert written == {"usage_remote": False}
     out = capsys.readouterr()
     assert out.err == ""
 
