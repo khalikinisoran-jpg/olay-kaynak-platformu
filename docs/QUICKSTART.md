@@ -11,19 +11,37 @@ tanuq init
 # 3. Check protection
 tanuq status
 
-# 4. Submit a change (agent hook mode)
-echo '{"path": "notes.txt", "old_content": "", "new_content": "hi", "reason": "demo"}' \
+# 4. Submit a NEW-file proposal (agent hook mode; action=create is HIGH risk)
+echo '{"path": "notes.txt", "action": "create", "old_content": "", "new_content": "hi", "reason": "demo"}' \
   | tanuq propose --stdin-json
+# propose prints this proposal's Fingerprint (e.g. "Fingerprint: 1a2b3c4d5e6f")
 
-# 4b. Creating a NEW file is HIGH risk - human approval is required first:
+# 4b. action=create is always HIGH risk - human approval is required first.
+#     The approval is single-use and bound to the SAME fingerprint from step 4:
 tanuq approve
+# exact binding (optional): tanuq approve --fingerprint <fingerprint-from-step-4>
 
-# 5. Apply it
+# 5. Execute the SAME pending proposal; the single-use approval is consumed here:
 tanuq execute
+# same binding (optional): tanuq execute --fingerprint <fingerprint-from-step-4>
 
 # 6. Look at what happened
 tanuq history
 tanuq verify
+```
+
+Action choices: `create` targets a NEW file and requires `old_content`
+to be exactly `""`; new-file creation is always HIGH risk, so steps
+4 → 4b → 5 above run against the SAME proposal and its single
+fingerprint. `modify` targets an EXISTING file and `old_content` must
+match the current file content (a mismatch is warned at propose time
+and DENIED as stale at execute time; a target that does not exist yet
+is DENIED at validation). Explicit `modify` example, once `notes.txt`
+exists with content `hi`:
+
+```bash
+echo '{"path": "notes.txt", "action": "modify", "old_content": "hi", "new_content": "hello", "reason": "demo update"}' \
+  | tanuq propose --stdin-json
 ```
 
 Risky changes (HIGH/CRITICAL — for example anything containing
