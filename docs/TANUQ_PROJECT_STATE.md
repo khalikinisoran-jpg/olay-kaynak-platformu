@@ -18,7 +18,7 @@
 > `TANUQ — SESSION RESYNC` (format at the bottom), then pick the next
 > valid action.
 
-LAST UPDATED: 2026-09-26
+LAST UPDATED: 2026-09-27
 
 ---
 
@@ -33,14 +33,18 @@ sequential behind them. FAZ 6-lite A/B (resume + cross-source correlation) are *
 ADR). Current phase: **early-adopter productization** —
 awaiting real-usage evidence and operator decisions (Claude access).
 
-REPOSITORY CHECKPOINT (2026-09-26): **HEAD == origin/main ==
-2222b07ef9b4fb6ba690c49855d695e31b25afc7** —
-`feat(site): add English default and Turkish /tr public site`
-(pushed, fast-forward, hosted CI GREEN 4/4 = run 36234640245).
-Public-site release chain: `508382b` (polish) → `45b2296` (finalize) →
-`2222b07` (EN default + TR `/tr/`). **LIVE tanuq.net now serves this
-exact build — DEPLOY PASS / LIVE VERIFIED (2026-09-26)**; see
-PUBLIC SITE CHECKPOINT for byte-level identity.
+REPOSITORY CHECKPOINT (2026-09-27): **HEAD == origin/main ==
+cf638b1bce6200f6f911ed8d0ff9aa8a5bf8f2a3** —
+`test(usage): isolate CLI usage tests from real home`
+(pushed, fast-forward, hosted CI GREEN 4/4 = run 36371113909).
+FREE release chain (2026-09-27): `b5841f9` (FREE distribution strategy) →
+`7d7ee8a`/`e7c1174` (feedback prompts + real mailto channel) →
+`ed1c6c5` (FAZ 1 local usage signal) → `c48e786` (FAZ 2.1 opt-out +
+FAZ 2.2 anonymous remote transport) → `cf638b1` (test isolation).
+**CURRENT STRATEGY: FREE distribution → real usage → real feedback →
+product signals → evidence-based commercialization decision later.**
+(Orchestration release chain `508382b → 45b2296 → 2222b07` is history;
+see PUBLIC SITE CHECKPOINT for live state.)
 
 ## CURRENT OBJECTIVE
 
@@ -66,6 +70,39 @@ FAZ 8  Recovery                  PARTIAL   (detection/reconciliation exist; orch
 FAZ 9  Multi-Patch               BLOCKED   (bundle identity = frozen-decision revisit condition)
 FAZ 10 Product layers            NOT STARTED (no proven need)
 ```
+
+## FREE PRODUCT ROADMAP (CURRENT — AUTHORITATIVE)
+
+> Authoritative FREE product roadmap as of 2026-09-27. The orchestration
+> table above (FAZ 1..10) is ARCHITECTURE history and stays frozen.
+> **NAMING WARNING:** "**FAZ 2 (Operation Identity)**" = architecture
+> freeze (historical, BLOCKED-by-decision); "**FAZ 2.1 / 2.2**" =
+> usage-telemetry phases (2026-09-27). Different numbering — never
+> conflate the two.
+
+| Gate | State | Evidence / prerequisite |
+|---|---|---|
+| **F0 — Release Gate** | **CLOSED (PASS)** | FAZ 2.1 + FAZ 2.2 + test-isolation committed (`c48e786`, `cf638b1`); CI 4/4 (run 36371113909) |
+| **F1 — FREE E2E Local Validation** | **NEXT** | fresh clone → `pip install -e .` → governed run → verify/evidence on the FREE build |
+| F2 — Distribution / Installation | afterwards | LICENSE file (**YOK**), package naming (`event-sourced-ai-runtime` ≠ `tanuq`), PyPI publish (**YOK**) = owner decisions |
+| F3 — Public FREE Acquisition Path Validation | afterwards | live site: acquisition → install path end-to-end |
+| F4 — First User / Feedback Validation | afterwards | first external users + `feedback@tanuq.net` intake |
+| F5 — Usage / Telemetry Decision Gate | afterwards | local signals exist → decide remote default/endpoint with real data |
+| FAZ 2.3 — Remote Endpoint Integration | CONDITIONAL | only with a real endpoint + owner decision; **real endpoint/backend: YOK today** |
+
+**Active FREE strategy:** free distribution → real usage → real feedback →
+product signals → evidence-based commercialization decision later.
+
+**Commercial facts (as released):** `$19 one-time` = **SUPERSEDED** ·
+`$49/month` = **SUPERSEDED for the current FREE strategy** ·
+"free forever" = **NOT USED (no such promise)** · future pricing =
+**UNKNOWN / undecided** · commercial signal ≠ WTP ·
+positioning = **no account / no payment / no subscription** ·
+feedback channel = `mailto:feedback@tanuq.net` ·
+public GitHub acquisition claim = **removed**.
+
+**Out of FREE scope:** Enterprise / Autonomous roadmap items live in
+`docs/roadmap.md` and are **HISTORICAL** (banner added there).
 
 ## COMPLETED
 
@@ -149,17 +186,17 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
 
 ## NEXT VALID ACTION
 
-**CURRENT (2026-09-26) — single next task:** **Commercial validation /
-acquisition validation.** The public site is live and verified
-(`https://tanuq.net/` — EN `/` + TR `/tr/`, release `2222b07`); next
-phase is taking it to real acquisition signals: install-from-source
-feedback from the first external users, then a 10-user / WTP check,
-then the commercial decision. **Do NOT mark any of these as done:**
-WTP, real payment, first external user, acquisition conversion all
-remain **UNKNOWN** until measured. Site-side commercial truth (as
-released and live): TANUQ PRO `$49/month` = launch pricing hypothesis,
-payment/licensing infrastructure **NOT YET LIVE**, acquisition CTA =
-`START ACQUISITION`/`EDİNİMİ BAŞLAT` (in-page, no checkout).
+**CURRENT (2026-09-27) — single next task:** **F1 — FREE E2E Local
+Validation** (fresh clone → `pip install -e .` → governed run →
+verify/evidence against the FREE build; see FREE PRODUCT ROADMAP above).
+
+**Commercial state as released (FREE strategy):** TANUQ is distributed
+**FREE** — no account / no payment / no subscription. `$49/month` and
+`START ACQUISITION` are **SUPERSEDED** (removed from the site in
+`b5841f9`); "free forever" is **not promised**; future pricing =
+**UNKNOWN / undecided**; WTP, real payment, first external user and
+conversion all remain **UNKNOWN** until measured; commercial signal ≠ WTP.
+Feedback intake: `mailto:feedback@tanuq.net`.
 
 Historical (RESOLVED 2026-09-26): "deploy `site/` to tanuq.net" gate —
 owner executed the manual upload; agent-side deploy was BLOCKED once
@@ -257,7 +294,14 @@ OperationCoordinator: no grant/consume/apply/verify authority
 ## RECENT COMMITS
 
 ```text
-2222b07 feat(site): add English default and Turkish /tr public site  <- CURRENT CHECKPOINT (HEAD == origin/main; LIVE)
+cf638b1 test(usage): isolate CLI usage tests from real home   <- CURRENT CHECKPOINT (HEAD == origin/main)
+c48e786 feat(usage): add anonymous remote usage transport
+ed1c6c5 feat(usage): add local usage signal derivation
+e7c1174 feat(site): connect free user feedback email channel
+7d7ee8a feat(site): add real feedback channel for free users
+b5841f9 feat(site): launch TANUQ free distribution strategy
+e4d9b72 docs(state): sync project state after public site release
+2222b07 feat(site): add English default and Turkish /tr public site
 45b2296 feat(site): finalize public TANUQ product experience
 508382b feat(site): polish public TANUQ experience
 5d90ff9 feat(site): add interactive TANUQ demo experience
@@ -265,25 +309,22 @@ OperationCoordinator: no grant/consume/apply/verify authority
 ecf00fd Harden approval TTL and pending API auth
 f0d09b6 feat(observation): add read-only post-hoc observation projection (E5/Semantic V1)
 ebd52b1 feat(adapter): govern Claude Code Write as create
-654bf56 feat(governance): governed new-file creation via create action
-3b8e259 feat(orchestration): cross-source resume via adapter content correlation
-7de6a55 feat(orchestration): add approved retry resume and pending dedup
-b061d03 feat(adapter): add Claude Code PreToolUse governed entry
-69f8d39 docs(orchestration): map orchestration boundaries
-2536af0 fix(security): harden verification integrity boundaries
 ```
 
 ## CI STATUS
 
-**LATEST: SUCCESS on `2222b07`** — GitHub Actions run **36234640245**
+**LATEST: SUCCESS on `cf638b1`** — GitHub Actions run **36371113909**
 (workflow `CI`, status `completed`, conclusion `success`, branch
-`main`, headSha `2222b07ef9b4fb6ba690c49855d695e31b25afc7`, created
-2026-09-26T10:03:46Z). **4/4 jobs green:** pytest (ubuntu) 234s,
-pytest (windows) 441s, packaging-gate (ubuntu) 23s, packaging-gate
-(windows) 51s; failure = NONE (verified via `gh run view 36234640245`).
+`main`, headSha `cf638b1bce6200f6f911ed8d0ff9aa8a5bf8f2a3`).
+**4/4 jobs green:** pytest (ubuntu) success, pytest (windows) success,
+packaging-gate (ubuntu) success, packaging-gate (windows) success;
+failure = NONE (verified via `gh run view 36371113909`).
+Push covered two commits: `c48e786` (FAZ 2.1 + 2.2) and `cf638b1`
+(test isolation) — GitHub runs CI for the pushed HEAD.
 
-Recent releases (also green, 4/4): `45b2296` = run 36212828174;
-`508382b` = run 36099397583 (headSha verified 2026-09-25).
+Recent releases (also green, 4/4): `2222b07` = run 36234640245;
+`45b2296` = run 36212828174; `508382b` = run 36099397583
+(headSha verified 2026-09-25).
 
 History (unchanged): hosted CI (Ubuntu+Windows pytest, packaging-gate
 ×2): SUCCESS on
@@ -295,36 +336,44 @@ plus run 35927652074 (4/4 GREEN) for `ecf00fd`.
 (packaging-gate "Whitespace check" only — both pytest jobs green);
 hygiene/process follow-up, not a product failure.
 
-Latest local site+i18n suite: **89 passed / 0 failed / 0 skipped**
-(site_sales_model + public_surface + next_step + walkthrough +
-authority_chain + try_script + connect_registry + readme_identity +
-site_i18n). Latest local full suite (recorded): 1469 passed /
-15 skipped / 0 failed. CI full-suite = authoritative at HEAD.
+Latest local suites (recorded): site + i18n **89 passed / 0 failed**;
+usage telemetry **26 (opt-out) + 43 (transport) passed / 0 failed**;
+full suite **1762 passed / 15 skipped / 1 known-perf-flake**
+(`usage_signal` cold-scan threshold, load-dependent; CI full suite is
+authoritative and green on both OSes).
 
 ## RELEASE CHECKPOINT (LAST KNOWN GOOD)
 
-- **`2222b07ef9b4fb6ba690c49855d695e31b25afc7`** —
-  `feat(site): add English default and Turkish /tr public site`,
-  pushed fast-forward from `45b2296`, **hosted CI GREEN 4/4
-  (run 36234640245)**, **deployed and LIVE VERIFIED 2026-09-26**.
-- Scope (7 files, +836/−137): `site/index.html` (EN default),
-  `site/style.css` (language switch), `site/DEPLOY.md` (/tr/ static
-  layout), `site/tr/index.html` (NEW), `tests/test_public_surface.py`,
-  `tests/site_sales_model_test.py`, `tests/site_i18n_test.py` (NEW).
-- Core diff for this release: **`tanuq/`, `simulation/`, `p5/`,
-  `agent_run.py` = 0** (`git diff 45b2296..2222b07 -- tanuq simulation
-  p5 agent_run.py` empty).
+- **`cf638b1bce6200f6f911ed8d0ff9aa8a5bf8f2a3`** —
+  `test(usage): isolate CLI usage tests from real home`, pushed
+  fast-forward, **hosted CI GREEN 4/4 (run 36371113909)**.
+- Carries the telemetry work: `c48e786` (FAZ 2.1 opt-out/config +
+  FAZ 2.2 `tanuq/usage_transport.py` + 2 new test modules) and
+  `cf638b1` (test-isolation fix, +13). Site content: **unchanged since
+  `e7c1174`** (`git diff e7c1174..cf638b1 -- site/` = empty).
+- Core diff for this checkpoint: **`simulation/`, `p5/`,
+  `agent_run.py`, `tanuq/usage_signal.py` = 0**; only
+  `tanuq/{cli,config,usage_transport}.py` +3 tests are new.
 - History (previous release checkpoints):
+  - `2222b07` `feat(site): add English default and Turkish /tr public
+    site` (7 files, +836/−137) — CI 4/4 (36234640245), deployed 2026-09-26.
   - `45b2296` `feat(site): finalize public TANUQ product experience`
-    (7 files, +692/−75) — CI GREEN 4/4 (run 36212828174).
+    (7 files, +692/−75) — CI 4/4 (36212828174).
   - `508382b` `feat(site): polish public TANUQ experience`
-    (4 files, +157/−10: footer GitHub anchor removed, Authority Chain
-    gap-independent spacing) — CI GREEN 4/4 (run 36099397583).
+    (4 files, +157/−10) — CI 4/4 (36099397583).
 
 ## PUBLIC SITE CHECKPOINT
 
-- **CURRENT (2026-09-26): LIVE == RELEASE == `2222b07` —
-  DEPLOY PASS / LIVE VERIFIED.**
+- **CURRENT (last verified 2026-09-27): LIVE = `e7c1174`** — LAST-KNOWN
+  CHECKPOINT, measured in the earlier 2026-09-27 session by blob identity
+  (live `index.html` == `e7c1174:site/index.html`; live
+  `tr/index.html` == `e7c1174:site/tr/index.html`; feedback mailto live
+  EN=1 / TR=1). **NOT re-measured over the network during this
+  roadmap-sync task — not a fresh confirmation.** Repo HEAD = `cf638b1`,
+  and **site content is identical** (`git diff e7c1174..cf638b1 -- site/`
+  = empty) — the telemetry commits (`ed1c6c5`, `c48e786`, `cf638b1`)
+  are code/test-only — **no site redeploy pending** for them.
+  **HISTORY — 2026-09-26 verification of the `2222b07` deploy:**
   - English `/`: HTTP 200, 24343 B, `Last-Modified: 26-Sep-2026
     10:28:21 GMT`, `<html lang="en">`.
   - Turkish `/tr/` (and `/tr/index.html`): HTTP 200, 25202 B,
@@ -355,13 +404,16 @@ site_i18n). Latest local full suite (recorded): 1469 passed /
   `115gtgwfg.guzel.net.tr`); manual upload; `style.css`
   `Cache-Control: max-age=604800` (7-day cache may serve stale CSS
   after future deploys — re-verify by hash after any deploy).
-- Commercial truth live on the site: TANUQ PRO `$49/month` = **launch
-  pricing hypothesis**; **payment/licensing infrastructure NOT YET
-  LIVE** (explicitly stated EN+TR); acquisition CTA = `START
-  ACQUISITION` ×4 (EN) / `EDİNİMİ BAŞLAT` ×4 (TR), in-page only (no
-  checkout); GitHub surface = 0; DEMO TALEP = 0; trajectory /
-  multi-agent / anomaly research NOT presented as product capability;
-  limits stated (not OS-level, not network enforcement, not sandbox).
+- Commercial truth on the live site (**FREE strategy**, `b5841f9` onward):
+  **TANUQ is free to use** — no account / no payment / no subscription;
+  pricing card = **FREE**; primary CTA = `START USING TANUQ` /
+  `TANUQ'U KULLAN`; **`$49/month` and `START ACQUISITION` are SUPERSEDED**
+  (removed from the site; earlier notes below recorded them only as
+  history); "free forever" is NOT promised; future pricing =
+  **UNKNOWN** (stated as not decided yet); feedback = `mailto:feedback@tanuq.net`;
+  GitHub surface = 0; DEMO TALEP = 0; trajectory / multi-agent / anomaly
+  research NOT presented as product capability; limits stated (not
+  OS-level, not network enforcement, not sandbox).
 - Out of release scope (unchanged): `site/assets/tanuq-logo-header.png`
   (untracked, referenced nowhere, never tracked).
 
@@ -474,6 +526,56 @@ docs, this session's decisions. Anything beyond this: NEEDS OPERATOR
 CONFIRMATION.)
 
 ## DAILY HANDOFF
+
+### 2026-09-27 (FREE strategy → feedback channel → usage telemetry FAZ 1/2.1/2.2 → F0 close → roadmap sync)
+
+- SESSION OBJECTIVE: switch TANUQ to FREE distribution, wire a real
+  feedback channel, build the usage-signal/telemetry stack (local +
+  opt-out + transport), close the F0 release gate, then sync this file.
+- WORK COMPLETED (chronological, all pushed):
+  1. **FREE strategy live** — `b5841f9` `feat(site): launch TANUQ free
+     distribution strategy`: pricing card = FREE, CTAs →
+     `START USING TANUQ` / `TANUQ'U KULLAN`, `$49 / month` + demo/purchase
+     copy removed, tests relocked; CI SUCCESS.
+  2. **Feedback prompts** — `7d7ee8a` (5 short signals, EN+TR; honest
+     "no form/no channel yet" state; GitHub=0 preserved).
+  3. **Real feedback channel** — `e7c1174` `mailto:feedback@tanuq.net`
+     (owner-created mail account), exact-encoded subject/body (EN
+     `TANUQ Feedback` / TR `TANUQ Geri Bildirim`, 5 prompts, UTF-8 safe),
+     old "no channel" copy removed; tests 91 green. **Owner deployed →
+     LIVE verified: mailto EN=1 / TR=1, blob == `e7c1174`.**
+  4. **FAZ 1 local usage signal** — `ed1c6c5` (NEW `tanuq/usage_signal.py`
+     570 satır + 14 tests): 12 event şeması, HMAC install_id, run_id
+     UUID4, fail-silent, privacy deny-list; full suite **1694/15/0**.
+  5. **FAZ 2.1 opt-out/config** + **FAZ 2.2 remote transport** — `c48e786`
+     (5 files: config/cli + `tanuq/usage_transport.py` + 2 test modules;
+     26 + 43 tests): ENV>config>default ON, HTTPS-only, allow-list,
+     1KB/64/32KB limits, no retry, fail-silent, OFF guard, zero network
+     in tests; **real endpoint/backend = YOK (FAZ 2.3 not started)**.
+  6. **Test isolation fix** — `cf638b1` (CLI usage tests → isolated HOME);
+     **CI run 36371113909 = SUCCESS 4/4** (pytest + packaging-gate ×2 OS).
+  7. **F0 Release Gate = CLOSED/PASS** (read-only audit: scope 5/5,
+     governance core CLEAN, distribution audit: package 0.6.0, PyPI YOK,
+     LICENSE file YOK, publish workflow YOK).
+  8. **This task:** roadmap/project-state sync (FREE PRODUCT ROADMAP block,
+     superseded commercial notes, historical banners on stale roadmap docs).
+- COMMERCIAL STATE: FREE strategy ACTIVE — no account / no payment /
+  no subscription; **`$19 one-time` = SUPERSEDED, `$49/month` +
+  `START ACQUISITION` = SUPERSEDED** (removed from site); "free forever"
+  NOT promised; future pricing **UNKNOWN**; WTP/first-user/conversion
+  **UNKNOWN**; commercial signal ≠ WTP; feedback = `mailto:feedback@tanuq.net`
+  (live).
+- TESTS: site+i18n **89**, opt-out **26**, transport **43** (all 0 failed);
+  full suite recorded **1762/15/1** (1 = load-dependent perf threshold in
+  FAZ 1 usage_signal; CI full suite authoritative GREEN on both OSes).
+- FREEZE: `simulation/`, `p5/`, `agent_run.py`, governance primitives,
+  `usage_signal.py` semantics = **0 change** across the whole day (diff empty);
+  only tanuq/{cli,config,usage_transport}.py added/extended (product layer).
+- NEXT ACTION: **F1 — FREE E2E Local Validation** (fresh clone → install →
+  governed run → verify/evidence).
+- NEXT HUMAN GATE: F2 decisions (LICENSE file, package naming, PyPI),
+  FAZ 2.3 real endpoint/backend, and — only if site copy changes again —
+  deploy scheduling (site content currently live == HEAD).
 
 ### 2026-09-26 (public site: finalize → i18n release → CI → owner deploy → LIVE VERIFIED → state sync)
 

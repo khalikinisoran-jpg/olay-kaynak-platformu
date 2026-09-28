@@ -5,6 +5,8 @@ Version: 2.0 — **SUPERSEDED as active direction on 2026-08-21** (historical ph
 Status: Historical — see Current Strategic Direction (A→C)
 
 > **Live direction & current truth-source:** `docs/TANUQ_PROJECT_STATE.md`. Current reality: **1469 passed / 15 skipped / 0 failed @ `48c6a0b`** (TANUQ 0.6.0).
+>
+> **Current FREE roadmap (2026-09-27):** `docs/TANUQ_PROJECT_STATE.md` → `FREE PRODUCT ROADMAP (F0 → F5 + FAZ 2.3)` — the phases in THIS file remain historical.
 
 Last Updated: 2026-08-30 (current HEAD `9df6953` `9df6953b4a51071330d7584f0ed2b569f4ab434b`, 15 commits after the historical P9 FINAL PASS baseline `b2d6da7` `b2d6da7234640e34fa349c067f56e23057053cf2`, 2026-08-25; current local full-suite evidence at `9df6953`: `1278 collected / 1265 passed / 13 skipped / 0 failures` in 329.97s — local Windows run 2026-08-30, hosted CI verified at `ab77f9f` (push run `33301276606` SUCCESS: Ubuntu + Windows), NOT a production-correctness proof; historical P9 FINAL PASS @ `b2d6da7`: `1213 collected / 1200 passed / 13 skipped / 0 failures`, hosted run 32805095789 Ubuntu ~88s / Windows ~182s, local ~254s with 300s budget; 120s is NOT COMPLETED; latest implementation lineage: `24c72d0` foundation 986 → P7 governed AgentSession → P8 multi-file atomicity → P9 FINAL PASS → `b2d6da7` / `1213` → post-P9 governed ExternalAction pipeline → `d42736d` / `1272` → P10.2 docs sync + P10.3 hygiene + post-P10.3 p5 authority/integrity fixes → `9df6953` / `1278`)
 

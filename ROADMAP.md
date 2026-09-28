@@ -1,5 +1,10 @@
 # Project Roadmap
 
+> **STATUS: TECHNICAL BASELINE — HISTORICAL as an active roadmap (2026-09-06).**
+> Phases 1–6 below record the verification/runtime build-out. The **current
+> product roadmap is the FREE PRODUCT ROADMAP (F0 → F5 + FAZ 2.3)** in
+> `docs/TANUQ_PROJECT_STATE.md`.
+
 ## Current Baseline
 
 The current system has:

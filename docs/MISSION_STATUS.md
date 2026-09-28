@@ -1,5 +1,9 @@
 # MISSION_STATUS.md
 
+> **STATUS: HISTORICAL** — pinned to the `9df6953` audit (2026-08-11/12);
+> the mission records below are history, not the current state.
+> Current state + FREE roadmap = `docs/TANUQ_PROJECT_STATE.md`.
+
 Canonical status of every identifiable development mission, derived from
 Git history, code, tests and docs/MISSION_LOG.md (2026-08-11 audit at HEAD
 `96ed72d`; MISSION-011 close-out status refreshed 2026-08-12; MISSION-012,
