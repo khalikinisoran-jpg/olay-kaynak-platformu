@@ -18,7 +18,7 @@
 > `TANUQ — SESSION RESYNC` (format at the bottom), then pick the next
 > valid action.
 
-LAST UPDATED: 2026-09-27
+LAST UPDATED: 2026-09-28
 
 ---
 
@@ -33,14 +33,16 @@ sequential behind them. FAZ 6-lite A/B (resume + cross-source correlation) are *
 ADR). Current phase: **early-adopter productization** —
 awaiting real-usage evidence and operator decisions (Claude access).
 
-REPOSITORY CHECKPOINT (2026-09-27): **HEAD == origin/main ==
-cf638b1bce6200f6f911ed8d0ff9aa8a5bf8f2a3** —
-`test(usage): isolate CLI usage tests from real home`
-(pushed, fast-forward, hosted CI GREEN 4/4 = run 36371113909).
-FREE release chain (2026-09-27): `b5841f9` (FREE distribution strategy) →
-`7d7ee8a`/`e7c1174` (feedback prompts + real mailto channel) →
-`ed1c6c5` (FAZ 1 local usage signal) → `c48e786` (FAZ 2.1 opt-out +
-FAZ 2.2 anonymous remote transport) → `cf638b1` (test isolation).
+REPOSITORY CHECKPOINT (2026-09-28): **HEAD == origin/main ==
+45e3072e67feb027b1ae9ab10e89680811dddcfb** —
+`docs(quickstart): use action=create in the new-file example`
+(pushed, fast-forward, hosted CI GREEN 4/4 = run 36476641745).
+FREE release chain (2026-09-27..28): `b5841f9` (FREE distribution
+strategy) → `7d7ee8a`/`e7c1174` (feedback prompts + real mailto
+channel) → `ed1c6c5` (FAZ 1 local usage signal) → `c48e786`
+(FAZ 2.1 opt-out + FAZ 2.2 anonymous remote transport) → `cf638b1`
+(test isolation) → `9e133a2` (FREE roadmap/state sync) → `45e3072`
+(QUICKSTART `action=create` fix — F1 follow-up).
 **CURRENT STRATEGY: FREE distribution → real usage → real feedback →
 product signals → evidence-based commercialization decision later.**
 (Orchestration release chain `508382b → 45b2296 → 2222b07` is history;
@@ -73,7 +75,7 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
 
 ## FREE PRODUCT ROADMAP (CURRENT — AUTHORITATIVE)
 
-> Authoritative FREE product roadmap as of 2026-09-27. The orchestration
+> Authoritative FREE product roadmap as of 2026-09-28 (F1 closed). The orchestration
 > table above (FAZ 1..10) is ARCHITECTURE history and stays frozen.
 > **NAMING WARNING:** "**FAZ 2 (Operation Identity)**" = architecture
 > freeze (historical, BLOCKED-by-decision); "**FAZ 2.1 / 2.2**" =
@@ -83,8 +85,8 @@ FAZ 10 Product layers            NOT STARTED (no proven need)
 | Gate | State | Evidence / prerequisite |
 |---|---|---|
 | **F0 — Release Gate** | **CLOSED (PASS)** | FAZ 2.1 + FAZ 2.2 + test-isolation committed (`c48e786`, `cf638b1`); CI 4/4 (run 36371113909) |
-| **F1 — FREE E2E Local Validation** | **NEXT** | fresh clone → `pip install -e .` → governed run → verify/evidence on the FREE build |
-| F2 — Distribution / Installation | afterwards | LICENSE file (**YOK**), package naming (`event-sourced-ai-runtime` ≠ `tanuq`), PyPI publish (**YOK**) = owner decisions |
+| **F1 — FREE E2E Local Validation** | **CLOSED (PASS)** | PASS recorded 2026-09-28 from an **in-session validation only** (fresh clone → `pip install -e .` → init → HIGH create approve → execute VERIFIED → verify/lineage/export → cleanup); **no in-repo artifact exists — do not cite repo evidence for F1**. Blocker found (QUICKSTART example missing `action`) fixed in `45e3072` |
+| **F2 — Distribution / Installation** | **NEXT (decision gate — no implementation/publish approval yet)** | LICENSE file (**YOK**), NOTICE scope, ownership/identity confirmation, package naming (`event-sourced-ai-runtime` ≠ `tanuq`), PyPI account/publish (**YOK**), version policy = owner decisions; read-only audits delivered in-session, repo untouched |
 | F3 — Public FREE Acquisition Path Validation | afterwards | live site: acquisition → install path end-to-end |
 | F4 — First User / Feedback Validation | afterwards | first external users + `feedback@tanuq.net` intake |
 | F5 — Usage / Telemetry Decision Gate | afterwards | local signals exist → decide remote default/endpoint with real data |
@@ -186,9 +188,13 @@ public GitHub acquisition claim = **removed**.
 
 ## NEXT VALID ACTION
 
-**CURRENT (2026-09-27) — single next task:** **F1 — FREE E2E Local
-Validation** (fresh clone → `pip install -e .` → governed run →
-verify/evidence against the FREE build; see FREE PRODUCT ROADMAP above).
+**CURRENT (2026-09-28) — single next task/gate:** **F2 —
+Distribution / Installation DECISIONS** (LICENSE/NOTICE, ownership
+confirmation, package naming, PyPI account & version policy; see FREE
+PRODUCT ROADMAP above). **F1 is CLOSED (PASS)** — in-session
+validation only (2026-09-28), no in-repo artifact; its QUICKSTART
+blocker was fixed in `45e3072`. **F2 implementation/publish is NOT
+yet approved.**
 
 **Commercial state as released (FREE strategy):** TANUQ is distributed
 **FREE** — no account / no payment / no subscription. `$49/month` and
@@ -294,7 +300,9 @@ OperationCoordinator: no grant/consume/apply/verify authority
 ## RECENT COMMITS
 
 ```text
-cf638b1 test(usage): isolate CLI usage tests from real home   <- CURRENT CHECKPOINT (HEAD == origin/main)
+45e3072 docs(quickstart): use action=create in the new-file example   <- CURRENT CHECKPOINT (HEAD == origin/main)
+9e133a2 docs(state): sync FREE roadmap and project state
+cf638b1 test(usage): isolate CLI usage tests from real home
 c48e786 feat(usage): add anonymous remote usage transport
 ed1c6c5 feat(usage): add local usage signal derivation
 e7c1174 feat(site): connect free user feedback email channel
@@ -313,14 +321,17 @@ ebd52b1 feat(adapter): govern Claude Code Write as create
 
 ## CI STATUS
 
-**LATEST: SUCCESS on `cf638b1`** — GitHub Actions run **36371113909**
+**LATEST: SUCCESS on `45e3072`** — GitHub Actions run **36476641745**
 (workflow `CI`, status `completed`, conclusion `success`, branch
-`main`, headSha `cf638b1bce6200f6f911ed8d0ff9aa8a5bf8f2a3`).
-**4/4 jobs green:** pytest (ubuntu) success, pytest (windows) success,
-packaging-gate (ubuntu) success, packaging-gate (windows) success;
-failure = NONE (verified via `gh run view 36371113909`).
-Push covered two commits: `c48e786` (FAZ 2.1 + 2.2) and `cf638b1`
-(test isolation) — GitHub runs CI for the pushed HEAD.
+`main`, headSha `45e3072e67feb027b1ae9ab10e89680811dddcfb`).
+**4/4 jobs green:** pytest (ubuntu/windows) success, packaging-gate
+(ubuntu/windows) success; failure = NONE (verified via `gh run view
+36476641745`). Push covered exactly one commit: `45e3072` (QUICKSTART
+`action=create` docs fix — F1 follow-up).
+
+Also green (4/4): `9e133a2` (FREE roadmap/state sync) = run
+36375363049; `cf638b1` (test isolation) = run 36371113909 — that push
+covered `c48e786` + `cf638b1` (GitHub runs CI for the pushed HEAD).
 
 Recent releases (also green, 4/4): `2222b07` = run 36234640245;
 `45b2296` = run 36212828174; `508382b` = run 36099397583

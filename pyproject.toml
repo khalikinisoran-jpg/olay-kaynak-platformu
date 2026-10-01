@@ -8,7 +8,7 @@ version = "0.6.0"
 description = "Event-sourced AI runtime with deterministic, governed AI action execution."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 keywords = ["ai", "agent", "governance", "security", "event-sourcing", "audit"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -16,6 +16,7 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
     "Topic :: Security",
 ]
 dependencies = [

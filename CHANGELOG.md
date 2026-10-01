@@ -8,7 +8,10 @@ All notable changes to this project will be documented here.
 
 Status
 
-TANUQ Release Foundation
+TANUQ Release Foundation — release preparedness in progress: license
+layer prepared in-tree (Apache-2.0 `LICENSE` + aligned metadata,
+2026-09-28). Still **UNRELEASED**: no git tag, no PyPI publication,
+no release date assigned yet.
 
 Highlights
 
@@ -45,6 +48,24 @@ Highlights
   entry-point chain consolidated to the current truth-source.
 - Cross-model dogfood: the generic proposal channel verified with an
   independent non-Claude model source.
+- Usage-signal stack (FAZ 1 / 2.1 / 2.2): local anonymous usage-signal
+  derivation (`tanuq/usage_signal.py`, `ed1c6c5`); opt-out preference
+  plus `tanuq usage on|off|status` (ENV > config > default ON,
+  `c48e786`); HTTPS-only, fail-silent remote transport
+  (`tanuq/usage_transport.py`, `c48e786`) — **no remote endpoint
+  ships**, so transport stays a no-op until an owner-provided endpoint
+  exists.
+- FREE distribution strategy + feedback channel: the site presents
+  TANUQ as free-to-use (no account / no payment / no subscription;
+  `b5841f9`) and intake is a real mailbox, `mailto:feedback@tanuq.net`,
+  in English and Turkish (`7d7ee8a`, `e7c1174`); earlier pricing claims
+  were removed.
+- Quickstart fix: the new-file example now carries `"action": "create"`
+  so the documented first-run flow follows the HIGH-risk create path
+  (`45e3072`).
+- F1 FREE E2E local validation: **PASS** (recorded 2026-09-28 in
+  `docs/TANUQ_PROJECT_STATE.md` as an in-session validation result;
+  no in-repo artifact by design).
 
 Known gaps
 
