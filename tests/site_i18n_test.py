@@ -17,6 +17,10 @@ Covers (§22):
 
 Read-only static-content test. No core files, no fixtures modified,
 no deployment.
+
+Retired (Owner-approved): spec items 2 (Turkish route) and 3 (language
+switch) — after the B-min decision `/tr/` serves a static redirect
+page; those guarantees live in `tests/site_tr_redirect_test.py`.
 """
 import json
 import re
@@ -132,32 +136,6 @@ def test_default_document_is_english():
         assert tr_only not in en, f"Turkish copy leaked into EN: {tr_only}"
     # free message present on the EN default
     assert "TANUQ is free to use" in en
-
-
-def test_turkish_route_exists_and_is_turkish():
-    assert TR_PATH.exists(), "site/tr/index.html missing (Turkish route)"
-    tr = _tr()
-    assert '<html lang="tr">' in tr
-    # Turkish content preserved (not lost in the EN default switch)
-    assert "bağımsız yönetim katmanı" in tr
-    assert "son karar kimde" in tr
-    assert "TANUQ'u kurun ve kullanmaya başlayın" in tr
-    assert "Kullanmadan önce" in tr
-    # subpath-relative asset resolution (/tr/ directory index)
-    assert 'href="../style.css"' in tr
-    assert 'src="../demo.js"' in tr
-    assert 'data-fixture="../demo_fixtures.json"' in tr
-    assert 'src="../assets/tanuq-logo-header-sm.png"' in tr
-
-
-# ---- 3: language switch ----
-
-def test_language_switch_present_in_both_navigations():
-    en_nav, tr_nav = _nav(_en()), _nav(_tr())
-    assert 'class="lang-switch" href="tr/index.html"' in en_nav
-    assert ">TR</a>" in en_nav
-    assert 'class="lang-switch" href="../index.html"' in tr_nav
-    assert ">EN</a>" in tr_nav
 
 
 # ---- 4 / parity: core sections in both ----

@@ -430,8 +430,12 @@ authoritative and green on both OSes).
 
 ## OPEN RISKS
 
-1. `child_*.dmp` in repo root: REAL API tokens on disk (secret_guard
-   findings) — must never be committed; cleanup pending human action.
+1. `child_*.dmp`: RESOLVED (2026-10-04, public-release secret-hygiene
+   audit). No `*.dmp` exists in the working tree and none was ever added
+   to git history (`git log --all --diff-filter=A -- 'child_*.dmp'
+   '*.dmp'` -> empty); `.gitignore` still blocks `child_*.dmp`. Evidence:
+   secret-hygiene audit (2026-10-04) + CI secret-scan green at `b5dfe8c`
+   (run 36957043829, 4/4 jobs). No credential remediation pending.
 2. Helper-module weakening is outside the G1 naming gate (medium
    residual).
 3. Cross-assembly (p5/agent_run vs tanuq) workspace collision: no

@@ -1,14 +1,53 @@
-# Event-Sourced AI Runtime
+# TANUQ — Governance layer for AI coding agents (event-sourced runtime)
 
-> **Tanuq — AI works. You stay in control.**
+![CI](https://github.com/khalikinisoran-jpg/olay-kaynak-platformu/actions/workflows/ci.yml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/event-sourced-ai-runtime)
+![Python](https://img.shields.io/pypi/pyversions/event-sourced-ai-runtime)
+![License](https://img.shields.io/badge/license-Apache%202.0-blue)
+
+> **TANUQ — AI works. You stay in control.**
 >
-> Tanuq is the user-facing product built on this runtime: it governs
-> AI coding agents' file changes with deterministic policies, binds
-> risky changes to single-use human approval, rolls back failed
-> changes automatically, and records tamper-evident evidence.
+> AI coding agents change files fast; speed is not control. TANUQ turns
+> file changes into a governed workflow: **Propose → Evaluate (risk &
+> policy) → Authorize (single-use, content-bound human approval) → Apply
+> → Verify → Record (tamper-evident, hash-chained evidence)**, with
+> rollback when verification fails.
+
+**Problem it solves:** unreviewed agent edits, “did the agent change more
+than I approved?”, and having no post-hoc proof of what was authorized
+versus what actually ran.
+
+**Scope boundary:** TANUQ governs changes submitted through its supported
+CLI, hooks, and adapters. It is **not** an OS-level sandbox or filesystem
+enforcement system, and it does not prevent an agent, editor, shell, or
+other process from writing directly to the filesystem outside that
+workflow.
+
+**Links:** product site [tanuq.net](https://tanuq.net) · package
+[event-sourced-ai-runtime on PyPI](https://pypi.org/project/event-sourced-ai-runtime/) ·
+docs: [`docs/QUICKSTART.md`](docs/QUICKSTART.md),
+[`docs/USER_GUIDE.md`](docs/USER_GUIDE.md),
+[`docs/START-HERE.md`](docs/START-HERE.md)
+
+## Install
 
 ```bash
+pip install event-sourced-ai-runtime     # v0.6.0, published 2026-10-01
+# or from source (see Quick Start below):
 pip install -e .
+```
+
+- **Windows:** installer download on [tanuq.net](https://tanuq.net) —
+  **unsigned**; clean-Windows acceptance **NOT TESTED**; verify the
+  published SHA-256 before running it.
+- **Ubuntu:** CI-verified path
+  `pip install -e . && tanuq --version && p5-server --help`
+  (desktop end-to-end validation is still early — “Early access” on the
+  site).
+
+## Quick start (TANUQ)
+
+```bash
 tanuq init      # protect a workspace (interactive)
 tanuq status
 ```
@@ -112,6 +151,10 @@ Benefits include:
 # Current Version
 
 **0.6.0** (package `event-sourced-ai-runtime`, CLI `tanuq`).
+
+Releases: [PyPI 0.6.0](https://pypi.org/project/event-sourced-ai-runtime/#history) ·
+[GitHub release v0.6.0](https://github.com/khalikinisoran-jpg/olay-kaynak-platformu/releases/tag/v0.6.0)
+(source, Windows installer `TANUQ-Setup-0.6.0.exe`, `SHA256SUMS.txt`).
 
 Status: early-adopter productization. Current position, recent commits,
 CI status and full-suite evidence are tracked live in
@@ -512,6 +555,19 @@ Every sprint becomes working software.
 ---
 
 # Release History
+
+## v0.6.0 (2026-10-01)
+
+- Package `event-sourced-ai-runtime` published to PyPI with Trusted
+  Publishing and provenance attestation.
+- Windows installer prototype attached to the GitHub release
+  (`TANUQ-Setup-0.6.0.exe` + `SHA256SUMS.txt`) — unsigned; clean-Windows
+  acceptance NOT TESTED.
+- Public product site (tanuq.net) with install/verify flow and explicit
+  scope limits.
+- Governed `modify`/`create` actions, Claude Code adapter (Edit/Write,
+  translation-only) and the vendor-independent `tanuq propose
+  --stdin-json` proposal channel.
 
 ## v0.1.0-alpha
 

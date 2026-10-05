@@ -16,7 +16,6 @@
       <img src="assets/tanuq-logo-header-sm.png" alt="TANUQ" height="52">
     </a>
     <nav class="nav-links" aria-label="Main navigation">
-      <a class="lang-switch" href="tr/index.html" hreflang="tr">TR</a>
       <a href="#how">How It Works</a>
       <a href="#demo-walkthrough">Real Proof</a>
       <a href="#pricing">Free</a>
@@ -34,6 +33,7 @@
         <a class="btn btn-secondary" href="#how">HOW IT WORKS</a>
       </div>
       <p class="hero-kicker">AI CODING AGENT · FILE-CHANGE GOVERNANCE</p>
+      <p><strong>Your AI Agent Can Change Files. Who Controls the Change?</strong></p>
       <p class="lede">The agent proposes. TANUQ assesses risk, requests your approval when required, executes, verifies, and provides evidence of what happened. TANUQ is free to use.</p>
       <ul class="trust-strip" aria-label="Verifiable principles">
         <li>Content-bound approval</li>
@@ -116,6 +116,13 @@ execute  → terminal state: VERIFIED
   <div class="wrap wrap-narrow">
     <p class="kicker">PROBLEM</p>
     <h2>When an AI agent changes code, who has the final say?</h2>
+    <p>AI agents are useful. Unreviewed changes are a different story. Before a change lands, five questions should be answerable:<br>
+      What exactly is being changed?<br>
+      Was this exact change authorized?<br>
+      Did the applied change match the approved proposal?<br>
+      Was the result verified?<br>
+      Can the outcome be inspected afterward?</p>
+    <p>TANUQ adds a governed change workflow: risk and policy evaluation, content-bound authorization, controlled application, verification, and evidence.</p>
     <p>AI coding agents write code and change files at machine speed, without human intervention. That speed is valuable — but not every change should go unchecked. The critical question is: who decides which changes need control?</p>
     <p>When an agent applies a change straight to disk, the moment a human decides may come after the change rather than before it. At that point, rollback is costly and slow.</p>
     <p>A fast agent does not mean its changes are automatically governed and evidenced. Speed and governance are different things: which change gets applied, who decides, and how that is proven are separate questions.</p>
@@ -128,6 +135,7 @@ execute  → terminal state: VERIFIED
     <p class="kicker">HOW IT WORKS</p>
     <h2>Six steps.</h2>
     <p class="section-lede">Propose → Risk → Approval → Execute → Verify → Evidence. Every step is visible; authority never moves to the next step on its own.</p>
+    <p class="small"><strong>From proposal to evidence:</strong> Proposal → Assessment → Approval → Execution → Verification → Evidence.</p>
     <div class="steps">
       <div class="step"><span class="step-num">1</span><strong>Proposal</strong><p>The agent does not write to disk directly; it sends a change proposal to TANUQ. The target file and its content become visible before anything is applied.</p></div>
       <div class="step"><span class="step-num">2</span><strong>Assessment</strong><p>Every proposal is classified: acceptable changes can be applied, risky changes wait for your approval.</p></div>
@@ -223,6 +231,7 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
     <p class="statement-line">Models change.<br>The governance and evidence layer must not.</p>
     <p class="statement-en">Agent intelligence is replaceable. Governance state is not.</p>
     <p class="section-lede">The model changes. The provider changes. The tool changes. The governance state TANUQ manages — fingerprint, approval, execution record and evidence chain — stays the same. The core is vendor-blind; decisions bind to the change itself, not to a person or a model.</p>
+    <p><strong>Approval should be tied to the change — not just the conversation.</strong> Authorization is bound to the fingerprint of the proposed change. If the proposal changes, the authorization no longer matches. TANUQ then applies the authorized change, verifies the outcome, and records evidence using a tamper-evident chain with an HMAC anchor.</p>
     <p class="small">Validated today: the official Claude Code adapter and the general <code>--stdin-json</code> channel, tested end-to-end with a different model.</p>
   </div>
 </section>
@@ -240,6 +249,7 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
       <div class="persona"><strong>Evidence &amp; hash chain</strong><p>Records are append-only and hash-chained; later tampering can be detected.</p></div>
       <div class="persona"><strong>Fail-closed</strong><p>Unknown, missing or uncertain states are denied by default.</p></div>
     </div>
+    <p class="small">TANUQ governs changes submitted through its supported CLI, hooks, and adapters. It does not currently prevent an agent, editor, shell, or another process from writing directly to the filesystem outside that workflow. It is not an OS-level sandbox or filesystem enforcement system.</p>
   </div>
 </section>
 
@@ -310,7 +320,12 @@ evidence → chain VALID · anchor ACTIVE · ledger VALID · events 11</pre>
     <p class="kicker">INSTALL · LOCAL TRY</p>
     <h2>Run the real runtime on your own machine.</h2>
     <p>The proof in the browser is a recorded playback. TANUQ is free: this is where you install it and run the real runtime on your own machine — it walks the governed flow end to end in a disposable workspace and cleans up afterwards.</p>
-    <p class="small">TANUQ is distributed as source today. The official distribution package is not yet published; everything needed to install is on this page.</p>
+    <p class="small">TANUQ is distributed as source on this page, as version 0.6.0 on PyPI, and as the Windows installer below; everything needed to install is on this page.</p>
+    <h3>Windows installer (v0.6.0)</h3>
+    <p><a class="btn btn-primary" href="https://tanuq.net/downloads/TANUQ-Setup-0.6.0.exe">DOWNLOAD TANUQ-SETUP-0.6.0.EXE</a></p>
+    <p class="small">Windows 10/11 x64. Per-user install — no admin rights needed. It runs offline after install. No auto-update: a new version needs a new download.</p>
+    <p class="small">The installer is <strong>unsigned</strong> (not code-signed); Windows SmartScreen / Defender may show warnings. <strong>Clean Windows acceptance: NOT TESTED</strong> — verified on a developer machine only.</p>
+    <p class="small">Verify before installing: SHA-256 <code>07be331e13cc24a2408ed50adb06f1151cdd16754f6d37d7c8c15f894ff5723d</code> · <a href="https://tanuq.net/downloads/SHA256SUMS.txt">SHA256SUMS.txt</a></p>
     <h3>Local install (Windows)</h3>
 <pre>pip install -e .
 powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
@@ -319,6 +334,18 @@ powershell -ExecutionPolicy Bypass -File site\try\try_tanuq.ps1</pre>
 bash site/try/try_tanuq.sh</pre>
     <p class="small">Prerequisite: Python 3.12+. The run is fully local; no data is sent to a server.</p>
     <p class="small">Next step: start the TANUQ flow in your own workspace with <code>tanuq init</code>, then open the dashboard with <code>tanuq ui</code>.</p>
+    <h3 id="ubuntu">Ubuntu Linux</h3>
+    <p class="small"><strong>Early access</strong></p>
+    <p class="small">Try TANUQ's Python-based CLI on Ubuntu. The Ubuntu CI installation and basic command checks pass; comprehensive validation in a real user environment is still in progress.</p>
+    <p class="small"><strong>Experimental use — this is not full platform support.</strong></p>
+    <p><a class="btn btn-secondary" href="#ubuntu-install">View Ubuntu Installation</a></p>
+    <div id="ubuntu-install">
+      <p class="small">Installation is from source: a copy of the TANUQ repository is required (the repository address is not shared on this page). Installation via PyPI has not been verified for Ubuntu/Linux. The steps below are verified in Ubuntu CI:</p>
+<pre>pip install -e .
+tanuq --version
+p5-server --help</pre>
+      <p class="small">Source install; comprehensive validation in a real user environment is still in progress.</p>
+    </div>
   </div>
 </section>
 
@@ -361,7 +388,7 @@ bash site/try/try_tanuq.sh</pre>
       </details>
       <details class="faq-item">
         <summary>How do I install TANUQ?</summary>
-        <p>Python 3.12+ is required. Local install commands are in the <a href="#try">Install</a> section; the distribution package is not yet published.</p>
+        <p>Python 3.12+ is required. Local install commands are in the <a href="#try">Install</a> section, together with the Windows installer download (v0.6.0).</p>
       </details>
       <details class="faq-item">
         <summary>Is TANUQ free?</summary>
@@ -404,6 +431,7 @@ bash site/try/try_tanuq.sh</pre>
     <div class="cta">
       <a class="btn btn-primary" href="#acquire">START USING TANUQ</a>
       <a class="btn btn-secondary" href="#how">HOW IT WORKS</a>
+      <a class="btn btn-secondary" href="#pricing">Explore TANUQ FREE</a>
     </div>
   </div>
 </section>

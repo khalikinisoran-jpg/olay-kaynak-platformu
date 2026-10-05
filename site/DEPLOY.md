@@ -11,19 +11,27 @@ Upload the contents of `site/` to any static hosting provider
 
 ```
 site/index.html        -> /        (English — default language)
-site/tr/               -> /tr/     (Turkish, directory index)
+site/tr/               -> /tr/     (static redirect page -> /)
 site/style.css         -> /style.css
 site/demo.js           -> /demo.js
 site/demo_fixtures.json -> /demo_fixtures.json
 site/assets/*          -> /assets/*
+site/downloads/*       -> /downloads/* (Windows installer + checksum;
+                                   uploaded directly to the host — not kept
+                                   in the repo; hosting file size, MIME type
+                                   and download behaviour are NOT documented
+                                   here — treat as UNKNOWN)
 site/try/*             -> /try/*   (optional; NOT linked from the page —
                                    scripts are repo-internal, see below)
 ```
 
-The English page is the default document; the Turkish page lives at
-`/tr/` as a plain static subpath (`tr/index.html`). No routing rules
-are required — any static file server that maps directories to
-`index.html` serves both languages.
+The English page is the default document. `/tr/` serves a small
+static redirect page (`tr/index.html`) that sends visitors to the
+English default: a `meta refresh` (`content="0;url=../"`) plus a
+visible link, with a `canonical` pointing at `https://tanuq.net/`.
+No server configuration, no JavaScript and no routing rules are
+required — any static file server that maps directories to
+`index.html` serves both paths.
 
 ## Domain
 
@@ -54,7 +62,7 @@ the repository.
 
 ## Later gates (out of scope for V1)
 
-- PyPI publication (removes the `git clone` step from onboarding).
+- PyPI publication — done (v0.6.0): removes the `git clone` step from onboarding.
 - Server-side sandboxed demo (introduces an attack surface — separate
   security review required).
 - Analytics (only privacy-preserving, opt-in aggregation).

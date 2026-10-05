@@ -39,6 +39,7 @@ Thumbs.db
 
 # Virtual environment
 .venv/
+.venv-validation/
 
 # Packaging artifacts
 *.egg-info/
@@ -62,3 +63,12 @@ t
 
 # Dogfood proposal payloads (transient)
 p_*.json
+
+# Research files withheld from public release (triage 2026-10-04)
+docs/research/fresh_observer_package/FO_UNBLIND_MAP_DO_NOT_OPEN.json
+docs/research/fresh_observer_package/FO_observer_answers.json
+docs/research/p6v2_observer_package/P6V2_UNBLIND_MAP_DO_NOT_OPEN.json
+docs/research/p6v3_observer_package/P6V3_UNBLIND_MAP_DO_NOT_OPEN.json
+docs/research/p6v3_observer_package/P6V3_scoring_key.json
+docs/research/redesign_screenshots/desktop_hero.png
+docs/research/redesign_screenshots/mobile_hero.png
